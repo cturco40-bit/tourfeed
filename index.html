@@ -739,7 +739,6 @@ async function fetchNews() {
       return {
         title: a.title || '',
         summary: a.summary || '',
-        image: a.image || '',
         time: timeAgo(a.published),
         tag: cat.tag,
         tc: cat.color,
@@ -1406,7 +1405,6 @@ function renderNews() {
     if (isExpanded) {
       if (cached?.loading) {
         bodyHtml = `<div class="card-body" style="padding:16px 0">
-          ${n.image ? `<div style="width:100%;height:180px;border-radius:8px;margin-bottom:12px;background:var(--card-border);animation:pulse 1.5s ease-in-out infinite"></div>` : ''}
           <div style="height:12px;width:60%;background:var(--card-border);border-radius:4px;margin-bottom:10px;animation:pulse 1.5s ease-in-out infinite"></div>
           <div style="height:10px;width:40%;background:var(--card-border);border-radius:4px;margin-bottom:16px;animation:pulse 1.5s ease-in-out infinite"></div>
           <div style="height:10px;width:100%;background:var(--card-border);border-radius:4px;margin-bottom:8px;animation:pulse 1.5s ease-in-out infinite"></div>
@@ -1421,7 +1419,6 @@ function renderNews() {
         const wordCount = cached.body.replace(/<[^>]+>/g, '').split(/\s+/).length;
         const readTime = Math.max(1, Math.ceil(wordCount / 200));
         bodyHtml = `<div class="card-body">
-          ${n.image ? `<img src="${n.image}" style="width:100%;border-radius:8px;margin-bottom:14px" alt="" onerror="this.style.display='none'">` : ''}
           ${cached.title ? `<div style="font-size:18px;font-weight:800;color:var(--text);margin-bottom:8px;line-height:1.3">${cached.title}</div>` : ''}
           <div style="font-size:11px;color:var(--text-muted);margin-bottom:14px;display:flex;align-items:center;gap:6px">
             <span>By TourFeed Staff</span>
