@@ -282,6 +282,7 @@ const TABS = ['Home','Scores','News','Insights','Standings','Schedule'];
 let currentTab = 0;
 let expandedCard = null;
 let lbSearch = '';
+let recapArticle = null;
 
 // ============================================
 // TOUR CONFIG
@@ -767,17 +768,19 @@ async function fetchNews() {
       }).catch(() => {});
     }
 
-    // Pre-generate top 8 articles in background (controls API costs)
-    (async () => {
-      const limit = Math.min(8, newsData.length);
-      for (let i = 0; i < limit; i += 3) {
-        await Promise.allSettled([
-          generateArticle(i),
-          i + 1 < limit ? generateArticle(i + 1) : null,
-          i + 2 < limit ? generateArticle(i + 2) : null,
-        ].filter(Boolean));
-      }
-    })();
+    // Pre-generate articles only when News tab is active (saves API costs)
+    if (currentTab === 2) {
+      (async () => {
+        const limit = Math.min(8, newsData.length);
+        for (let i = 0; i < limit; i += 3) {
+          await Promise.allSettled([
+            generateArticle(i),
+            i + 1 < limit ? generateArticle(i + 1) : null,
+            i + 2 < limit ? generateArticle(i + 2) : null,
+          ].filter(Boolean));
+        }
+      })();
+    }
   } catch(e) {
     console.error('News fetch error:', e);
     newsError = 'Unable to load news';
@@ -986,8 +989,10 @@ function buildPlayerProfiles() {
     }));
 }
 
-// Initial fetch
+// Initial fetches — scores + news + schedule in parallel for fast Home load
 fetchESPNScores(currentScoresTour);
+fetchNews();
+fetchESPNSchedule();
 startAutoRefresh();
 
 // ... rest of data and rendering in app.js section below
@@ -2271,7 +2276,6 @@ function renderApp() {
 // ============================================
 
 // Check for recap deep link (?recap=slug)
-let recapArticle = null; // Stores fetched recap for display
 const urlParams = new URLSearchParams(window.location.search);
 const recapSlug = urlParams.get('recap');
 if (recapSlug) {
