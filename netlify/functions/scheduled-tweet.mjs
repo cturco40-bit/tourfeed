@@ -1,13 +1,22 @@
 import { schedule } from '@netlify/functions';
 
 const handler = async () => {
+  // Alternate between score updates and news tweets
+  const minute = new Date().getMinutes();
+  const isNewsRun = minute % 20 === 0; // News every 20 min, scores on the rest
+
   try {
-    // Call the auto-tweet function internally
-    const res = await fetch('https://tourfeed.co/.netlify/functions/auto-tweet', {
-      method: 'POST',
-    });
+    if (isNewsRun) {
+      // Tweet a news headline
+      const res = await fetch('https://tourfeed.co/.netlify/functions/tweet-news', { method: 'POST' });
+      const data = await res.json();
+      console.log('News tweet result:', JSON.stringify(data));
+    }
+
+    // Always check for score updates (leader changes, big plays, hourly)
+    const res = await fetch('https://tourfeed.co/.netlify/functions/auto-tweet', { method: 'POST' });
     const data = await res.json();
-    console.log('Scheduled tweet result:', JSON.stringify(data));
+    console.log('Score tweet result:', JSON.stringify(data));
   } catch (err) {
     console.error('Scheduled tweet error:', err);
   }

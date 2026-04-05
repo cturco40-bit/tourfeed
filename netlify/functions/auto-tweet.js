@@ -95,19 +95,41 @@ exports.handler = async (event) => {
     (event.body && JSON.parse(event.body).force === true);
 
   try {
-    // Fetch current leaderboard
-    const res = await fetch('https://site.api.espn.com/apis/site/v2/sports/golf/pga/scoreboard');
-    if (!res.ok) throw new Error(`ESPN ${res.status}`);
-    const data = await res.json();
+    // Check multiple tours for active events
+    const tours = [
+      { id: 'pga', sport: 'golf/pga', label: '' },
+      { id: 'lpga', sport: 'golf/lpga', label: 'LPGA: ' },
+      { id: 'dpw', sport: 'golf/eur', label: 'DP World: ' },
+      { id: 'kft', sport: 'golf/kft', label: 'Korn Ferry: ' },
+      { id: 'champ', sport: 'golf/champ', label: 'Champions: ' },
+    ];
 
-    const evt = data.events?.[0];
-    if (!evt) return { statusCode: 200, headers, body: JSON.stringify({ skipped: 'No active event' }) };
+    let evt = null, comp = null, tourLabel = '';
+    for (const tour of tours) {
+      try {
+        const r = await fetch(`https://site.api.espn.com/apis/site/v2/sports/${tour.sport}/scoreboard`);
+        if (!r.ok) continue;
+        const d = await r.json();
+        const e = d.events?.[0];
+        if (!e) continue;
+        const c = e.competitions?.[0];
+        const st = c?.status?.type?.state || '';
+        // Prefer in-progress events, then post-round, skip pre
+        if (st === 'in' || st === 'post' || (c?.status?.type?.name || '').toUpperCase() === 'STATUS_FINAL') {
+          evt = e;
+          comp = c;
+          tourLabel = tour.label;
+          break; // Use the first active tour found (PGA gets priority)
+        }
+      } catch(e) { continue; }
+    }
 
-    const comp = evt.competitions?.[0];
-    const status = comp?.status || {};
+    if (!evt || !comp) return { statusCode: 200, headers, body: JSON.stringify({ skipped: 'No active event on any tour' }) };
+
+    const status = comp.status || {};
     const round = status.period || 1;
-    const tourneyName = evt.shortName || evt.name || 'Tournament';
-    const players = comp?.competitors || [];
+    const tourneyName = tourLabel + (evt.shortName || evt.name || 'Tournament');
+    const players = comp.competitors || [];
     const stState = status.type?.state || '';
     const stName = (status.type?.name || '').toUpperCase();
 
