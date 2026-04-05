@@ -27,7 +27,7 @@
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%232D8F6F'/><text x='4' y='22' font-family='system-ui' font-weight='900' font-size='14' fill='white'>T</text><text x='16' y='22' font-family='system-ui' font-weight='900' font-size='14' fill='%23D4A853'>F</text></svg>">
   <link rel="manifest" href="/manifest.json">
   <meta name="theme-color" content="#2D8F6F">
-  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="TourFeed">
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
@@ -1431,6 +1431,13 @@ function renderScores() {
 // ============================================
 // RENDER NEWS TAB
 // ============================================
+function openArticle(idx) {
+  expandedCard = 100 + idx;
+  if (!articleCache['article_' + idx]) generateArticle(idx);
+  renderApp();
+  window.scrollTo(0, 0);
+}
+
 function renderNews() {
   if (newsLoading) {
     return `<div style="text-align:center;padding:60px 20px">
@@ -1498,11 +1505,11 @@ function renderNews() {
 
   // News feed list
   return newsData.map((n,i) => `
-    <div class="card" onclick="expandedCard=${100+i};if(!articleCache[&quot;article_${i}&quot;])generateArticle(${i});renderApp();window.scrollTo(0,0)">
+    <div class="card" onclick="openArticle(${i})">
       <div class="card-header">
         <span class="tag" style="color:${n.tc};background:${n.tc}15">${n.tag}</span>
         <span class="card-time">${n.time}</span>
-        <button class="share-btn" style="margin-left:auto" onclick="event.stopPropagation();shareContent('${n.title.replace(/'/g,"\\'")}')">Share</button>
+        <button class="share-btn" style="margin-left:auto" onclick="event.stopPropagation();shareContent(newsData[${i}].title)">Share</button>
       </div>
       ${n.image ? `<img src="${n.image}" style="width:100%;border-radius:6px;margin:8px 0" alt="" onerror="this.style.display='none'">` : ''}
       <div class="card-title">${n.title}</div>
