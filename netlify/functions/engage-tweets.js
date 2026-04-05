@@ -188,8 +188,8 @@ exports.handler = async (event) => {
             replied_to: `@${authorName}: ${target.text.slice(0, 100)}`,
             reply: reply,
             tweet_id: result.data?.id,
-      }),
-        });
+          }),
+        };
       } catch (postErr) {
         console.warn(`Quote tweet to @${authorName} failed:`, postErr.message);
         continue; // Try next candidate
