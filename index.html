@@ -275,7 +275,7 @@ const SUPABASE_URL = 'YOUR_SUPABASE_URL';
 const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY';
 // const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-const TABS = ['Scores','News','Insights','Blog','Standings','Schedule','Players'];
+const TABS = ['Scores','News','Insights','Standings','Schedule','Players'];
 let currentTab = 0;
 let expandedCard = null;
 let lbSearch = '';
@@ -990,9 +990,9 @@ function switchTab(i) {
   renderNav();
   // Trigger data fetches on tab switch
   if (i === 1 && !newsFetched) fetchNews();
-  if (i === 4 && !standingsFetched[standingsFilter]) fetchESPNStandings(standingsFilter);
-  if (i === 5 && !scheduleFetched) fetchESPNSchedule();
-  if (i === 6) buildPlayerProfiles();
+  if (i === 3 && !standingsFetched[standingsFilter]) fetchESPNStandings(standingsFilter);
+  if (i === 4 && !scheduleFetched) fetchESPNSchedule();
+  if (i === 5) buildPlayerProfiles();
   renderApp();
 }
 
@@ -1485,49 +1485,127 @@ function renderNews() {
 // RENDER INSIGHTS TAB
 // ============================================
 function renderInsights() {
-  return `
-    <div style="text-align:center;padding:50px 20px">
-      <div style="font-size:32px;margin-bottom:14px">📊</div>
-      <div style="font-size:18px;font-weight:800;color:var(--text)">Betting Insights</div>
-      <div style="font-size:13px;color:var(--text-muted);margin-top:8px;line-height:1.7;max-width:360px;margin-left:auto;margin-right:auto">
-        Outright odds with model vs. implied probability, handicapper picks with confidence ratings, live props & matchups, and season record tracking.
-      </div>
-      <div style="display:flex;gap:8px;justify-content:center;margin-top:20px;flex-wrap:wrap">
-        ${['Outright Odds','Value Flags','H2H Matchups','Props','Season Record'].map(f =>
-          `<span class="tag" style="color:var(--green);background:rgba(45,143,111,0.12)">${f}</span>`
-        ).join('')}
-      </div>
-      <div style="margin-top:24px;padding:16px;background:var(--card-bg);border:1px solid var(--card-border);border-radius:10px">
-        <div style="font-size:11px;color:var(--gold);font-weight:700;letter-spacing:2px">LAUNCHING MASTERS WEEK</div>
-        <div style="font-size:12px;color:var(--text-muted);margin-top:6px">AI-powered analysis goes live with our backend deployment</div>
-      </div>
-      <div class="disclaimer" style="margin-top:20px">All picks are for entertainment purposes only. Please gamble responsibly. If you or someone you know has a gambling problem, call 1-800-GAMBLER.</div>
-    </div>
-  `;
-}
+  if (!TOURNAMENT || PLAYERS.length === 0) {
+    return `<div style="text-align:center;padding:50px 20px">
+      <div style="font-size:14px;font-weight:700;color:var(--text-dim)">No active tournament for insights</div>
+      <div style="font-size:12px;color:var(--text-muted);margin-top:8px">Check back during tournament play</div>
+    </div>`;
+  }
 
-// ============================================
-// RENDER BLOG TAB
-// ============================================
-function renderBlog() {
-  return `
-    <div style="text-align:center;padding:50px 20px">
-      <div style="font-size:32px;margin-bottom:14px">✍️</div>
-      <div style="font-size:18px;font-weight:800;color:var(--text)">Blog</div>
-      <div style="font-size:13px;color:var(--text-muted);margin-top:8px;line-height:1.7;max-width:360px;margin-left:auto;margin-right:auto">
-        Weekly previews, DFS playbooks, strokes gained analysis, power rankings, and deep-dive features across every tour.
+  const active = PLAYERS.filter(p => p.status === 'active');
+  const top10 = active.slice(0, 10);
+  const rd = TOURNAMENT.round || 1;
+
+  // Leader info
+  const leader = active[0];
+  const chasers = active.filter((p,i) => i > 0 && p.score === leader?.score);
+  const leaderCount = 1 + chasers.length;
+
+  // Score distribution
+  const underPar = active.filter(p => p.score && !p.score.startsWith('+') && p.score !== 'E').length;
+  const evenPar = active.filter(p => p.score === 'E').length;
+  const overPar = active.filter(p => p.score && p.score.startsWith('+')).length;
+
+  // Today's hot/cold rounds
+  const withToday = active.filter(p => p.today && p.today !== '' && p.today !== '—');
+  const hotRounds = [...withToday].sort((a,b) => {
+    const av = a.today === 'E' ? 0 : parseInt(a.today);
+    const bv = b.today === 'E' ? 0 : parseInt(b.today);
+    return av - bv;
+  }).slice(0, 5);
+  const coldRounds = [...withToday].sort((a,b) => {
+    const av = a.today === 'E' ? 0 : parseInt(a.today);
+    const bv = b.today === 'E' ? 0 : parseInt(b.today);
+    return bv - av;
+  }).slice(0, 5);
+
+  let html = '';
+
+  // Tournament header
+  html += `
+    <div style="padding:16px;background:var(--card-bg);border:1px solid var(--card-border);border-radius:10px;margin-bottom:12px">
+      <div style="font-size:10px;font-weight:700;letter-spacing:2px;color:var(--gold);margin-bottom:6px">LIVE INSIGHTS</div>
+      <div style="font-size:17px;font-weight:800;color:var(--text)">${TOURNAMENT.name}</div>
+      <div style="font-size:12px;color:var(--text-muted);margin-top:2px">${TOURNAMENT.course} · Round ${rd}${TOURNAMENT.purse ? ` · ${TOURNAMENT.purse}` : ''}</div>
+    </div>`;
+
+  // Leaderboard snapshot
+  html += `
+    <div style="padding:14px;background:var(--card-bg);border:1px solid var(--card-border);border-radius:10px;margin-bottom:12px">
+      <div style="font-size:10px;font-weight:700;letter-spacing:2px;color:var(--green);margin-bottom:10px">CONTENDERS</div>
+      ${top10.map((p,i) => `
+        <div style="display:flex;align-items:center;padding:6px 0;${i<top10.length-1?'border-bottom:1px solid var(--card-border)':''}">
+          <div style="width:22px;font-size:12px;font-weight:700;color:${i===0?'var(--gold)':'var(--g500)'}">${p.pos}</div>
+          <div style="flex:1;font-size:13px;font-weight:600;color:var(--text)">${p.c} ${p.name}</div>
+          ${p.today ? `<div style="font-size:11px;font-weight:600;color:${p.today.startsWith('+')?'var(--s-red)':p.today==='E'?'var(--g400)':'var(--s-green)'};margin-right:10px">${p.today}</div>` : ''}
+          <div style="font-size:13px;font-weight:800;color:${p.score.startsWith('+')?'var(--s-red)':p.score==='E'?'var(--g400)':'var(--s-green)'}">${p.score}</div>
+        </div>
+      `).join('')}
+    </div>`;
+
+  // Field stats
+  html += `
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px">
+      <div style="padding:14px;background:var(--card-bg);border:1px solid var(--card-border);border-radius:10px;text-align:center">
+        <div style="font-size:22px;font-weight:800;color:var(--s-green)">${underPar}</div>
+        <div style="font-size:9px;font-weight:700;letter-spacing:1px;color:var(--text-muted);margin-top:2px">UNDER PAR</div>
       </div>
-      <div style="display:flex;gap:8px;justify-content:center;margin-top:20px;flex-wrap:wrap">
-        ${['Preview','Analysis','DFS','Rankings','Course Guide'].map(f =>
-          `<span class="tag" style="color:var(--gold);background:rgba(212,168,83,0.12)">${f}</span>`
-        ).join('')}
+      <div style="padding:14px;background:var(--card-bg);border:1px solid var(--card-border);border-radius:10px;text-align:center">
+        <div style="font-size:22px;font-weight:800;color:var(--g400)">${evenPar}</div>
+        <div style="font-size:9px;font-weight:700;letter-spacing:1px;color:var(--text-muted);margin-top:2px">EVEN PAR</div>
       </div>
-      <div style="margin-top:24px;padding:16px;background:var(--card-bg);border:1px solid var(--card-border);border-radius:10px">
-        <div style="font-size:11px;color:var(--gold);font-weight:700;letter-spacing:2px">LAUNCHING MASTERS WEEK</div>
-        <div style="font-size:12px;color:var(--text-muted);margin-top:6px">AI-generated content goes live with our backend deployment</div>
+      <div style="padding:14px;background:var(--card-bg);border:1px solid var(--card-border);border-radius:10px;text-align:center">
+        <div style="font-size:22px;font-weight:800;color:var(--s-red)">${overPar}</div>
+        <div style="font-size:9px;font-weight:700;letter-spacing:1px;color:var(--text-muted);margin-top:2px">OVER PAR</div>
       </div>
-    </div>
-  `;
+    </div>`;
+
+  // Leader situation
+  html += `
+    <div style="padding:14px;background:var(--card-bg);border:1px solid var(--card-border);border-radius:10px;margin-bottom:12px">
+      <div style="font-size:10px;font-weight:700;letter-spacing:2px;color:var(--gold);margin-bottom:8px">LEADER SITUATION</div>
+      <div style="font-size:14px;font-weight:700;color:var(--text);line-height:1.6">
+        ${leaderCount > 1
+          ? `<span style="color:var(--gold)">${leaderCount}-way tie</span> at the top at <span style="color:var(--s-green)">${leader.score}</span>. ${chasers.map(c => c.name.split(' ').pop()).join(', ')} ${chasers.length === 1 ? 'is' : 'are'} locked with ${leader.name.split(' ').pop()}.`
+          : `<span style="color:var(--gold)">${leader.name}</span> leads at <span style="color:var(--s-green)">${leader.score}</span>.${active[1] ? ` ${active[1].name.split(' ').pop()} trails at ${active[1].score}.` : ''}`
+        }
+      </div>
+    </div>`;
+
+  // Hot rounds today
+  if (hotRounds.length > 0) {
+    html += `
+      <div style="padding:14px;background:var(--card-bg);border:1px solid var(--card-border);border-radius:10px;margin-bottom:12px">
+        <div style="font-size:10px;font-weight:700;letter-spacing:2px;color:var(--s-green);margin-bottom:8px">HOT ROUNDS TODAY</div>
+        ${hotRounds.map(p => `
+          <div style="display:flex;align-items:center;padding:4px 0">
+            <div style="flex:1;font-size:13px;color:var(--text)">${p.c} ${p.name}</div>
+            <div style="font-size:13px;font-weight:800;color:var(--s-green)">${p.today}</div>
+            <div style="font-size:11px;color:var(--text-muted);margin-left:8px;width:30px;text-align:right">thru ${p.thru}</div>
+          </div>
+        `).join('')}
+      </div>`;
+  }
+
+  // Cold rounds today
+  if (coldRounds.length > 0 && coldRounds[0].today && (coldRounds[0].today.startsWith('+') || coldRounds[0].today === 'E')) {
+    html += `
+      <div style="padding:14px;background:var(--card-bg);border:1px solid var(--card-border);border-radius:10px;margin-bottom:12px">
+        <div style="font-size:10px;font-weight:700;letter-spacing:2px;color:var(--s-red);margin-bottom:8px">STRUGGLING TODAY</div>
+        ${coldRounds.map(p => `
+          <div style="display:flex;align-items:center;padding:4px 0">
+            <div style="flex:1;font-size:13px;color:var(--text)">${p.c} ${p.name}</div>
+            <div style="font-size:13px;font-weight:800;color:var(--s-red)">${p.today}</div>
+            <div style="font-size:11px;color:var(--text-muted);margin-left:8px;width:30px;text-align:right">thru ${p.thru}</div>
+          </div>
+        `).join('')}
+      </div>`;
+  }
+
+  // Disclaimer
+  html += `<div class="disclaimer" style="margin-top:16px">All analysis is for entertainment purposes only. Please gamble responsibly. If you or someone you know has a gambling problem, call 1-800-GAMBLER.</div>`;
+
+  return html;
 }
 
 // ============================================
@@ -1742,10 +1820,9 @@ function renderApp() {
     case 0: html += renderScores(); break;
     case 1: html += renderNews(); break;
     case 2: html += renderInsights(); break;
-    case 3: html += renderBlog(); break;
-    case 4: html += renderStandings(); break;
-    case 5: html += renderSchedule(); break;
-    case 6: html += renderPlayers(); break;
+    case 3: html += renderStandings(); break;
+    case 4: html += renderSchedule(); break;
+    case 5: html += renderPlayers(); break;
   }
 
   html += '</div>';
