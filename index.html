@@ -276,9 +276,7 @@
 // ============================================
 // TOURFEED APP — CONFIG
 // ============================================
-const SUPABASE_URL = 'YOUR_SUPABASE_URL';
-const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY';
-// const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
 
 const TABS = ['Scores','News','Insights','Standings','Schedule','Players'];
 let currentTab = 0;
@@ -354,7 +352,7 @@ function countryFlag(input) {
     code = (COUNTRY_MAP[code.toLowerCase()] || '').toLowerCase();
   }
   if (!code || code.length !== 2) return '<span style="font-size:10px;color:var(--g500)">—</span>';
-  return `<img src="https://flagcdn.com/20x15/${code}.png" width="20" height="15" style="vertical-align:middle;border-radius:2px" alt="${code.toUpperCase()}" onerror="this.outerHTML='<span style=font-size:10px;color:var(--g500)>${code.toUpperCase()}</span>'">`;
+  return `<img src="https://flagcdn.com/20x15/${code}.png" width="20" height="15" style="vertical-align:middle;border-radius:2px" alt="${code.toUpperCase()}" onerror="this.style.display='none'">`;
 }
 
 function formatPurse(purse) {
@@ -363,6 +361,11 @@ function formatPurse(purse) {
   if (amt >= 1e6) return `$${(amt/1e6).toFixed(amt%1e6===0?0:1)}M`;
   if (amt >= 1e3) return `$${(amt/1e3).toFixed(0)}K`;
   return `$${amt}`;
+}
+
+function scoreClass(s) {
+  if (!s) return '';
+  return s.startsWith('+') ? 'score-over' : s === 'E' ? 'score-even' : 'score-under';
 }
 
 function formatMovement(m) {
@@ -445,8 +448,6 @@ async function fetchESPNScores(tour) {
 
     // Parse competitors
     const competitors = comp.competitors || [];
-    if (competitors[0]) console.log('ESPN competitor[0]:', JSON.stringify(competitors[0], null, 2));
-    if (comp.venue) console.log('ESPN venue:', JSON.stringify(comp.venue, null, 2));
     PLAYERS = competitors.map((c) => {
       const ath = c.athlete || {};
       const ls = c.linescores || [];
@@ -648,7 +649,7 @@ async function fetchScorecard(playerIdx) {
       }
     }
   } catch(e) {
-    console.log('Scorecard not available via ESPN API');
+    // Scorecard not available via ESPN API
   }
 }
 
@@ -959,7 +960,7 @@ async function fetchESPNSchedule() {
 // ESPN PLAYER DATA
 // ============================================
 let playerProfiles = [];
-let playersLoading = false;
+
 
 function buildPlayerProfiles() {
   // Build player profiles from current leaderboard data
@@ -1106,7 +1107,7 @@ function renderScorecard(p) {
   const rd = TOURNAMENT?.round || '';
   return `<div class="scorecard">
     <div class="scorecard-title">${rd ? `Round ${rd} ` : ''}Scorecard — ${p.name}
-      <button class="share-btn" style="float:right" onclick="event.stopPropagation();shareContent('${p.name} Scorecard')">Share</button>
+      <button class="share-btn" style="float:right" onclick="event.stopPropagation();shareContent(PLAYERS[${PLAYERS.indexOf(p)}]?.name+' Scorecard')">Share</button>
     </div>
     <table>
       <tr style="color:var(--g700);font-weight:600">
@@ -1204,10 +1205,6 @@ function renderTeeTimes() {
     return toMin(a) - toMin(b);
   });
 
-  let scoreClass = (s) => {
-    if (!s) return '';
-    return s.startsWith('+') ? 'score-over' : s === 'E' ? 'score-even' : 'score-under';
-  };
 
   let html = `<div class="search"><input placeholder="Search ${withTimes.length} players..." oninput="lbSearch=this.value;renderApp()" value="${lbSearch}"></div>`;
 
@@ -1339,10 +1336,6 @@ function renderScores() {
     return curr.score.startsWith('+') && !prev.score.startsWith('+');
   };
 
-  let scoreClass = (s) => {
-    if (!s) return '';
-    return s.startsWith('+') ? 'score-over' : s === 'E' ? 'score-even' : 'score-under';
-  };
 
   // Show completed round columns (not the current in-progress round)
   const rd = TOURNAMENT.round || 1;
@@ -1576,7 +1569,8 @@ function renderInsights() {
 
   // Leader info
   const leader = active[0];
-  const chasers = active.filter((p,i) => i > 0 && p.score === leader?.score);
+  if (!leader) return '<div style="text-align:center;padding:40px"><div style="font-size:14px;color:var(--text-dim)">No active players</div></div>';
+  const chasers = active.filter((p,i) => i > 0 && p.score === leader.score);
   const leaderCount = 1 + chasers.length;
 
   // Score distribution
@@ -1883,10 +1877,6 @@ function renderPlayers() {
   if (selectedPlayerIdx !== null && selectedPlayerIdx < players.length) {
     const p = players[selectedPlayerIdx];
     const rounds = [p.r1, p.r2, p.r3, p.r4].filter(r => r !== null && r !== undefined);
-    let scoreClass = (s) => {
-      if (!s) return '';
-      return s.startsWith?.('+') ? 'score-over' : s === 'E' ? 'score-even' : 'score-under';
-    };
     return `
       <button class="filter-btn" style="margin:10px 0;color:var(--green)" onclick="selectedPlayerIdx=null;renderApp()">← All Players</button>
       <div class="profile-header">
@@ -1982,7 +1972,6 @@ const articleSlug = urlParams.get('article');
 if (articleSlug) {
   // Switch to News tab and find matching article after news loads
   currentTab = 1;
-  const origFetch = fetchNews;
   const waitForArticle = setInterval(() => {
     if (!newsFetched || newsData.length === 0) return;
     clearInterval(waitForArticle);
