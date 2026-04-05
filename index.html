@@ -706,27 +706,6 @@ function categorizeArticle(title, summary) {
   return { tag: 'TOUR NEWS', color: 'var(--text-muted)' };
 }
 
-// Royalty-free golf images from Unsplash (free for commercial use)
-const STOCK_IMAGES = {
-  TOURNAMENT: 'https://images.unsplash.com/photo-1535131749006-b7f58c99034b?w=800&q=80',
-  MAJOR: 'https://images.unsplash.com/photo-1587174486073-ae5e5cff23aa?w=800&q=80',
-  INJURY: 'https://images.unsplash.com/photo-1595429035839-c99c298ffdde?w=800&q=80',
-  PREVIEW: 'https://images.unsplash.com/photo-1592919505780-303950717480?w=800&q=80',
-  'LIV GOLF': 'https://images.unsplash.com/photo-1593111774240-d529f12cf4bb?w=800&q=80',
-  LPGA: 'https://images.unsplash.com/photo-1624727828489-a1e03b79bba8?w=800&q=80',
-  'DP WORLD': 'https://images.unsplash.com/photo-1535131749006-b7f58c99034b?w=800&q=80',
-  EQUIPMENT: 'https://images.unsplash.com/photo-1622398925373-3f91b1e275f2?w=800&q=80',
-  RANKINGS: 'https://images.unsplash.com/photo-1587174486073-ae5e5cff23aa?w=800&q=80',
-  TRANSFER: 'https://images.unsplash.com/photo-1593111774240-d529f12cf4bb?w=800&q=80',
-  RULES: 'https://images.unsplash.com/photo-1595429035839-c99c298ffdde?w=800&q=80',
-  'TEAM EVENT': 'https://images.unsplash.com/photo-1587174486073-ae5e5cff23aa?w=800&q=80',
-  'TOUR NEWS': 'https://images.unsplash.com/photo-1592919505780-303950717480?w=800&q=80',
-};
-
-function getStockImage(tag) {
-  return STOCK_IMAGES[tag] || STOCK_IMAGES['TOUR NEWS'];
-}
-
 function timeAgo(dateStr) {
   if (!dateStr) return '';
   const mins = Math.round((Date.now() - new Date(dateStr).getTime()) / 60000);
@@ -771,6 +750,8 @@ async function fetchNews() {
       return {
         title: a.title || '',
         summary: a.summary || '',
+        image: a.image || '',
+        source: a.source || '',
         time: timeAgo(a.published),
         tag: cat.tag,
         tc: cat.color,
@@ -1470,13 +1451,16 @@ function renderNews() {
     const cached = articleCache[`article_${i}`];
     let bodyHtml = '';
     if (isExpanded) {
-      const heroImg = getStockImage(n.tag);
+      const imgHtml = n.image ? `<div style="margin-bottom:12px">
+          <img src="${n.image}" style="width:100%;height:200px;object-fit:cover;border-radius:8px" alt="" onerror="this.parentElement.style.display='none'">
+          ${n.source ? `<div style="font-size:9px;color:var(--g700);margin-top:4px;text-align:right">Photo: ${n.source}</div>` : ''}
+        </div>` : '';
       if (cached?.body) {
         // AI article ready — show it
         const wordCount = cached.body.replace(/<[^>]+>/g, '').split(/\s+/).length;
         const readTime = Math.max(1, Math.ceil(wordCount / 200));
         bodyHtml = `<div class="card-body">
-          <img src="${heroImg}" style="width:100%;height:200px;object-fit:cover;border-radius:8px;margin-bottom:14px" alt="" onerror="this.style.display='none'">
+          ${imgHtml}
           ${cached.title ? `<div style="font-size:18px;font-weight:800;color:var(--text);margin-bottom:8px;line-height:1.3">${cached.title}</div>` : ''}
           <div style="font-size:11px;color:var(--text-muted);margin-bottom:14px;display:flex;align-items:center;gap:6px">
             <span>By TourFeed Staff</span>
@@ -1489,7 +1473,7 @@ function renderNews() {
       } else {
         // Show summary instantly while AI generates in background
         bodyHtml = `<div class="card-body">
-          <img src="${heroImg}" style="width:100%;height:200px;object-fit:cover;border-radius:8px;margin-bottom:14px" alt="" onerror="this.style.display='none'">
+          ${imgHtml}
           <div style="font-size:11px;color:var(--text-muted);margin-bottom:10px;display:flex;align-items:center;gap:6px">
             <span>By TourFeed Staff</span>
             ${n.time ? `<span>·</span><span>${n.time} ago</span>` : ''}
