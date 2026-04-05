@@ -70,17 +70,41 @@ Rules:
     const data = await response.json();
     const text = data.content?.[0]?.text || '';
 
-    // Parse the JSON response, handling potential markdown fences
+    // Parse the JSON response — handle markdown fences, escaped chars, etc.
     let article;
     try {
-      const cleaned = text.replace(/```json\s?|```/g, '').trim();
+      // Strip markdown code fences
+      let cleaned = text.replace(/```json\s?/g, '').replace(/```/g, '').trim();
+      // Try direct parse first
       article = JSON.parse(cleaned);
-    } catch (parseErr) {
-      // Fallback: wrap raw text in article structure
-      article = {
-        title: headline,
-        body: `<p>${text.replace(/\n\n/g, '</p><p>').replace(/\n/g, ' ')}</p>`,
-      };
+    } catch (parseErr1) {
+      try {
+        // Try extracting JSON object from the text
+        const jsonMatch = text.match(/\{[\s\S]*"title"[\s\S]*"body"[\s\S]*\}/);
+        if (jsonMatch) {
+          article = JSON.parse(jsonMatch[0]);
+        } else {
+          throw new Error('No JSON found');
+        }
+      } catch (parseErr2) {
+        // Last resort: extract title and body with regex
+        const titleMatch = text.match(/"title"\s*:\s*"([^"]+)"/);
+        const bodyMatch = text.match(/"body"\s*:\s*"([\s\S]+?)"\s*[,}]/);
+        if (bodyMatch) {
+          article = {
+            title: titleMatch ? titleMatch[1] : headline,
+            body: bodyMatch[1].replace(/\\n/g, '\n').replace(/\\"/g, '"'),
+            tweetSearch: '',
+          };
+        } else {
+          // Absolute fallback: treat entire response as article body
+          const bodyText = text.replace(/```json\s?|```/g, '').replace(/"title".*?"body"\s*:\s*"/s, '').replace(/"\s*,?\s*"tweetSearch.*$/s, '').replace(/\\n/g, '\n').replace(/\\"/g, '"').trim();
+          article = {
+            title: headline,
+            body: bodyText.includes('<p>') ? bodyText : `<p>${bodyText.replace(/\n\n/g, '</p><p>').replace(/\n/g, ' ')}</p>`,
+          };
+        }
+      }
     }
 
     return {

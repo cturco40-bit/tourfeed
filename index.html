@@ -1452,7 +1452,7 @@ function renderNews() {
     let bodyHtml = '';
     if (isExpanded) {
       const imgHtml = n.image ? `<div style="margin-bottom:12px">
-          <img src="${n.image}" style="width:100%;height:200px;object-fit:cover;border-radius:8px" alt="" onerror="this.parentElement.style.display='none'">
+          <img src="${n.image}" style="width:100%;border-radius:8px" alt="" onerror="this.parentElement.style.display='none'">
           ${n.source ? `<div style="font-size:9px;color:var(--g700);margin-top:4px;text-align:right">Photo: ${n.source}</div>` : ''}
         </div>` : '';
       if (cached?.body) {
