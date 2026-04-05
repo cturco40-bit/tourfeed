@@ -211,6 +211,7 @@
     /* DISCLAIMER */
     .disclaimer { font-size:9px; color:var(--g700); margin-top:10px; text-align:center; line-height:1.5; }
   </style>
+  <script async src="https://platform.twitter.com/widgets.js" charset="utf-8"></script>
 </head>
 <body>
   <!-- HEADER -->
@@ -773,6 +774,28 @@ async function generateArticle(idx) {
     if (!res.ok) throw new Error(`${res.status}`);
     const data = await res.json();
     articleCache[cacheKey] = { title: data.title, body: data.body };
+    renderApp();
+
+    // Fetch related tweet video in background
+    if (data.tweetSearch) {
+      try {
+        const tRes = await fetch('/.netlify/functions/fetch-tweet', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ keywords: data.tweetSearch }),
+        });
+        if (tRes.ok) {
+          const tData = await tRes.json();
+          if (tData.tweet?.html) {
+            articleCache[cacheKey].tweetHtml = tData.tweet.html;
+            renderApp();
+            // Re-render Twitter embeds
+            if (window.twttr?.widgets) window.twttr.widgets.load();
+          }
+        }
+      } catch(te) { console.warn('Tweet fetch failed:', te); }
+    }
+    return;
   } catch(e) {
     console.error('Article generation failed:', e);
     articleCache[cacheKey] = { body: `<p>${n.summary}</p>`, fallback: true };
@@ -1426,6 +1449,7 @@ function renderNews() {
             <span>·</span><span>${readTime} min read</span>
           </div>
           <div style="line-height:1.7;font-size:14px;color:var(--text)">${cached.body}</div>
+          ${cached.tweetHtml ? `<div style="margin-top:16px">${cached.tweetHtml}</div>` : ''}
         </div>`;
       } else {
         bodyHtml = `<div class="card-body"><p>${n.summary}</p></div>`;
@@ -1713,6 +1737,8 @@ function renderApp() {
 
   html += '</div>';
   app.innerHTML = html;
+  // Re-render any Twitter embeds after DOM update
+  if (window.twttr?.widgets) window.twttr.widgets.load();
 }
 
 // ============================================

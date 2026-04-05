@@ -55,7 +55,7 @@ Rules:
         messages: [
           {
             role: 'user',
-            content: `Write a full original article based on this news tip:\n\nSource headline: ${headline}\nDetails: ${summary || 'No additional details available.'}\n\nReturn ONLY valid JSON with this exact format, no markdown or code fences:\n{"title":"your original headline","body":"full article HTML with <p> tags for paragraphs"}`
+            content: `Write a full original article based on this news tip:\n\nSource headline: ${headline}\nDetails: ${summary || 'No additional details available.'}\n\nReturn ONLY valid JSON with this exact format, no markdown or code fences:\n{"title":"your original headline","body":"full article HTML with <p> tags for paragraphs","tweetSearch":"2-5 word Twitter search query to find a related video clip (e.g. player name + key moment)"}`
           }
         ],
       }),
@@ -89,6 +89,7 @@ Rules:
       body: JSON.stringify({
         title: article.title || headline,
         body: article.body || '',
+        tweetSearch: article.tweetSearch || '',
       }),
     };
 
