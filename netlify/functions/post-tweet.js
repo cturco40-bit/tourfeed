@@ -44,21 +44,27 @@ async function uploadMedia(imageUrl) {
   const mediaType = contentType.includes('jpeg') || contentType.includes('jpg') ? 'image/jpeg' :
                     contentType.includes('gif') ? 'image/gif' : 'image/png';
 
-  // Upload via v1.1 media/upload
+  // Upload via v1.1 media/upload (simple upload for images < 5MB)
   const url = 'https://upload.twitter.com/1.1/media/upload.json';
+
+  // For media upload, create boundary for multipart
+  const boundary = '----TourFeed' + crypto.randomBytes(8).toString('hex');
+  let multipartBody = '';
+  multipartBody += `--${boundary}\r\n`;
+  multipartBody += `Content-Disposition: form-data; name="media_data"\r\n\r\n`;
+  multipartBody += `${base64}\r\n`;
+  multipartBody += `--${boundary}--\r\n`;
+
   const oauthParams = getOAuthParams();
   oauthParams.oauth_signature = oauthSign('POST', url, oauthParams, apiSecret, accessSecret);
-
-  const formData = new URLSearchParams();
-  formData.append('media_data', base64);
 
   const res = await fetch(url, {
     method: 'POST',
     headers: {
       'Authorization': buildAuthHeader(oauthParams),
-      'Content-Type': 'application/x-www-form-urlencoded',
+      'Content-Type': `multipart/form-data; boundary=${boundary}`,
     },
-    body: formData.toString(),
+    body: multipartBody,
   });
 
   if (!res.ok) {
