@@ -156,6 +156,20 @@ exports.handler = async (event) => {
 
     tweetText += `\n\n→ https://tourfeed.co`;
 
+    // Add relevant hashtags
+    const t = picked.title.toLowerCase();
+    const tags = ['#Golf'];
+    if (/masters/i.test(t)) tags.unshift('#TheMasters');
+    else if (/pga championship/i.test(t)) tags.unshift('#PGAChamp');
+    else if (/u\.?s\.?\s*open/i.test(t)) tags.unshift('#USOpen');
+    else if (/open championship|the open/i.test(t)) tags.unshift('#TheOpen');
+    else if (/lpga|nelly|lexi/i.test(t)) tags.unshift('#LPGA');
+    else if (/liv /i.test(t)) tags.unshift('#LIVGolf');
+    else tags.unshift('#PGATour');
+    if (/injur|withdraw/i.test(t)) tags.push('#GolfNews');
+    const tagStr = '\n' + tags.join(' ');
+    if (tweetText.length + tagStr.length <= 280) tweetText += tagStr;
+
     const result = await postTweet(tweetText);
 
     return {

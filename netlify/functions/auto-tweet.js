@@ -229,6 +229,24 @@ exports.handler = async (event) => {
       }
     }
 
+    // Add hashtags based on tournament/tour
+    const hashtags = ['#PGATour', '#Golf'];
+    const tn = tourneyName.toLowerCase();
+    if (/masters/i.test(tn)) hashtags.unshift('#TheMasters');
+    else if (/u\.?s\.?\s*open/i.test(tn)) hashtags.unshift('#USOpen');
+    else if (/pga championship/i.test(tn)) hashtags.unshift('#PGAChamp');
+    else if (/open championship|the open/i.test(tn)) hashtags.unshift('#TheOpen');
+    else if (/valero/i.test(tn)) hashtags.unshift('#ValeroTXOpen');
+    else if (/rbc heritage/i.test(tn)) hashtags.unshift('#RBCHeritage');
+    if (/lpga/i.test(tourneyName)) { hashtags[1] = '#LPGA'; hashtags[0] = '#LPGATour'; }
+    if (/dp world/i.test(tourneyName)) { hashtags[1] = '#DPWorldTour'; }
+    if (/korn ferry/i.test(tourneyName)) { hashtags[1] = '#KornFerryTour'; }
+    if (/champions/i.test(tourneyName)) { hashtags[1] = '#ChampionsTour'; }
+
+    // Append hashtags if they fit within 280
+    const tagStr = '\n\n' + hashtags.join(' ');
+    if (tweetText.length + tagStr.length <= 280) tweetText += tagStr;
+
     const result = await postTweet(tweetText);
 
     return {
