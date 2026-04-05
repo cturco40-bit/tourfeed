@@ -170,30 +170,33 @@ exports.handler = async (event) => {
       return { statusCode: 200, headers, body: JSON.stringify({ skipped: 'No suitable tweets to reply to' }) };
     }
 
-    // Pick the top tweet
-    const target = candidates[0];
-    const author = users[target.author_id];
-    const authorName = author?.username || 'unknown';
+    // Try candidates until one works (some restrict quoting)
+    for (const target of candidates.slice(0, 5)) {
+      const author = users[target.author_id];
+      const authorName = author?.username || 'unknown';
 
-    // Generate a smart reply
-    const reply = await generateReply(target.text, authorName);
-    if (!reply) {
-      return { statusCode: 200, headers, body: JSON.stringify({ skipped: 'Could not generate reply' }) };
+      const reply = await generateReply(target.text, authorName);
+      if (!reply) continue;
+
+      try {
+        const result = await postTweet(reply, target.id);
+        return {
+          statusCode: 200,
+          headers,
+          body: JSON.stringify({
+            success: true,
+            replied_to: `@${authorName}: ${target.text.slice(0, 100)}`,
+            reply: reply,
+            tweet_id: result.data?.id,
+      }),
+        });
+      } catch (postErr) {
+        console.warn(`Quote tweet to @${authorName} failed:`, postErr.message);
+        continue; // Try next candidate
+      }
     }
 
-    // Post the reply
-    const result = await postTweet(reply, target.id);
-
-    return {
-      statusCode: 200,
-      headers,
-      body: JSON.stringify({
-        success: true,
-        replied_to: `@${authorName}: ${target.text.slice(0, 100)}`,
-        reply: reply,
-        tweet_id: result.data?.id,
-      }),
-    };
+    return { statusCode: 200, headers, body: JSON.stringify({ skipped: 'All candidates restricted' }) };
 
   } catch (err) {
     console.error('Engage error:', err);
