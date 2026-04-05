@@ -95,7 +95,7 @@
     .lb-flag { font-size:13px; }
     .lb-move { font-size:9px; font-weight:700; }
     .lb-round { width:30px; text-align:center; font-size:11px; color:var(--text-muted); }
-    .lb-today { width:36px; text-align:center; font-size:12px; font-weight:700; }
+    .lb-today { width:56px; text-align:center; font-size:12px; font-weight:700; }
     .lb-total { width:46px; text-align:right; font-size:15px; font-weight:800; }
     .score-under { color:var(--s-green); }
     .score-over { color:var(--s-red); }
@@ -584,9 +584,8 @@ async function fetchESPNNews() {
       else timeStr = `${Math.round(mins/1440)}d`;
       return {
         title: a.headline || '',
-        body: a.description || '',
+        body: a.story || a.description || '',
         time: timeStr,
-        link: a.links?.web?.href || a.links?.api?.href || '',
         image: a.images?.[0]?.url || '',
         tag: a.type === 'Media' ? 'VIDEO' : 'NEWS',
         tc: a.type === 'Media' ? 'var(--gold)' : 'var(--green)',
@@ -1120,6 +1119,19 @@ function renderScores() {
     return s.startsWith('+') ? 'score-over' : s === 'E' ? 'score-even' : 'score-under';
   };
 
+  const coursePar = TOURNAMENT.par || 72;
+  const fmtRound = (strokes) => {
+    if (strokes == null) return '';
+    const diff = strokes - coursePar;
+    if (diff === 0) return 'E';
+    return diff > 0 ? `+${diff}` : `${diff}`;
+  };
+  const roundScoreClass = (strokes) => {
+    if (strokes == null) return '';
+    const diff = strokes - coursePar;
+    return diff > 0 ? 'score-over' : diff === 0 ? 'score-even' : 'score-under';
+  };
+
   // Determine which round columns to show
   const rd = TOURNAMENT.round || 1;
   const roundCols = [];
@@ -1130,7 +1142,7 @@ function renderScores() {
     <div class="lb-header">
       <div style="width:28px">POS</div><div style="flex:1">PLAYER</div>
       ${roundCols.map(r => `<div class="r-col" style="width:30px;text-align:center">R${r}</div>`).join('')}
-      <div style="width:36px;text-align:center">THRU</div>
+      <div style="width:56px;text-align:center">THRU</div>
       <div style="width:46px;text-align:right">TOTAL</div>
     </div>`;
 
@@ -1148,7 +1160,7 @@ function renderScores() {
           <span class="lb-name ${i===0?'top':''}">${p.name}</span>
           ${p.ch&&p.ch!=='—'?`<span class="lb-move" style="color:${p.ch.includes('↑')?'var(--s-green)':'var(--s-red)'}">${p.ch}</span>`:''}
         </div>
-        ${roundCols.map(r => `<div class="lb-round r-col">${rounds[r-1]||''}</div>`).join('')}
+        ${roundCols.map(r => `<div class="lb-round r-col ${roundScoreClass(rounds[r-1])}">${fmtRound(rounds[r-1])}</div>`).join('')}
         <div class="lb-today" style="color:var(--text-muted);font-size:11px">${p.thru||''}</div>
         <div class="lb-total ${scoreClass(p.score)}">${p.score}</div>
       </div>
@@ -1167,7 +1179,7 @@ function renderScores() {
             <span class="lb-flag">${p.c}</span>
             <span class="lb-name">${p.name}</span>
           </div>
-          ${roundCols.map(r => `<div class="lb-round r-col">${rounds[r-1]||'—'}</div>`).join('')}
+          ${roundCols.map(r => `<div class="lb-round r-col ${roundScoreClass(rounds[r-1])}">${rounds[r-1] != null ? fmtRound(rounds[r-1]) : '—'}</div>`).join('')}
           <div class="lb-today">—</div>
           <div class="lb-total score-over">${p.score}</div>
         </div>`;
@@ -1186,7 +1198,7 @@ function renderScores() {
             <span class="lb-flag">${p.c}</span>
             <span class="lb-name">${p.name}</span>
           </div>
-          ${roundCols.map(r => `<div class="lb-round r-col">${rounds[r-1]||'—'}</div>`).join('')}
+          ${roundCols.map(r => `<div class="lb-round r-col ${roundScoreClass(rounds[r-1])}">${rounds[r-1] != null ? fmtRound(rounds[r-1]) : '—'}</div>`).join('')}
           <div class="lb-today">—</div>
           <div class="lb-total score-over">${p.score||'—'}</div>
         </div>`;
@@ -1225,7 +1237,7 @@ function renderNews() {
         <button class="share-btn" style="margin-left:auto" onclick="event.stopPropagation();shareContent('${n.title.replace(/'/g,"\\'")}')">Share</button>
       </div>
       <div class="card-title">${n.title}</div>
-      ${expandedCard===100+i ? `<div class="card-body">${n.body}${n.link ? `<a href="${n.link}" target="_blank" class="card-btn" style="text-decoration:none;color:#fff">Read Full Story →</a>` : ''}</div>` : ''}
+      ${expandedCard===100+i ? `<div class="card-body">${n.body}</div>` : ''}
     </div>
   `).join('');
 }
