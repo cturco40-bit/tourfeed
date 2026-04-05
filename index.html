@@ -278,7 +278,7 @@
 // ============================================
 
 
-const TABS = ['Scores','News','Insights','Standings','Schedule'];
+const TABS = ['Home','Scores','News','Insights','Standings','Schedule'];
 let currentTab = 0;
 let expandedCard = null;
 let lbSearch = '';
@@ -1007,10 +1007,12 @@ function switchTab(i) {
   expandedCard = null;
   renderNav();
   // Trigger data fetches on tab switch
-  if (i === 1 && !newsFetched) fetchNews();
-  if (i === 2 && !scheduleFetched) fetchESPNSchedule(); // Insights needs schedule for upcoming
-  if (i === 3 && !standingsFetched[standingsFilter]) fetchESPNStandings(standingsFilter);
-  if (i === 4 && !scheduleFetched) fetchESPNSchedule();
+  if (i === 0 && !newsFetched) fetchNews(); // Home needs news
+  if (i === 0 && !scheduleFetched) fetchESPNSchedule(); // Home needs schedule
+  if (i === 2 && !newsFetched) fetchNews();
+  if (i === 3 && !scheduleFetched) fetchESPNSchedule(); // Insights needs schedule
+  if (i === 4 && !standingsFetched[standingsFilter]) fetchESPNStandings(standingsFilter);
+  if (i === 5 && !scheduleFetched) fetchESPNSchedule();
   renderApp();
 }
 
@@ -1070,6 +1072,183 @@ function shareContent(title) {
 // ============================================
 // SCORECARD RENDERER
 // ============================================
+// ============================================
+// RENDER HOME TAB
+// ============================================
+function renderHome() {
+  let html = '';
+
+  // Live tournament hero card
+  if (TOURNAMENT && PLAYERS.length > 0) {
+    const active = PLAYERS.filter(p => p.status === 'active');
+    const leader = active[0];
+    const top3 = active.slice(0, 3);
+    const tied = leader ? active.filter(p => p.score === leader.score) : [];
+
+    html += '<div style="background:linear-gradient(135deg,var(--green),var(--green-d));border-radius:12px;padding:18px;margin-bottom:12px">';
+    html += '<div style="display:flex;justify-content:space-between;align-items:flex-start">';
+    html += '<div>';
+    html += '<div style="font-size:10px;font-weight:700;letter-spacing:2px;color:rgba(255,255,255,0.7)">LIVE</div>';
+    html += '<div style="font-size:18px;font-weight:800;color:#fff;margin-top:4px">' + esc(TOURNAMENT.name) + '</div>';
+    html += '<div style="font-size:11px;color:rgba(255,255,255,0.7);margin-top:2px">' + esc(TOURNAMENT.course) + ' · ' + esc(TOURNAMENT.status) + '</div>';
+    html += '</div>';
+    if (TOURNAMENT.broadcast) {
+      html += '<div style="background:rgba(0,0,0,0.2);padding:4px 10px;border-radius:6px;font-size:10px;font-weight:700;color:#fff">' + esc(TOURNAMENT.broadcast) + '</div>';
+    }
+    html += '</div>';
+
+    if (leader) {
+      html += '<div style="margin-top:14px;padding:12px;background:rgba(0,0,0,0.15);border-radius:8px">';
+      if (tied.length > 1) {
+        html += '<div style="font-size:11px;color:rgba(255,255,255,0.7);margin-bottom:6px">' + tied.length + '-WAY TIE AT ' + esc(leader.score) + '</div>';
+        tied.slice(0, 3).forEach(p => {
+          html += '<div style="font-size:15px;font-weight:700;color:#fff;padding:2px 0">' + p.c + ' ' + esc(p.name) + (p.today ? ' <span style="font-size:12px;color:rgba(255,255,255,0.7)">' + esc(p.today) + ' today</span>' : '') + '</div>';
+        });
+      } else {
+        html += '<div style="font-size:11px;color:rgba(255,255,255,0.7);margin-bottom:4px">LEADER</div>';
+        html += '<div style="display:flex;align-items:center;gap:10px">';
+        html += '<div style="font-size:28px;font-weight:900;color:#fff">' + esc(leader.score) + '</div>';
+        html += '<div><div style="font-size:16px;font-weight:700;color:#fff">' + leader.c + ' ' + esc(leader.name) + '</div>';
+        html += (leader.today ? '<div style="font-size:12px;color:rgba(255,255,255,0.7)">' + esc(leader.today) + ' today · thru ' + esc(leader.thru) + '</div>' : '') + '</div>';
+        html += '</div>';
+      }
+      html += '</div>';
+    }
+
+    html += '<button onclick="switchTab(1)" style="background:rgba(255,255,255,0.15);border:none;color:#fff;font-size:12px;font-weight:700;padding:8px 16px;border-radius:6px;margin-top:10px;cursor:pointer;font-family:inherit">Full Leaderboard →</button>';
+    html += '</div>';
+  } else {
+    // No active tournament — show next event
+    html += '<div style="background:linear-gradient(135deg,var(--navy-l),var(--navy));border:1px solid var(--card-border);border-radius:12px;padding:18px;margin-bottom:12px;text-align:center">';
+    html += '<div style="font-size:10px;font-weight:700;letter-spacing:2px;color:var(--gold);margin-bottom:8px">COMING UP</div>';
+    if (scheduleData.length > 0) {
+      const now = Date.now();
+      const next = scheduleData.find(e => e.startDate && new Date(e.startDate).getTime() > now);
+      if (next) {
+        const d = new Date(next.startDate);
+        const daysUntil = Math.ceil((d.getTime() - now) / 86400000);
+        html += '<div style="font-size:18px;font-weight:800;color:var(--text)">' + esc(next.event) + '</div>';
+        html += '<div style="font-size:12px;color:var(--text-muted);margin-top:4px">' + esc(next.course) + '</div>';
+        html += '<div style="font-size:24px;font-weight:900;color:var(--gold);margin-top:10px">' + daysUntil + ' DAY' + (daysUntil !== 1 ? 'S' : '') + '</div>';
+      }
+    } else {
+      html += '<div style="font-size:14px;color:var(--text-muted)">Loading schedule...</div>';
+    }
+    html += '</div>';
+  }
+
+  // TourFeed Picks (quick snapshot)
+  if (TOURNAMENT && PLAYERS.length > 0) {
+    const active = PLAYERS.filter(p => p.status === 'active');
+    const parseScore = (s) => { if (!s || s === 'E') return 0; return parseInt(s) || 0; };
+    const leaderNum = parseScore(active[0]?.score);
+    const calcProb = (back) => Math.max(0.5, Math.exp(-0.55 * back) * 30);
+    const toOdds = (pct) => pct >= 50 ? '-' + Math.round(pct / (100 - pct) * 100) : '+' + Math.round((100 - pct) / pct * 100);
+
+    const bestBet = active.slice(1, 10).map(p => {
+      const back = Math.abs(parseScore(p.score) - leaderNum);
+      return { ...p, back };
+    }).filter(p => p.back >= 1 && p.back <= 3).sort((a, b) => {
+      const at = a.today === 'E' ? 0 : (parseInt(a.today) || 0);
+      const bt = b.today === 'E' ? 0 : (parseInt(b.today) || 0);
+      return (a.back + at * 0.5) - (b.back + bt * 0.5);
+    })[0];
+
+    if (bestBet) {
+      const totalRaw = active.slice(0, 20).reduce((s, p) => s + calcProb(Math.abs(parseScore(p.score) - leaderNum)), 0) + 10;
+      const pct = (calcProb(bestBet.back) / totalRaw) * 100;
+      html += '<div style="padding:14px;background:var(--card-bg);border:1px solid var(--card-border);border-radius:10px;margin-bottom:12px">';
+      html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">';
+      html += '<div style="font-size:10px;font-weight:700;letter-spacing:2px;color:var(--gold)">TOURFEED PICK</div>';
+      html += '<button onclick="switchTab(3)" style="background:none;border:none;color:var(--green);font-size:11px;font-weight:700;cursor:pointer;font-family:inherit">All Picks →</button>';
+      html += '</div>';
+      html += '<div style="padding:10px;background:rgba(45,143,111,0.08);border-radius:8px;display:flex;align-items:center">';
+      html += '<div style="flex:1"><div style="font-size:15px;font-weight:800;color:var(--text)">' + bestBet.c + ' ' + esc(bestBet.name) + '</div>';
+      html += '<div style="font-size:11px;color:var(--text-muted);margin-top:2px">' + esc(bestBet.score) + ' overall' + (bestBet.today ? ' · ' + esc(bestBet.today) + ' today' : '') + ' · ' + bestBet.back + ' back</div></div>';
+      html += '<div style="font-size:18px;font-weight:800;color:var(--green)">' + toOdds(pct) + '</div>';
+      html += '</div></div>';
+    }
+  }
+
+  // Top Headlines
+  html += '<div style="padding:14px;background:var(--card-bg);border:1px solid var(--card-border);border-radius:10px;margin-bottom:12px">';
+  html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">';
+  html += '<div style="font-size:10px;font-weight:700;letter-spacing:2px;color:var(--green)">TOP STORIES</div>';
+  html += '<button onclick="switchTab(2)" style="background:none;border:none;color:var(--green);font-size:11px;font-weight:700;cursor:pointer;font-family:inherit">All News →</button>';
+  html += '</div>';
+
+  if (newsData.length > 0) {
+    newsData.slice(0, 5).forEach((n, i) => {
+      html += '<div onclick="switchTab(2);setTimeout(function(){openArticle(' + i + ')},100)" style="padding:8px 0;cursor:pointer;' + (i < 4 ? 'border-bottom:1px solid var(--card-border)' : '') + '">';
+      html += '<div style="display:flex;align-items:flex-start;gap:10px">';
+      html += '<div style="flex:1">';
+      html += '<span class="tag" style="color:' + n.tc + ';background:' + n.tc + '15;font-size:9px;margin-bottom:4px;display:inline-block">' + n.tag + '</span>';
+      html += '<div style="font-size:13px;font-weight:700;color:var(--text);line-height:1.3;margin-top:3px">' + esc(n.title) + '</div>';
+      html += '<div style="font-size:10px;color:var(--text-muted);margin-top:3px">' + (n.time || '') + '</div>';
+      html += '</div>';
+      if (n.image) {
+        html += '<img src="' + esc(n.image) + '" style="width:60px;height:42px;object-fit:cover;border-radius:4px;flex-shrink:0" alt="" onerror="this.style.display=\'none\'">';
+      }
+      html += '</div></div>';
+    });
+  } else {
+    html += '<div style="font-size:13px;color:var(--text-muted);padding:10px 0">Loading headlines...</div>';
+  }
+  html += '</div>';
+
+  // Recap card if available
+  if (recapArticle) {
+    html += '<div onclick="switchTab(2);expandedCard=\'recap\';renderApp();window.scrollTo(0,0)" style="padding:14px;background:var(--card-bg);border:1px solid var(--card-border);border-left:3px solid var(--green);border-radius:10px;margin-bottom:12px;cursor:pointer">';
+    html += '<span class="tag" style="color:var(--green);background:rgba(45,143,111,0.12)">RECAP</span>';
+    html += '<div style="font-size:15px;font-weight:800;color:var(--text);margin-top:6px;line-height:1.3">' + esc(recapArticle.title) + '</div>';
+    html += '<div style="font-size:11px;color:var(--text-muted);margin-top:4px">By TourFeed Staff · ' + esc(recapArticle.tournament) + '</div>';
+    html += '</div>';
+  }
+
+  // Upcoming Events
+  if (scheduleData.length > 0) {
+    const now = Date.now();
+    const upcoming = scheduleData.filter(e => e.startDate && new Date(e.startDate).getTime() > now).slice(0, 3);
+    if (upcoming.length > 0) {
+      html += '<div style="padding:14px;background:var(--card-bg);border:1px solid var(--card-border);border-radius:10px;margin-bottom:12px">';
+      html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">';
+      html += '<div style="font-size:10px;font-weight:700;letter-spacing:2px;color:var(--gold)">UPCOMING</div>';
+      html += '<button onclick="switchTab(5)" style="background:none;border:none;color:var(--green);font-size:11px;font-weight:700;cursor:pointer;font-family:inherit">Full Schedule →</button>';
+      html += '</div>';
+      upcoming.forEach((e, i) => {
+        const d = new Date(e.startDate);
+        const dateStr = d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+        const daysUntil = Math.ceil((d.getTime() - now) / 86400000);
+        const isMajor = /masters|pga championship|u\.?s\.?\s*open|open championship/i.test(e.event);
+        html += '<div style="display:flex;align-items:center;padding:8px 0;' + (i < upcoming.length - 1 ? 'border-bottom:1px solid var(--card-border)' : '') + '">';
+        html += '<div style="flex:1">';
+        html += '<div style="font-size:13px;font-weight:700;color:var(--text)">' + esc(e.event) + (isMajor ? ' <span class="tag" style="color:var(--gold);background:rgba(212,168,83,0.12);font-size:8px;margin-left:4px">MAJOR</span>' : '') + '</div>';
+        html += '<div style="font-size:11px;color:var(--text-muted)">' + esc(e.course) + '</div>';
+        html += '</div>';
+        html += '<div style="text-align:right;flex-shrink:0">';
+        html += '<div style="font-size:12px;font-weight:700;color:var(--green)">' + dateStr + '</div>';
+        html += '<div style="font-size:10px;color:var(--text-muted)">' + (daysUntil === 0 ? 'TODAY' : daysUntil === 1 ? 'TOMORROW' : daysUntil + ' days') + '</div>';
+        html += '</div></div>';
+      });
+      html += '</div>';
+    }
+  }
+
+  // Quick links footer
+  html += '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px">';
+  ['Scores', 'Insights', 'Schedule'].forEach((label, i) => {
+    const tabIdx = [1, 3, 5][i];
+    const icons = ['Leaderboard', 'Picks & Odds', 'Full Calendar'];
+    html += '<div onclick="switchTab(' + tabIdx + ')" style="padding:14px;background:var(--card-bg);border:1px solid var(--card-border);border-radius:10px;text-align:center;cursor:pointer">';
+    html += '<div style="font-size:13px;font-weight:800;color:var(--text)">' + label + '</div>';
+    html += '<div style="font-size:10px;color:var(--text-muted);margin-top:2px">' + icons[i] + '</div>';
+    html += '</div>';
+  });
+  html += '</div>';
+
+  return html;
+}
+
 function renderScorecard(p) {
   // If no hole-by-hole data, show round summary card
   if (!p.holes || p.holes.length === 0) {
@@ -2073,11 +2252,12 @@ function renderApp() {
   }
 
   switch(currentTab) {
-    case 0: html += renderScores(); break;
-    case 1: html += renderNews(); break;
-    case 2: html += renderInsights(); break;
-    case 3: html += renderStandings(); break;
-    case 4: html += renderSchedule(); break;
+    case 0: html += renderHome(); break;
+    case 1: html += renderScores(); break;
+    case 2: html += renderNews(); break;
+    case 3: html += renderInsights(); break;
+    case 4: html += renderStandings(); break;
+    case 5: html += renderSchedule(); break;
   }
 
   html += '</div>';
@@ -2095,7 +2275,7 @@ let recapArticle = null; // Stores fetched recap for display
 const urlParams = new URLSearchParams(window.location.search);
 const recapSlug = urlParams.get('recap');
 if (recapSlug) {
-  currentTab = 1;
+  currentTab = 2;
   expandedCard = 'recap';
   (async () => {
     try {
@@ -2128,7 +2308,7 @@ if (recapSlug) {
 const articleSlug = urlParams.get('article');
 if (articleSlug) {
   // Switch to News tab and find matching article after news loads
-  currentTab = 1;
+  currentTab = 2;
   const waitForArticle = setInterval(() => {
     if (!newsFetched || newsData.length === 0) return;
     clearInterval(waitForArticle);
