@@ -438,30 +438,18 @@ async function fetchESPNScores(tour) {
 
     // Parse competitors
     const competitors = comp.competitors || [];
-    if (competitors[0]) console.log('ESPN competitor[0]:', JSON.stringify(competitors[0], null, 2));
-    if (comp.venue) console.log('ESPN venue:', JSON.stringify(comp.venue, null, 2));
     PLAYERS = competitors.map((c) => {
       const ath = c.athlete || {};
       const ls = c.linescores || [];
-      const posTxt = c.status?.position?.displayName || c.status?.position?.id || c.rankedPosition || '';
-      const statusName = (c.status?.type?.name || '').toUpperCase();
-      const statusDesc = (c.status?.type?.description || '').toLowerCase();
 
-      const isCut = statusName.includes('CUT') || statusDesc.includes('cut');
-      const isWD = statusName.includes('WD') || statusName.includes('WITHDRAW') || statusDesc.includes('wd') || statusDesc.includes('withdraw');
-      const isDQ = statusName.includes('DQ') || statusDesc.includes('disqualif');
-
+      // Score — ESPN returns as string ("-15"), number, or object
       let scoreDisp = '';
-      // Try multiple score field formats
       if (typeof c.score === 'string') {
         scoreDisp = c.score;
       } else if (typeof c.score === 'number') {
         scoreDisp = c.score === 0 ? 'E' : (c.score > 0 ? `+${c.score}` : `${c.score}`);
       } else if (c.score?.displayValue) {
         scoreDisp = c.score.displayValue;
-      } else if (c.score?.value !== undefined && c.score?.value !== null) {
-        const v = c.score.value;
-        scoreDisp = v === 0 ? 'E' : (v > 0 ? `+${v}` : `${v}`);
       }
       if (scoreDisp === '0' || scoreDisp === '+0') scoreDisp = 'E';
 
@@ -470,67 +458,86 @@ async function fetchESPNScores(tour) {
       const citizenship = ath.citizenship || '';
       const flag = countryFlag(citizenship || flagAlt);
 
-      // Thru — check multiple ESPN field paths
+      // Determine thru from current round's hole-by-hole data
+      const curRoundLS = ls[period - 1];
+      const holesPlayed = curRoundLS?.linescores?.length || 0;
       let thruDisp = '';
-      const shortDetail = c.status?.type?.shortDetail || '';
-      const statusDetail = c.status?.type?.detail || '';
-      if (c.status?.thru !== undefined && c.status?.thru !== null) {
-        thruDisp = c.status.thru >= 18 ? 'F' : c.status.thru.toString();
-      } else if (c.status?.displayValue) {
-        thruDisp = c.status.displayValue;
-      } else if (shortDetail) {
-        if (/thru\s*\d+/i.test(shortDetail)) thruDisp = shortDetail.replace(/thru\s*/i, '');
-        else if (/final|complete/i.test(shortDetail)) thruDisp = 'F';
-        else thruDisp = shortDetail;
-      } else if (/final|complete/i.test(statusDetail)) {
+      if (holesPlayed === 0) {
+        thruDisp = '—'; // hasn't started current round
+      } else if (holesPlayed >= 18) {
         thruDisp = 'F';
+      } else {
+        thruDisp = holesPlayed.toString();
+      }
+      // Fallback to status fields if available
+      if (c.status?.displayValue) thruDisp = c.status.displayValue;
+
+      // Today — current round score relative to par
+      let todayDisp = '';
+      if (curRoundLS) {
+        const dv = curRoundLS.displayValue;
+        if (dv && dv !== '-') todayDisp = dv;
       }
 
-      // Today display — current round score
-      let todayDisp = '';
-      if (isCut || isWD || isDQ) {
-        todayDisp = '—';
-      } else if (ls[period - 1]?.value !== undefined && ls[period - 1]?.value !== null) {
-        const rv = ls[period - 1].value;
-        // ESPN may return round score as strokes (66) or relative to par (-6)
-        todayDisp = rv.toString();
-      }
+      // Round gross scores — only for completed rounds (18 holes)
+      const roundVal = (idx) => {
+        const r = ls[idx];
+        if (!r) return null;
+        const holes = r.linescores?.length || 0;
+        if (holes >= 18) return r.value || null; // completed: gross strokes
+        return null; // in-progress or not started: don't show
+      };
+
+      // Detect cut/wd/dq from score or status
+      const statusName = (c.status?.type?.name || '').toUpperCase();
+      const statusDesc = (c.status?.type?.description || '').toLowerCase();
+      const isCut = statusName.includes('CUT') || statusDesc.includes('cut') || scoreDisp === 'CUT';
+      const isWD = statusName.includes('WD') || statusName.includes('WITHDRAW') || statusDesc.includes('wd') || scoreDisp === 'WD';
+      const isDQ = statusName.includes('DQ') || statusDesc.includes('disqualif') || scoreDisp === 'DQ';
 
       return {
-        pos: isCut ? 'MC' : isWD ? 'WD' : isDQ ? 'DQ' : posTxt,
+        pos: '',
         name: ath.displayName || 'Unknown',
         c: flag,
-        score: scoreDisp,
-        today: todayDisp,
+        score: isCut ? 'MC' : isWD ? 'WD' : isDQ ? 'DQ' : scoreDisp,
+        today: isCut || isWD || isDQ ? '—' : todayDisp,
         thru: thruDisp,
-        r1: ls[0]?.value || null,
-        r2: ls[1]?.value || null,
-        r3: ls[2]?.value || null,
-        r4: ls[3]?.value || null,
+        r1: roundVal(0),
+        r2: roundVal(1),
+        r3: roundVal(2),
+        r4: roundVal(3),
         sg: '',
-        ch: formatMovement(c.movement),
+        ch: '',
         status: isCut ? 'cut' : isWD ? 'wd' : isDQ ? 'dq' : 'active',
         holes: [],
         athleteId: ath.id || c.id,
-        sortOrder: c.sortOrder || 999,
+        sortOrder: c.order || c.sortOrder || 999,
       };
     });
 
-    // Sort by sortOrder (ESPN's official ordering)
+    // Sort by ESPN's order
     PLAYERS.sort((a,b) => a.sortOrder - b.sortOrder);
 
-    // Fill in missing positions from sort order
-    let posCounter = 1;
-    PLAYERS.forEach((p, i) => {
-      if (p.status === 'active' && !p.pos) {
-        // Check if tied with previous player
-        if (i > 0 && PLAYERS[i-1].score === p.score && PLAYERS[i-1].status === 'active') {
-          p.pos = PLAYERS[i-1].pos;
-        } else {
-          p.pos = `${posCounter}`;
-        }
+    // Assign positions with tie handling
+    const activePlayers = PLAYERS.filter(p => p.status === 'active');
+    activePlayers.forEach((p, i) => {
+      if (i > 0 && activePlayers[i-1].score === p.score) {
+        p.pos = activePlayers[i-1].pos; // tied
+      } else {
+        p.pos = `T${i + 1}`;
       }
-      if (p.status === 'active') posCounter = i + 2;
+    });
+    // Remove T prefix for non-ties
+    activePlayers.forEach((p, i) => {
+      const isTied = (i > 0 && activePlayers[i-1].score === p.score) ||
+                     (i < activePlayers.length - 1 && activePlayers[i+1].score === p.score);
+      if (!isTied) p.pos = p.pos.replace('T', '');
+    });
+    // Set cut/wd/dq positions
+    PLAYERS.forEach(p => {
+      if (p.status === 'cut') p.pos = 'MC';
+      else if (p.status === 'wd') p.pos = 'WD';
+      else if (p.status === 'dq') p.pos = 'DQ';
     });
 
     lastFetchTime = new Date();
@@ -1152,18 +1159,10 @@ function renderScores() {
     return s.startsWith('+') ? 'score-over' : s === 'E' ? 'score-even' : 'score-under';
   };
 
-  // Determine which round columns to show
+  // Determine which round columns to show (only completed rounds + current)
   const rd = TOURNAMENT.round || 1;
   const roundCols = [];
   for (let r = 1; r <= Math.min(rd, 4); r++) roundCols.push(r);
-
-  // For the current round, ESPN may return holes-completed instead of gross strokes.
-  // Valid gross scores are always > 50, so filter out bad values for the current round.
-  const displayRound = (val, roundNum) => {
-    if (val == null) return '';
-    if (roundNum === rd && val <= 50) return ''; // holes-completed, not a score
-    return val;
-  };
 
   html += `
     <div class="search"><input placeholder="Search ${PLAYERS.length} players..." oninput="lbSearch=this.value;renderApp()" value="${lbSearch}"></div>
@@ -1188,7 +1187,7 @@ function renderScores() {
           <span class="lb-name ${i===0?'top':''}">${p.name}</span>
           ${p.ch&&p.ch!=='—'?`<span class="lb-move" style="color:${p.ch.includes('↑')?'var(--s-green)':'var(--s-red)'}">${p.ch}</span>`:''}
         </div>
-        ${roundCols.map(r => `<div class="lb-round r-col">${displayRound(rounds[r-1], r)}</div>`).join('')}
+        ${roundCols.map(r => `<div class="lb-round r-col">${rounds[r-1]||''}</div>`).join('')}
         <div class="lb-today" style="color:var(--text-muted);font-size:11px">${p.thru||''}</div>
         <div class="lb-total ${scoreClass(p.score)}">${p.score}</div>
       </div>
@@ -1207,7 +1206,7 @@ function renderScores() {
             <span class="lb-flag">${p.c}</span>
             <span class="lb-name">${p.name}</span>
           </div>
-          ${roundCols.map(r => `<div class="lb-round r-col">${displayRound(rounds[r-1], r) || '—'}</div>`).join('')}
+          ${roundCols.map(r => `<div class="lb-round r-col">${rounds[r-1]||'—'}</div>`).join('')}
           <div class="lb-today">—</div>
           <div class="lb-total score-over">${p.score}</div>
         </div>`;
@@ -1226,7 +1225,7 @@ function renderScores() {
             <span class="lb-flag">${p.c}</span>
             <span class="lb-name">${p.name}</span>
           </div>
-          ${roundCols.map(r => `<div class="lb-round r-col">${displayRound(rounds[r-1], r) || '—'}</div>`).join('')}
+          ${roundCols.map(r => `<div class="lb-round r-col">${rounds[r-1]||'—'}</div>`).join('')}
           <div class="lb-today">—</div>
           <div class="lb-total score-over">${p.score||'—'}</div>
         </div>`;
