@@ -51,6 +51,8 @@ Rules:
 - Never mention AI, automation, ESPN, or any source outlet by name
 - Never use phrases like "according to reports" or "sources say" — write with authority as if you reported the story yourself
 - Never reference "the original article" or "the source" — this IS the original article
+- CRITICAL: Only state facts that are in the source material. Do NOT invent stats, records, or claims. If unsure whether a player has won a specific tournament, do not claim they haven't — focus on what the source tells you
+- Do NOT speculate about career milestones or records unless the source explicitly mentions them
 - This must read as original TourFeed journalism, not a rewrite`,
         messages: [
           {
