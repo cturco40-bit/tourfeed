@@ -1496,6 +1496,42 @@ function renderInsights() {
   const top10 = active.slice(0, 10);
   const rd = TOURNAMENT.round || 1;
 
+  // Parse numeric score for calculations
+  const parseScore = (s) => {
+    if (!s) return 0;
+    if (s === 'E') return 0;
+    return parseInt(s) || 0;
+  };
+
+  // Win probability model based on strokes back and round
+  // Historical PGA Tour conversion rates by strokes back entering final round:
+  // 0 back: ~30%, 1 back: ~18%, 2 back: ~12%, 3 back: ~8%, 4 back: ~5%, 5+: diminishing
+  // Adjusted by round: earlier rounds = flatter distribution
+  const calcWinProb = (strokesBack, round) => {
+    const roundMultiplier = round === 4 ? 1.0 : round === 3 ? 0.6 : round === 2 ? 0.35 : 0.2;
+    // Base probability curve (exponential decay)
+    const base = Math.exp(-0.55 * strokesBack) * 30;
+    return Math.max(0.5, base * roundMultiplier);
+  };
+
+  const leaderScore = parseScore(active[0]?.score);
+  const oddsData = active.slice(0, 20).map(p => {
+    const strokesBack = Math.abs(parseScore(p.score) - leaderScore);
+    const rawProb = calcWinProb(strokesBack, rd);
+    return { ...p, strokesBack, rawProb };
+  });
+  // Normalize probabilities to sum to ~100
+  const totalRaw = oddsData.reduce((s, p) => s + p.rawProb, 0) + (active.length - 20) * 0.3;
+  const oddsPlayers = oddsData.map(p => ({
+    ...p,
+    winPct: ((p.rawProb / totalRaw) * 100),
+  }));
+  // Convert to American odds
+  const toAmericanOdds = (pct) => {
+    if (pct >= 50) return `-${Math.round(pct / (100 - pct) * 100)}`;
+    return `+${Math.round((100 - pct) / pct * 100)}`;
+  };
+
   // Leader info
   const leader = active[0];
   const chasers = active.filter((p,i) => i > 0 && p.score === leader?.score);
@@ -1571,6 +1607,69 @@ function renderInsights() {
         }
       </div>
     </div>`;
+
+  // Win probability & odds
+  html += `
+    <div style="padding:14px;background:var(--card-bg);border:1px solid var(--card-border);border-radius:10px;margin-bottom:12px">
+      <div style="font-size:10px;font-weight:700;letter-spacing:2px;color:var(--green);margin-bottom:10px">WIN PROBABILITY</div>
+      ${oddsPlayers.slice(0, 12).map((p,i) => {
+        const pct = p.winPct;
+        const odds = toAmericanOdds(pct);
+        const barWidth = Math.max(4, Math.min(100, pct * 3));
+        return `
+        <div style="display:flex;align-items:center;padding:5px 0;${i<11?'border-bottom:1px solid var(--card-border)':''}">
+          <div style="width:22px;font-size:11px;font-weight:700;color:var(--g500)">${p.pos}</div>
+          <div style="flex:1;font-size:12px;font-weight:600;color:var(--text)">${p.name}</div>
+          <div style="width:60px;margin-right:8px">
+            <div style="height:6px;background:var(--card-border);border-radius:3px;overflow:hidden">
+              <div style="height:100%;width:${barWidth}%;background:var(--green);border-radius:3px"></div>
+            </div>
+          </div>
+          <div style="width:36px;text-align:right;font-size:11px;font-weight:700;color:var(--text)">${pct.toFixed(1)}%</div>
+          <div style="width:46px;text-align:right;font-size:11px;font-weight:700;color:${odds.startsWith('-')?'var(--s-green)':'var(--text-muted)'}">${odds}</div>
+        </div>`;
+      }).join('')}
+    </div>`;
+
+  // Staff picks
+  const bestValue = oddsPlayers.filter(p => p.strokesBack <= 3 && p.strokesBack > 0)
+    .sort((a,b) => {
+      // Prefer players with good today scores who are close to the lead
+      const aToday = a.today === 'E' ? 0 : (parseInt(a.today) || 0);
+      const bToday = b.today === 'E' ? 0 : (parseInt(b.today) || 0);
+      return (a.strokesBack + aToday * 0.5) - (b.strokesBack + bToday * 0.5);
+    });
+  const longshot = oddsPlayers.filter(p => p.strokesBack >= 4 && p.strokesBack <= 7)
+    .sort((a,b) => {
+      const aToday = a.today === 'E' ? 0 : (parseInt(a.today) || 0);
+      const bToday = b.today === 'E' ? 0 : (parseInt(b.today) || 0);
+      return aToday - bToday;
+    });
+
+  if (bestValue.length > 0 || longshot.length > 0) {
+    html += `
+      <div style="padding:14px;background:var(--card-bg);border:1px solid var(--card-border);border-radius:10px;margin-bottom:12px">
+        <div style="font-size:10px;font-weight:700;letter-spacing:2px;color:var(--gold);margin-bottom:10px">TOURFEED PICKS</div>
+        ${bestValue[0] ? `
+        <div style="padding:10px;background:rgba(45,143,111,0.08);border-radius:8px;margin-bottom:8px">
+          <div style="display:flex;align-items:center;margin-bottom:4px">
+            <span class="tag" style="color:var(--green);background:rgba(45,143,111,0.15);font-size:9px;margin-right:6px">BEST VALUE</span>
+            <span style="font-size:9px;color:var(--text-muted)">${bestValue[0].strokesBack} back · ${toAmericanOdds(bestValue[0].winPct)}</span>
+          </div>
+          <div style="font-size:14px;font-weight:800;color:var(--text)">${bestValue[0].c} ${bestValue[0].name}</div>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:2px">${bestValue[0].score} overall${bestValue[0].today ? ` · ${bestValue[0].today} today` : ''} · ${bestValue[0].winPct.toFixed(1)}% win prob</div>
+        </div>` : ''}
+        ${longshot[0] ? `
+        <div style="padding:10px;background:rgba(212,168,83,0.08);border-radius:8px">
+          <div style="display:flex;align-items:center;margin-bottom:4px">
+            <span class="tag" style="color:var(--gold);background:rgba(212,168,83,0.15);font-size:9px;margin-right:6px">LONGSHOT</span>
+            <span style="font-size:9px;color:var(--text-muted)">${longshot[0].strokesBack} back · ${toAmericanOdds(longshot[0].winPct)}</span>
+          </div>
+          <div style="font-size:14px;font-weight:800;color:var(--text)">${longshot[0].c} ${longshot[0].name}</div>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:2px">${longshot[0].score} overall${longshot[0].today ? ` · ${longshot[0].today} today` : ''} · ${longshot[0].winPct.toFixed(1)}% win prob</div>
+        </div>` : ''}
+      </div>`;
+  }
 
   // Hot rounds today
   if (hotRounds.length > 0) {
