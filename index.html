@@ -1963,6 +1963,30 @@ function renderApp() {
 // ============================================
 // INIT
 // ============================================
+
+// Check for article deep link (?article=slug)
+const urlParams = new URLSearchParams(window.location.search);
+const articleSlug = urlParams.get('article');
+if (articleSlug) {
+  // Switch to News tab and find matching article after news loads
+  currentTab = 1;
+  const origFetch = fetchNews;
+  const waitForArticle = setInterval(() => {
+    if (!newsFetched || newsData.length === 0) return;
+    clearInterval(waitForArticle);
+    // Find article matching slug
+    const idx = newsData.findIndex(n => {
+      const s = n.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 60);
+      return s === articleSlug;
+    });
+    if (idx >= 0) {
+      expandedCard = 100 + idx;
+      if (!articleCache[`article_${idx}`]) generateArticle(idx);
+      renderApp();
+    }
+  }, 200);
+}
+
 renderNav();
 renderApp();
 

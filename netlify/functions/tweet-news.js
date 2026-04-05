@@ -154,7 +154,9 @@ exports.handler = async (event) => {
       }
     }
 
-    tweetText += `\n\n→ https://tourfeed.co`;
+    // Create article deep link
+    const slug = picked.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 60);
+    tweetText += `\n\n→ https://tourfeed.co?article=${slug}`;
 
     // Add relevant hashtags
     const t = picked.title.toLowerCase();
