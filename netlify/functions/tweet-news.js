@@ -117,11 +117,11 @@ exports.handler = async (event) => {
     // Get recent tweets to avoid duplicates
     const recentTweets = await getRecentTweets();
 
-    // Check last tweet time — don't tweet news if we tweeted anything < 15 min ago
+    // Check last tweet time — don't tweet if we tweeted anything < 20 min ago
     if (recentTweets.length > 0) {
       const lastTime = recentTweets[0].time;
       const minsSinceLast = (Date.now() - lastTime.getTime()) / 60000;
-      if (minsSinceLast < 15) {
+      if (minsSinceLast < 20) {
         return { statusCode: 200, headers, body: JSON.stringify({
           skipped: 'Too soon since last tweet',
           minutesSinceLast: Math.round(minsSinceLast),

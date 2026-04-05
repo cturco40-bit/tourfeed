@@ -101,6 +101,30 @@ exports.handler = async (event) => {
   if (!bearer) return { statusCode: 200, headers, body: JSON.stringify({ skipped: 'No bearer token' }) };
 
   try {
+    // Global cooldown — don't engage if we tweeted anything < 20 min ago
+    try {
+      const uRes = await fetch('https://api.twitter.com/2/users/by/username/TourFeedGolf', {
+        headers: { 'Authorization': `Bearer ${bearer}` },
+      });
+      if (uRes.ok) {
+        const uData = await uRes.json();
+        const userId = uData.data?.id;
+        if (userId) {
+          const tRes = await fetch(`https://api.twitter.com/2/users/${userId}/tweets?max_results=5&tweet.fields=created_at`, {
+            headers: { 'Authorization': `Bearer ${bearer}` },
+          });
+          if (tRes.ok) {
+            const tData = await tRes.json();
+            const last = tData.data?.[0];
+            if (last) {
+              const mins = (Date.now() - new Date(last.created_at).getTime()) / 60000;
+              if (mins < 20) return { statusCode: 200, headers, body: JSON.stringify({ skipped: 'Global cooldown', minutesSinceLast: Math.round(mins) }) };
+            }
+          }
+        }
+      }
+    } catch(e) {}
+
     // Get our recent replies to avoid double-replying
     let ourUserId = null;
     try {
