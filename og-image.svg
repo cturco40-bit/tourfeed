@@ -1,0 +1,20 @@
+<svg width="1200" height="630" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <radialGradient id="g1" cx="30%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#2D8F6F" stop-opacity="0.12"/>
+      <stop offset="100%" stop-color="#2D8F6F" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="g2" cx="70%" cy="30%" r="50%">
+      <stop offset="0%" stop-color="#D4A853" stop-opacity="0.06"/>
+      <stop offset="100%" stop-color="#D4A853" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="1200" height="630" fill="#111927"/>
+  <rect width="1200" height="630" fill="url(#g1)"/>
+  <rect width="1200" height="630" fill="url(#g2)"/>
+  <text x="460" y="290" font-family="Arial,Helvetica,sans-serif" font-size="72" font-weight="900" fill="#FFFFFF" letter-spacing="2">TOUR</text>
+  <text x="735" y="290" font-family="Arial,Helvetica,sans-serif" font-size="72" font-weight="900" fill="#D4A853" letter-spacing="2">FEED</text>
+  <text x="600" y="340" font-family="Arial,Helvetica,sans-serif" font-size="26" font-weight="700" fill="#ADB5BD" text-anchor="middle">Your Daily Golf Fix</text>
+  <text x="600" y="400" font-family="Arial,Helvetica,sans-serif" font-size="14" font-weight="700" fill="#868E96" text-anchor="middle" letter-spacing="1">PGA TOUR  ·  LIV  ·  DP WORLD  ·  LPGA  ·  KORN FERRY  ·  CHAMPIONS</text>
+  <text x="600" y="580" font-family="Arial,Helvetica,sans-serif" font-size="16" font-weight="700" fill="#2D8F6F" text-anchor="middle" letter-spacing="1">tourfeed.co</text>
+</svg>
