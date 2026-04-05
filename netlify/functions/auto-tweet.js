@@ -23,48 +23,23 @@ async function postTweet(text, imageUrl) {
   return await res.json();
 }
 
-// Fetch a relevant image — try ESPN news, then Google News images
-async function getGolfImage(topic) {
-  const keywords = (topic || 'golf pga tour').toLowerCase();
+// Generate a branded TourFeed graphic URL
+function getLeaderboardGraphic(tourneyName, players) {
+  const playersParam = players.slice(0, 8).map(p =>
+    `${p.name}|${p.score}|${p.today || ''}|${p.id || ''}`
+  ).join(',');
+  return `https://tourfeed.co/.netlify/functions/generate-graphic?type=leaderboard&title=${encodeURIComponent('LIVE LEADERBOARD')}&subtitle=${encodeURIComponent(tourneyName)}&players=${encodeURIComponent(playersParam)}`;
+}
 
-  // Try ESPN news first — look for relevant article
-  try {
-    const res = await fetch('https://site.api.espn.com/apis/site/v2/sports/golf/pga/news?limit=10');
-    if (res.ok) {
-      const data = await res.json();
-      const articles = data.articles || [];
-      // Try to match topic
-      const matched = articles.find(a =>
-        keywords.split(' ').some(w => (a.headline || '').toLowerCase().includes(w))
-      );
-      if (matched?.images?.[0]?.url) return matched.images[0].url;
-      // Fall back to first article with image
-      for (const a of articles) {
-        if (a.images?.[0]?.url) return a.images[0].url;
-      }
-    }
-  } catch(e) {}
+function getPicksGraphic(tourneyName, picks) {
+  const picksParam = picks.map(p =>
+    `${p.type}|${p.name}|${p.odds}|${p.reason || ''}`
+  ).join(',');
+  return `https://tourfeed.co/.netlify/functions/generate-graphic?type=picks&title=${encodeURIComponent('TOURFEED PICKS')}&subtitle=${encodeURIComponent(tourneyName)}&picks=${encodeURIComponent(picksParam)}`;
+}
 
-  // Try fetching from our own news aggregator
-  try {
-    const res = await fetch('https://tourfeed.co/.netlify/functions/fetch-news', { method: 'POST' });
-    if (res.ok) {
-      const text = await res.text();
-      if (text.startsWith('{')) {
-        const data = JSON.parse(text);
-        const articles = data.articles || [];
-        const matched = articles.find(a =>
-          a.image && keywords.split(' ').some(w => (a.title || '').toLowerCase().includes(w))
-        );
-        if (matched?.image) return matched.image;
-        for (const a of articles) {
-          if (a.image) return a.image;
-        }
-      }
-    }
-  } catch(e) {}
-
-  return null;
+function getHeadlineGraphic(headline, tag) {
+  return `https://tourfeed.co/.netlify/functions/generate-graphic?type=headline&headline=${encodeURIComponent(headline)}&tag=${encodeURIComponent(tag || 'BREAKING')}`;
 }
 
 // Check our last tweet to avoid duplicates and detect what's changed
@@ -225,6 +200,15 @@ exports.handler = async (event) => {
       score: typeof p.score === 'string' ? p.score : '?',
       order: p.order || 99,
       today: p.linescores?.[round - 1]?.displayValue || '',
+      id: p.id || p.athlete?.id || '',
+    }));
+
+    // Build top 8 for graphic (with IDs for headshots)
+    const top8 = players.slice(0, 8).map(p => ({
+      name: p.athlete?.shortName || p.athlete?.displayName || '?',
+      score: typeof p.score === 'string' ? p.score : '?',
+      today: p.linescores?.[round - 1]?.displayValue || '',
+      id: p.id || p.athlete?.id || '',
     }));
 
     const leader = top5[0];
@@ -345,8 +329,8 @@ exports.handler = async (event) => {
     const tagStr = '\n\n' + hashtags.join(' ');
     if (tweetText.length + tagStr.length <= 280) tweetText += tagStr;
 
-    const image = await getGolfImage(tourneyName);
-    const result = await postTweet(tweetText, image);
+    const graphicUrl = getLeaderboardGraphic(tourneyName, top8);
+    const result = await postTweet(tweetText, graphicUrl);
 
     return {
       statusCode: 200,
