@@ -339,19 +339,15 @@ const COUNTRY_MAP = {
 };
 
 function countryFlag(input) {
-  if (!input) return '🏌️';
+  if (!input) return '<span style="font-size:10px;color:var(--g500)">—</span>';
   let code = input.trim();
-  // If it's already a 2-letter code
   if (code.length === 2) {
-    code = code.toUpperCase();
+    code = code.toLowerCase();
   } else {
-    // Look up by name
-    code = COUNTRY_MAP[code.toLowerCase()] || '';
+    code = (COUNTRY_MAP[code.toLowerCase()] || '').toLowerCase();
   }
-  if (!code || code.length !== 2) return '🏌️';
-  return String.fromCodePoint(
-    ...code.split('').map(c => 0x1F1E6 + c.charCodeAt(0) - 65)
-  );
+  if (!code || code.length !== 2) return '<span style="font-size:10px;color:var(--g500)">—</span>';
+  return `<img src="https://flagcdn.com/20x15/${code}.png" width="20" height="15" style="vertical-align:middle;border-radius:2px" alt="${code.toUpperCase()}" onerror="this.outerHTML='<span style=font-size:10px;color:var(--g500)>${code.toUpperCase()}</span>'">`;
 }
 
 function formatPurse(purse) {
@@ -419,10 +415,10 @@ async function fetchESPNScores(tour) {
 
     TOURNAMENT = {
       name: event.shortName || event.name || 'Tournament',
-      course: comp.venue?.fullName || '',
+      course: comp.venue?.fullName || comp.venue?.shortName || comp.venue?.address?.summary || '',
       dates: '',
       purse: formatPurse(comp.purse),
-      status: st.type?.description || st.type?.shortDetail || 'In Progress',
+      status: st.type?.shortDetail || st.type?.description || 'In Progress',
       round: period,
       par: coursePar,
       broadcast: comp.broadcast?.names?.join(' / ') || comp.geoBroadcasts?.map(g=>g.media?.shortName).filter(Boolean).join(' / ') || '',
@@ -442,6 +438,8 @@ async function fetchESPNScores(tour) {
 
     // Parse competitors
     const competitors = comp.competitors || [];
+    if (competitors[0]) console.log('ESPN competitor[0]:', JSON.stringify(competitors[0], null, 2));
+    if (comp.venue) console.log('ESPN venue:', JSON.stringify(comp.venue, null, 2));
     PLAYERS = competitors.map((c) => {
       const ath = c.athlete || {};
       const ls = c.linescores || [];
@@ -453,40 +451,50 @@ async function fetchESPNScores(tour) {
       const isWD = statusName.includes('WD') || statusName.includes('WITHDRAW') || statusDesc.includes('wd') || statusDesc.includes('withdraw');
       const isDQ = statusName.includes('DQ') || statusDesc.includes('disqualif');
 
-      let scoreDisp = c.score?.displayValue ?? '';
-      if (scoreDisp === '0' || scoreDisp === '+0') scoreDisp = 'E';
-
-      // If ESPN doesn't provide a score, compute from completed rounds
-      if (!scoreDisp && ls.length > 0) {
-        const completedRounds = ls.filter(l => l?.value && l.value > 50);
-        if (completedRounds.length > 0) {
-          const totalStrokes = completedRounds.reduce((sum, l) => sum + l.value, 0);
-          const totalPar = coursePar * completedRounds.length;
-          const diff = totalStrokes - totalPar;
-          scoreDisp = diff === 0 ? 'E' : (diff > 0 ? `+${diff}` : `${diff}`);
-        }
+      let scoreDisp = '';
+      // Try multiple score field formats
+      if (typeof c.score === 'string') {
+        scoreDisp = c.score;
+      } else if (typeof c.score === 'number') {
+        scoreDisp = c.score === 0 ? 'E' : (c.score > 0 ? `+${c.score}` : `${c.score}`);
+      } else if (c.score?.displayValue) {
+        scoreDisp = c.score.displayValue;
+      } else if (c.score?.value !== undefined && c.score?.value !== null) {
+        const v = c.score.value;
+        scoreDisp = v === 0 ? 'E' : (v > 0 ? `+${v}` : `${v}`);
       }
+      if (scoreDisp === '0' || scoreDisp === '+0') scoreDisp = 'E';
 
       // Country flag
       const flagAlt = ath.flag?.alt || '';
       const citizenship = ath.citizenship || '';
       const flag = countryFlag(citizenship || flagAlt);
 
-      // Today display
+      // Thru — check multiple ESPN field paths
+      let thruDisp = '';
+      const shortDetail = c.status?.type?.shortDetail || '';
+      const statusDetail = c.status?.type?.detail || '';
+      if (c.status?.thru !== undefined && c.status?.thru !== null) {
+        thruDisp = c.status.thru >= 18 ? 'F' : c.status.thru.toString();
+      } else if (c.status?.displayValue) {
+        thruDisp = c.status.displayValue;
+      } else if (shortDetail) {
+        if (/thru\s*\d+/i.test(shortDetail)) thruDisp = shortDetail.replace(/thru\s*/i, '');
+        else if (/final|complete/i.test(shortDetail)) thruDisp = 'F';
+        else thruDisp = shortDetail;
+      } else if (/final|complete/i.test(statusDetail)) {
+        thruDisp = 'F';
+      }
+
+      // Today display — current round score
       let todayDisp = '';
       if (isCut || isWD || isDQ) {
         todayDisp = '—';
-      } else {
-        const curRound = ls[period - 1]?.value;
-        if (curRound && curRound > 50) todayDisp = curRound.toString();
-        else {
-          const thruVal = c.status?.displayValue || '';
-          todayDisp = /^\d/.test(thruVal) ? thruVal : (thruVal === 'F' && ls[period-1] ? ls[period-1].value?.toString() : '');
-        }
+      } else if (ls[period - 1]?.value !== undefined && ls[period - 1]?.value !== null) {
+        const rv = ls[period - 1].value;
+        // ESPN may return round score as strokes (66) or relative to par (-6)
+        todayDisp = rv.toString();
       }
-
-      // Thru — check multiple fields for tee time
-      let thruDisp = c.status?.displayValue || c.status?.detail || c.status?.shortDetail || '';
 
       return {
         pos: isCut ? 'MC' : isWD ? 'WD' : isDQ ? 'DQ' : posTxt,
