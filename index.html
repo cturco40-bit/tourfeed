@@ -418,7 +418,7 @@ async function fetchESPNScores(tour) {
       course: comp.venue?.fullName || comp.venue?.shortName || comp.venue?.address?.summary || '',
       dates: '',
       purse: formatPurse(comp.purse),
-      status: st.type?.shortDetail || st.type?.description || 'In Progress',
+      status: st.type?.description || st.type?.shortDetail || 'In Progress',
       round: period,
       par: coursePar,
       broadcast: comp.broadcast?.names?.join(' / ') || comp.geoBroadcasts?.map(g=>g.media?.shortName).filter(Boolean).join(' / ') || '',
