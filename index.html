@@ -1205,16 +1205,17 @@ function renderScores() {
     return s.startsWith('+') ? 'score-over' : s === 'E' ? 'score-even' : 'score-under';
   };
 
-  // Determine which round columns to show (only completed rounds + current)
+  // Show completed round columns (not the current in-progress round)
   const rd = TOURNAMENT.round || 1;
   const roundCols = [];
-  for (let r = 1; r <= Math.min(rd, 4); r++) roundCols.push(r);
+  for (let r = 1; r < Math.min(rd, 5); r++) roundCols.push(r); // only completed rounds
 
   html += `
     <div class="search"><input placeholder="Search ${PLAYERS.length} players..." oninput="lbSearch=this.value;renderApp()" value="${lbSearch}"></div>
     <div class="lb-header">
       <div style="width:28px">POS</div><div style="flex:1">PLAYER</div>
       ${roundCols.map(r => `<div class="r-col" style="width:30px;text-align:center">R${r}</div>`).join('')}
+      <div style="width:36px;text-align:center">TODAY</div>
       <div style="width:56px;text-align:center">THRU</div>
       <div style="width:46px;text-align:right">TOTAL</div>
     </div>`;
@@ -1225,6 +1226,7 @@ function renderScores() {
     }
     const idx = PLAYERS.indexOf(p);
     const rounds = [p.r1, p.r2, p.r3, p.r4];
+    const todayClass = !p.today ? '' : p.today.startsWith('+') ? 'score-over' : p.today === 'E' ? 'score-even' : 'score-under';
     html += `
       <div class="lb-row ${i===0?'leader':''}" onclick="expandPlayer(${idx})">
         <div class="lb-pos" style="color:${i===0?'var(--gold)':'var(--g500)'}">${p.pos}</div>
@@ -1234,6 +1236,7 @@ function renderScores() {
           ${p.ch&&p.ch!=='—'?`<span class="lb-move" style="color:${p.ch.includes('↑')?'var(--s-green)':'var(--s-red)'}">${p.ch}</span>`:''}
         </div>
         ${roundCols.map(r => `<div class="lb-round r-col">${rounds[r-1]||''}</div>`).join('')}
+        <div class="lb-round r-col ${todayClass}" style="width:36px">${p.today||''}</div>
         <div class="lb-today" style="color:var(--text-muted);font-size:11px">${p.thru||''}</div>
         <div class="lb-total ${scoreClass(p.score)}">${p.score}</div>
       </div>
@@ -1253,6 +1256,7 @@ function renderScores() {
             <span class="lb-name">${p.name}</span>
           </div>
           ${roundCols.map(r => `<div class="lb-round r-col">${rounds[r-1]||'—'}</div>`).join('')}
+          <div class="lb-round r-col" style="width:36px">—</div>
           <div class="lb-today">—</div>
           <div class="lb-total score-over">${p.score}</div>
         </div>`;
@@ -1272,6 +1276,7 @@ function renderScores() {
             <span class="lb-name">${p.name}</span>
           </div>
           ${roundCols.map(r => `<div class="lb-round r-col">${rounds[r-1]||'—'}</div>`).join('')}
+          <div class="lb-round r-col" style="width:36px">—</div>
           <div class="lb-today">—</div>
           <div class="lb-total score-over">${p.score||'—'}</div>
         </div>`;
