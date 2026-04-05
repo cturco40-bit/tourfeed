@@ -1522,226 +1522,211 @@ function renderNews() {
 // ============================================
 // RENDER INSIGHTS TAB
 // ============================================
+// Insights helper — fetch and render picks for a single tour
+let insightsCache = {};
+
+async function fetchTourInsights(tourId, sport) {
+  if (insightsCache[tourId]) return insightsCache[tourId];
+  try {
+    const res = await fetch('https://site.api.espn.com/apis/site/v2/sports/' + sport + '/scoreboard');
+    if (!res.ok) return null;
+    const data = await res.json();
+    const evt = data.events?.[0];
+    if (!evt) return null;
+    const comp = evt.competitions?.[0];
+    if (!comp) return null;
+    const players = (comp.competitors || []).slice(0, 20);
+    if (players.length === 0) return null;
+    const status = comp.status || {};
+    const result = {
+      name: evt.shortName || evt.name || '',
+      course: comp.venue?.fullName || '',
+      round: status.period || 1,
+      state: status.type?.state || '',
+      stateName: (status.type?.name || '').toUpperCase(),
+      statusText: status.type?.description || '',
+      players: players.map(p => ({
+        name: p.athlete?.shortName || p.athlete?.displayName || '?',
+        fullName: p.athlete?.displayName || '?',
+        score: typeof p.score === 'string' ? p.score : (typeof p.score === 'number' ? (p.score === 0 ? 'E' : p.score > 0 ? '+' + p.score : '' + p.score) : '?'),
+        today: p.linescores?.[(status.period || 1) - 1]?.displayValue || '',
+        order: p.order || 99,
+      })),
+    };
+    insightsCache[tourId] = result;
+    return result;
+  } catch(e) { return null; }
+}
+
 function renderInsights() {
-  if (!TOURNAMENT || PLAYERS.length === 0) {
-    return `<div style="text-align:center;padding:50px 20px">
-      <div style="font-size:14px;font-weight:700;color:var(--text-dim)">No active tournament for insights</div>
-      <div style="font-size:12px;color:var(--text-muted);margin-top:8px">Check back during tournament play</div>
-    </div>`;
+  const parseScore = (s) => { if (!s || s === 'E') return 0; return parseInt(s) || 0; };
+  const toOdds = (pct) => pct >= 50 ? '-' + Math.round(pct / (100 - pct) * 100) : '+' + Math.round((100 - pct) / pct * 100);
+  const calcWinProb = (back, rd) => {
+    const mult = rd === 4 ? 1.0 : rd === 3 ? 0.6 : rd === 2 ? 0.35 : 0.2;
+    return Math.max(0.5, Math.exp(-0.55 * back) * 30 * mult);
+  };
+
+  // Render picks card for one tournament
+  function renderTourPicks(t, tourLabel, color) {
+    if (!t || !t.players || t.players.length === 0) return '';
+    const isActive = t.state === 'in' || t.state === 'post' || t.stateName === 'STATUS_FINAL';
+    const leader = t.players[0];
+    const leaderNum = parseScore(leader.score);
+    const tied = t.players.filter(p => p.score === leader.score);
+
+    // Calculate win probabilities
+    const withProb = t.players.map(p => {
+      const back = Math.abs(parseScore(p.score) - leaderNum);
+      const raw = calcWinProb(back, t.round);
+      return { ...p, back, raw };
+    });
+    const totalRaw = withProb.reduce((s, p) => s + p.raw, 0) + 10;
+    const odds = withProb.map(p => ({ ...p, pct: (p.raw / totalRaw) * 100 }));
+
+    // Pick logic
+    const bestVal = odds.filter(p => p.back >= 1 && p.back <= 3)
+      .sort((a,b) => (a.back + (parseScore(a.today) || 0) * 0.5) - (b.back + (parseScore(b.today) || 0) * 0.5))[0];
+    const longshot = odds.filter(p => p.back >= 4 && p.back <= 7)
+      .sort((a,b) => (parseScore(a.today) || 0) - (parseScore(b.today) || 0))[0];
+    const hotToday = odds.filter(p => p.today && p.today !== '-' && parseScore(p.today) <= -3)
+      .sort((a,b) => parseScore(a.today) - parseScore(b.today))[0];
+
+    let html = '<div style="padding:14px;background:var(--card-bg);border:1px solid var(--card-border);border-radius:10px;margin-bottom:12px">';
+    html += '<div style="display:flex;align-items:center;margin-bottom:10px">';
+    html += '<div style="font-size:10px;font-weight:700;letter-spacing:2px;color:' + color + '">' + tourLabel + '</div>';
+    html += '<span style="font-size:10px;color:var(--text-muted);margin-left:auto">' + (isActive ? 'R' + t.round + ' · ' + t.statusText : t.statusText) + '</span>';
+    html += '</div>';
+    html += '<div style="font-size:15px;font-weight:800;color:var(--text);margin-bottom:4px">' + t.name + '</div>';
+    if (t.course) html += '<div style="font-size:11px;color:var(--text-muted);margin-bottom:12px">' + t.course + '</div>';
+
+    // Leader
+    html += '<div style="font-size:12px;color:var(--text-muted);margin-bottom:8px">';
+    if (tied.length > 1) {
+      html += 'Tied at ' + leader.score + ': ' + tied.map(p => p.name).join(', ');
+    } else {
+      html += 'Leader: <span style="color:var(--text);font-weight:700">' + leader.fullName + '</span> (' + leader.score + ')';
+    }
+    html += '</div>';
+
+    // Picks
+    if (bestVal) {
+      html += '<div style="padding:8px 10px;background:rgba(45,143,111,0.08);border-radius:8px;margin-bottom:6px;display:flex;align-items:center">';
+      html += '<span class="tag" style="color:var(--green);background:rgba(45,143,111,0.15);font-size:9px;margin-right:8px">BEST BET</span>';
+      html += '<span style="font-size:13px;font-weight:700;color:var(--text);flex:1">' + bestVal.fullName + '</span>';
+      html += '<span style="font-size:11px;color:var(--text-muted)">' + bestVal.score + '</span>';
+      html += '<span style="font-size:11px;font-weight:700;color:var(--green);margin-left:8px">' + toOdds(bestVal.pct) + '</span>';
+      html += '</div>';
+    }
+    if (longshot) {
+      html += '<div style="padding:8px 10px;background:rgba(212,168,83,0.08);border-radius:8px;margin-bottom:6px;display:flex;align-items:center">';
+      html += '<span class="tag" style="color:var(--gold);background:rgba(212,168,83,0.15);font-size:9px;margin-right:8px">LONGSHOT</span>';
+      html += '<span style="font-size:13px;font-weight:700;color:var(--text);flex:1">' + longshot.fullName + '</span>';
+      html += '<span style="font-size:11px;color:var(--text-muted)">' + longshot.score + '</span>';
+      html += '<span style="font-size:11px;font-weight:700;color:var(--gold);margin-left:8px">' + toOdds(longshot.pct) + '</span>';
+      html += '</div>';
+    }
+    if (hotToday) {
+      html += '<div style="padding:8px 10px;background:rgba(255,107,107,0.06);border-radius:8px;margin-bottom:6px;display:flex;align-items:center">';
+      html += '<span class="tag" style="color:var(--s-green);background:rgba(45,212,160,0.12);font-size:9px;margin-right:8px">HOT TODAY</span>';
+      html += '<span style="font-size:13px;font-weight:700;color:var(--text);flex:1">' + hotToday.fullName + '</span>';
+      html += '<span style="font-size:11px;font-weight:700;color:var(--s-green)">' + hotToday.today + ' today</span>';
+      html += '</div>';
+    }
+
+    // Top 5 odds table
+    html += '<div style="margin-top:10px;font-size:10px;font-weight:700;letter-spacing:1px;color:var(--g700);margin-bottom:6px">OUTRIGHT ODDS</div>';
+    odds.slice(0, 8).forEach((p, i) => {
+      const barW = Math.max(4, Math.min(100, p.pct * 3));
+      html += '<div style="display:flex;align-items:center;padding:4px 0;' + (i < 7 ? 'border-bottom:1px solid var(--card-border)' : '') + '">';
+      html += '<div style="flex:1;font-size:12px;font-weight:600;color:var(--text)">' + p.name + '</div>';
+      html += '<div style="width:50px;margin-right:6px"><div style="height:5px;background:var(--card-border);border-radius:3px;overflow:hidden"><div style="height:100%;width:' + barW + '%;background:' + color + ';border-radius:3px"></div></div></div>';
+      html += '<div style="width:32px;text-align:right;font-size:10px;font-weight:700;color:var(--text)">' + p.pct.toFixed(1) + '%</div>';
+      html += '<div style="width:42px;text-align:right;font-size:10px;font-weight:700;color:var(--text-muted)">' + toOdds(p.pct) + '</div>';
+      html += '</div>';
+    });
+
+    html += '</div>';
+    return html;
   }
-
-  const active = PLAYERS.filter(p => p.status === 'active');
-  const top10 = active.slice(0, 10);
-  const rd = TOURNAMENT.round || 1;
-
-  // Parse numeric score for calculations
-  const parseScore = (s) => {
-    if (!s) return 0;
-    if (s === 'E') return 0;
-    return parseInt(s) || 0;
-  };
-
-  // Win probability model based on strokes back and round
-  // Historical PGA Tour conversion rates by strokes back entering final round:
-  // 0 back: ~30%, 1 back: ~18%, 2 back: ~12%, 3 back: ~8%, 4 back: ~5%, 5+: diminishing
-  // Adjusted by round: earlier rounds = flatter distribution
-  const calcWinProb = (strokesBack, round) => {
-    const roundMultiplier = round === 4 ? 1.0 : round === 3 ? 0.6 : round === 2 ? 0.35 : 0.2;
-    // Base probability curve (exponential decay)
-    const base = Math.exp(-0.55 * strokesBack) * 30;
-    return Math.max(0.5, base * roundMultiplier);
-  };
-
-  const leaderScore = parseScore(active[0]?.score);
-  const oddsData = active.slice(0, 20).map(p => {
-    const strokesBack = Math.abs(parseScore(p.score) - leaderScore);
-    const rawProb = calcWinProb(strokesBack, rd);
-    return { ...p, strokesBack, rawProb };
-  });
-  // Normalize probabilities to sum to ~100
-  const totalRaw = oddsData.reduce((s, p) => s + p.rawProb, 0) + (active.length - 20) * 0.3;
-  const oddsPlayers = oddsData.map(p => ({
-    ...p,
-    winPct: ((p.rawProb / totalRaw) * 100),
-  }));
-  // Convert to American odds
-  const toAmericanOdds = (pct) => {
-    if (pct >= 50) return `-${Math.round(pct / (100 - pct) * 100)}`;
-    return `+${Math.round((100 - pct) / pct * 100)}`;
-  };
-
-  // Leader info
-  const leader = active[0];
-  if (!leader) return '<div style="text-align:center;padding:40px"><div style="font-size:14px;color:var(--text-dim)">No active players</div></div>';
-  const chasers = active.filter((p,i) => i > 0 && p.score === leader.score);
-  const leaderCount = 1 + chasers.length;
-
-  // Score distribution
-  const underPar = active.filter(p => p.score && !p.score.startsWith('+') && p.score !== 'E').length;
-  const evenPar = active.filter(p => p.score === 'E').length;
-  const overPar = active.filter(p => p.score && p.score.startsWith('+')).length;
-
-  // Today's hot/cold rounds
-  const withToday = active.filter(p => p.today && p.today !== '' && p.today !== '—');
-  const hotRounds = [...withToday].sort((a,b) => {
-    const av = a.today === 'E' ? 0 : parseInt(a.today);
-    const bv = b.today === 'E' ? 0 : parseInt(b.today);
-    return av - bv;
-  }).slice(0, 5);
-  const coldRounds = [...withToday].sort((a,b) => {
-    const av = a.today === 'E' ? 0 : parseInt(a.today);
-    const bv = b.today === 'E' ? 0 : parseInt(b.today);
-    return bv - av;
-  }).slice(0, 5);
 
   let html = '';
 
-  // Tournament header
-  html += `
-    <div style="padding:16px;background:var(--card-bg);border:1px solid var(--card-border);border-radius:10px;margin-bottom:12px">
-      <div style="font-size:10px;font-weight:700;letter-spacing:2px;color:var(--gold);margin-bottom:6px">LIVE INSIGHTS</div>
-      <div style="font-size:17px;font-weight:800;color:var(--text)">${TOURNAMENT.name}</div>
-      <div style="font-size:12px;color:var(--text-muted);margin-top:2px">${TOURNAMENT.course} · Round ${rd}${TOURNAMENT.purse ? ` · ${TOURNAMENT.purse}` : ''}</div>
-    </div>`;
-
-  // Leaderboard snapshot
-  html += `
-    <div style="padding:14px;background:var(--card-bg);border:1px solid var(--card-border);border-radius:10px;margin-bottom:12px">
-      <div style="font-size:10px;font-weight:700;letter-spacing:2px;color:var(--green);margin-bottom:10px">CONTENDERS</div>
-      ${top10.map((p,i) => `
-        <div style="display:flex;align-items:center;padding:6px 0;${i<top10.length-1?'border-bottom:1px solid var(--card-border)':''}">
-          <div style="width:22px;font-size:12px;font-weight:700;color:${i===0?'var(--gold)':'var(--g500)'}">${p.pos}</div>
-          <div style="flex:1;font-size:13px;font-weight:600;color:var(--text)">${p.c} ${p.name}</div>
-          ${p.today ? `<div style="font-size:11px;font-weight:600;color:${p.today.startsWith('+')?'var(--s-red)':p.today==='E'?'var(--g400)':'var(--s-green)'};margin-right:10px">${p.today}</div>` : ''}
-          <div style="font-size:13px;font-weight:800;color:${p.score.startsWith('+')?'var(--s-red)':p.score==='E'?'var(--g400)':'var(--s-green)'}">${p.score}</div>
-        </div>
-      `).join('')}
-    </div>`;
-
-  // Field stats
-  html += `
-    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px">
-      <div style="padding:14px;background:var(--card-bg);border:1px solid var(--card-border);border-radius:10px;text-align:center">
-        <div style="font-size:22px;font-weight:800;color:var(--s-green)">${underPar}</div>
-        <div style="font-size:9px;font-weight:700;letter-spacing:1px;color:var(--text-muted);margin-top:2px">UNDER PAR</div>
-      </div>
-      <div style="padding:14px;background:var(--card-bg);border:1px solid var(--card-border);border-radius:10px;text-align:center">
-        <div style="font-size:22px;font-weight:800;color:var(--g400)">${evenPar}</div>
-        <div style="font-size:9px;font-weight:700;letter-spacing:1px;color:var(--text-muted);margin-top:2px">EVEN PAR</div>
-      </div>
-      <div style="padding:14px;background:var(--card-bg);border:1px solid var(--card-border);border-radius:10px;text-align:center">
-        <div style="font-size:22px;font-weight:800;color:var(--s-red)">${overPar}</div>
-        <div style="font-size:9px;font-weight:700;letter-spacing:1px;color:var(--text-muted);margin-top:2px">OVER PAR</div>
-      </div>
-    </div>`;
-
-  // Leader situation
-  html += `
-    <div style="padding:14px;background:var(--card-bg);border:1px solid var(--card-border);border-radius:10px;margin-bottom:12px">
-      <div style="font-size:10px;font-weight:700;letter-spacing:2px;color:var(--gold);margin-bottom:8px">LEADER SITUATION</div>
-      <div style="font-size:14px;font-weight:700;color:var(--text);line-height:1.6">
-        ${leaderCount > 1
-          ? `<span style="color:var(--gold)">${leaderCount}-way tie</span> at the top at <span style="color:var(--s-green)">${leader.score}</span>. ${chasers.map(c => c.name.split(' ').pop()).join(', ')} ${chasers.length === 1 ? 'is' : 'are'} locked with ${leader.name.split(' ').pop()}.`
-          : `<span style="color:var(--gold)">${leader.name}</span> leads at <span style="color:var(--s-green)">${leader.score}</span>.${active[1] ? ` ${active[1].name.split(' ').pop()} trails at ${active[1].score}.` : ''}`
-        }
-      </div>
-    </div>`;
-
-  // Win probability & odds
-  html += `
-    <div style="padding:14px;background:var(--card-bg);border:1px solid var(--card-border);border-radius:10px;margin-bottom:12px">
-      <div style="font-size:10px;font-weight:700;letter-spacing:2px;color:var(--green);margin-bottom:10px">WIN PROBABILITY</div>
-      ${oddsPlayers.slice(0, 12).map((p,i) => {
-        const pct = p.winPct;
-        const odds = toAmericanOdds(pct);
-        const barWidth = Math.max(4, Math.min(100, pct * 3));
-        return `
-        <div style="display:flex;align-items:center;padding:5px 0;${i<11?'border-bottom:1px solid var(--card-border)':''}">
-          <div style="width:22px;font-size:11px;font-weight:700;color:var(--g500)">${p.pos}</div>
-          <div style="flex:1;font-size:12px;font-weight:600;color:var(--text)">${p.name}</div>
-          <div style="width:60px;margin-right:8px">
-            <div style="height:6px;background:var(--card-border);border-radius:3px;overflow:hidden">
-              <div style="height:100%;width:${barWidth}%;background:var(--green);border-radius:3px"></div>
-            </div>
-          </div>
-          <div style="width:36px;text-align:right;font-size:11px;font-weight:700;color:var(--text)">${pct.toFixed(1)}%</div>
-          <div style="width:46px;text-align:right;font-size:11px;font-weight:700;color:${odds.startsWith('-')?'var(--s-green)':'var(--text-muted)'}">${odds}</div>
-        </div>`;
-      }).join('')}
-    </div>`;
-
-  // Staff picks
-  const bestValue = oddsPlayers.filter(p => p.strokesBack <= 3 && p.strokesBack > 0)
-    .sort((a,b) => {
-      // Prefer players with good today scores who are close to the lead
-      const aToday = a.today === 'E' ? 0 : (parseInt(a.today) || 0);
-      const bToday = b.today === 'E' ? 0 : (parseInt(b.today) || 0);
-      return (a.strokesBack + aToday * 0.5) - (b.strokesBack + bToday * 0.5);
-    });
-  const longshot = oddsPlayers.filter(p => p.strokesBack >= 4 && p.strokesBack <= 7)
-    .sort((a,b) => {
-      const aToday = a.today === 'E' ? 0 : (parseInt(a.today) || 0);
-      const bToday = b.today === 'E' ? 0 : (parseInt(b.today) || 0);
-      return aToday - bToday;
-    });
-
-  if (bestValue.length > 0 || longshot.length > 0) {
-    html += `
-      <div style="padding:14px;background:var(--card-bg);border:1px solid var(--card-border);border-radius:10px;margin-bottom:12px">
-        <div style="font-size:10px;font-weight:700;letter-spacing:2px;color:var(--gold);margin-bottom:10px">TOURFEED PICKS</div>
-        ${bestValue[0] ? `
-        <div style="padding:10px;background:rgba(45,143,111,0.08);border-radius:8px;margin-bottom:8px">
-          <div style="display:flex;align-items:center;margin-bottom:4px">
-            <span class="tag" style="color:var(--green);background:rgba(45,143,111,0.15);font-size:9px;margin-right:6px">BEST VALUE</span>
-            <span style="font-size:9px;color:var(--text-muted)">${bestValue[0].strokesBack} back · ${toAmericanOdds(bestValue[0].winPct)}</span>
-          </div>
-          <div style="font-size:14px;font-weight:800;color:var(--text)">${bestValue[0].c} ${bestValue[0].name}</div>
-          <div style="font-size:11px;color:var(--text-muted);margin-top:2px">${bestValue[0].score} overall${bestValue[0].today ? ` · ${bestValue[0].today} today` : ''} · ${bestValue[0].winPct.toFixed(1)}% win prob</div>
-        </div>` : ''}
-        ${longshot[0] ? `
-        <div style="padding:10px;background:rgba(212,168,83,0.08);border-radius:8px">
-          <div style="display:flex;align-items:center;margin-bottom:4px">
-            <span class="tag" style="color:var(--gold);background:rgba(212,168,83,0.15);font-size:9px;margin-right:6px">LONGSHOT</span>
-            <span style="font-size:9px;color:var(--text-muted)">${longshot[0].strokesBack} back · ${toAmericanOdds(longshot[0].winPct)}</span>
-          </div>
-          <div style="font-size:14px;font-weight:800;color:var(--text)">${longshot[0].c} ${longshot[0].name}</div>
-          <div style="font-size:11px;color:var(--text-muted);margin-top:2px">${longshot[0].score} overall${longshot[0].today ? ` · ${longshot[0].today} today` : ''} · ${longshot[0].winPct.toFixed(1)}% win prob</div>
-        </div>` : ''}
-      </div>`;
+  // Current PGA event (already loaded)
+  if (TOURNAMENT && PLAYERS.length > 0) {
+    const active = PLAYERS.filter(p => p.status === 'active');
+    if (active.length > 0) {
+      const pgaData = {
+        name: TOURNAMENT.name,
+        course: TOURNAMENT.course,
+        round: TOURNAMENT.round,
+        state: 'in',
+        stateName: '',
+        statusText: TOURNAMENT.status,
+        players: active.slice(0, 20).map(p => ({
+          name: p.name.split(' ').map((w,i,a) => i < a.length-1 ? w[0]+'.' : w).join(' '),
+          fullName: p.name,
+          score: p.score,
+          today: p.today || '',
+          order: 0,
+        })),
+      };
+      html += renderTourPicks(pgaData, 'PGA TOUR', 'var(--green)');
+    }
   }
 
-  // Hot rounds today
-  if (hotRounds.length > 0) {
-    html += `
-      <div style="padding:14px;background:var(--card-bg);border:1px solid var(--card-border);border-radius:10px;margin-bottom:12px">
-        <div style="font-size:10px;font-weight:700;letter-spacing:2px;color:var(--s-green);margin-bottom:8px">HOT ROUNDS TODAY</div>
-        ${hotRounds.map(p => `
-          <div style="display:flex;align-items:center;padding:4px 0">
-            <div style="flex:1;font-size:13px;color:var(--text)">${p.c} ${p.name}</div>
-            <div style="font-size:13px;font-weight:800;color:var(--s-green)">${p.today}</div>
-            <div style="font-size:11px;color:var(--text-muted);margin-left:8px;width:30px;text-align:right">thru ${p.thru}</div>
-          </div>
-        `).join('')}
-      </div>`;
+  // Fetch other tours in background and render when ready
+  const otherTours = [
+    { id: 'lpga', sport: 'golf/lpga', label: 'LPGA', color: '#E91E8C' },
+    { id: 'dpw', sport: 'golf/eur', label: 'DP WORLD TOUR', color: '#4A90D9' },
+    { id: 'kft', sport: 'golf/kft', label: 'KORN FERRY TOUR', color: 'var(--gold)' },
+    { id: 'champ', sport: 'golf/champ', label: 'CHAMPIONS TOUR', color: 'var(--text-muted)' },
+  ];
+
+  // Render cached tours immediately
+  otherTours.forEach(t => {
+    if (insightsCache[t.id]) {
+      html += renderTourPicks(insightsCache[t.id], t.label, t.color);
+    }
+  });
+
+  // Fetch uncached tours in background
+  const uncached = otherTours.filter(t => !insightsCache[t.id]);
+  if (uncached.length > 0) {
+    if (!html) html += '<div style="text-align:center;padding:30px"><div style="font-size:13px;color:var(--text-muted)">Loading picks across tours...</div></div>';
+    (async () => {
+      for (const t of uncached) {
+        await fetchTourInsights(t.id, t.sport);
+      }
+      renderApp();
+    })();
   }
 
-  // Cold rounds today
-  if (coldRounds.length > 0 && coldRounds[0].today && (coldRounds[0].today.startsWith('+') || coldRounds[0].today === 'E')) {
-    html += `
-      <div style="padding:14px;background:var(--card-bg);border:1px solid var(--card-border);border-radius:10px;margin-bottom:12px">
-        <div style="font-size:10px;font-weight:700;letter-spacing:2px;color:var(--s-red);margin-bottom:8px">STRUGGLING TODAY</div>
-        ${coldRounds.map(p => `
-          <div style="display:flex;align-items:center;padding:4px 0">
-            <div style="flex:1;font-size:13px;color:var(--text)">${p.c} ${p.name}</div>
-            <div style="font-size:13px;font-weight:800;color:var(--s-red)">${p.today}</div>
-            <div style="font-size:11px;color:var(--text-muted);margin-left:8px;width:30px;text-align:right">thru ${p.thru}</div>
-          </div>
-        `).join('')}
-      </div>`;
+  if (!html) {
+    html = '<div style="text-align:center;padding:50px 20px"><div style="font-size:14px;font-weight:700;color:var(--text-dim)">No active tournaments</div><div style="font-size:12px;color:var(--text-muted);margin-top:8px">Check back during tournament play for picks and odds</div></div>';
   }
 
-  // Disclaimer
-  html += `<div class="disclaimer" style="margin-top:16px">All analysis is for entertainment purposes only. Please gamble responsibly. If you or someone you know has a gambling problem, call 1-800-GAMBLER.</div>`;
+  // Upcoming event
+  if (scheduleData.length > 0) {
+    const now = Date.now();
+    const upcoming = scheduleData.filter(e => e.startDate && new Date(e.startDate).getTime() > now).slice(0, 2);
+    if (upcoming.length > 0) {
+      html += '<div style="padding:14px;background:var(--card-bg);border:1px solid var(--card-border);border-radius:10px;margin-bottom:12px">';
+      html += '<div style="font-size:10px;font-weight:700;letter-spacing:2px;color:var(--gold);margin-bottom:10px">COMING UP</div>';
+      upcoming.forEach(e => {
+        const d = new Date(e.startDate);
+        const dateStr = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        html += '<div style="display:flex;align-items:center;padding:6px 0">';
+        html += '<div style="flex:1"><div style="font-size:13px;font-weight:700;color:var(--text)">' + (e.event || '') + '</div>';
+        html += '<div style="font-size:11px;color:var(--text-muted)">' + (e.course || '') + '</div></div>';
+        html += '<div style="text-align:right"><div style="font-size:12px;font-weight:700;color:var(--green)">' + dateStr + '</div>';
+        if (e.purse) html += '<div style="font-size:10px;color:var(--text-muted)">' + e.purse + '</div>';
+        html += '</div></div>';
+      });
+      html += '</div>';
+    }
+  }
+
+  html += '<div class="disclaimer" style="margin-top:16px">All picks are model-generated for entertainment only. Please gamble responsibly. If you or someone you know has a gambling problem, call 1-800-GAMBLER.</div>';
 
   return html;
 }
