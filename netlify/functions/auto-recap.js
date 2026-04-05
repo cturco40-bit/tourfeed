@@ -160,21 +160,29 @@ Rules:
           } catch(e2) { continue; }
         }
 
-        // Tweet the recap with link
+        // Store the recap so the frontend can display it
+        const slug = (article.title || tourneyName).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 60);
+        try {
+          await fetch('https://tourfeed.co/.netlify/functions/get-recap', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              title: article.title,
+              body: article.body,
+              tournament: tourneyName,
+              winner: winner.name,
+            }),
+          });
+        } catch(e) { console.warn('Recap store failed:', e.message); }
+
+        // Tweet the recap with deep link to the article
+        const recapUrl = `https://tourfeed.co/?recap=${slug}`;
         const tweetText = (article.tweet || `${winner.name} wins the ${tourneyName} at ${winner.score}`) +
-          `\n\nFULL RECAP → https://tourfeed.co/?ref=x\n\n#PGATour #Golf`;
+          `\n\nFULL RECAP → ${recapUrl}\n\n#PGATour #Golf`;
 
         try {
           await postTweet(tweetText.slice(0, 280));
         } catch(e) { console.warn('Recap tweet failed:', e.message); }
-
-        // Also tweet a thread-style follow-up with top 5
-        try {
-          const top5Text = `📊 Final Leaderboard — ${tourneyName}\n\n` +
-            top10.slice(0, 5).map((p, i) => `${i + 1}. ${p.shortName} (${p.score})`).join('\n') +
-            `\n\n→ https://tourfeed.co/?ref=x`;
-          await postTweet(top5Text.slice(0, 280));
-        } catch(e) {}
 
         return {
           statusCode: 200,
