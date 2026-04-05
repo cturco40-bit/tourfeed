@@ -1446,19 +1446,8 @@ function renderNews() {
     const cached = articleCache[`article_${i}`];
     let bodyHtml = '';
     if (isExpanded) {
-      if (cached?.loading) {
-        bodyHtml = `<div class="card-body" style="padding:16px 0">
-          <div style="height:12px;width:60%;background:var(--card-border);border-radius:4px;margin-bottom:10px;animation:pulse 1.5s ease-in-out infinite"></div>
-          <div style="height:10px;width:40%;background:var(--card-border);border-radius:4px;margin-bottom:16px;animation:pulse 1.5s ease-in-out infinite"></div>
-          <div style="height:10px;width:100%;background:var(--card-border);border-radius:4px;margin-bottom:8px;animation:pulse 1.5s ease-in-out infinite"></div>
-          <div style="height:10px;width:95%;background:var(--card-border);border-radius:4px;margin-bottom:8px;animation:pulse 1.5s ease-in-out infinite;animation-delay:0.1s"></div>
-          <div style="height:10px;width:88%;background:var(--card-border);border-radius:4px;margin-bottom:8px;animation:pulse 1.5s ease-in-out infinite;animation-delay:0.2s"></div>
-          <div style="height:10px;width:70%;background:var(--card-border);border-radius:4px;margin-bottom:16px;animation:pulse 1.5s ease-in-out infinite;animation-delay:0.3s"></div>
-          <div style="height:10px;width:100%;background:var(--card-border);border-radius:4px;margin-bottom:8px;animation:pulse 1.5s ease-in-out infinite;animation-delay:0.15s"></div>
-          <div style="height:10px;width:92%;background:var(--card-border);border-radius:4px;margin-bottom:8px;animation:pulse 1.5s ease-in-out infinite;animation-delay:0.25s"></div>
-          <div style="height:10px;width:80%;background:var(--card-border);border-radius:4px;animation:pulse 1.5s ease-in-out infinite;animation-delay:0.35s"></div>
-        </div>`;
-      } else if (cached?.body) {
+      if (cached?.body) {
+        // AI article ready — show it
         const wordCount = cached.body.replace(/<[^>]+>/g, '').split(/\s+/).length;
         const readTime = Math.max(1, Math.ceil(wordCount / 200));
         bodyHtml = `<div class="card-body">
@@ -1472,7 +1461,14 @@ function renderNews() {
           ${cached.tweetHtml ? `<div style="margin-top:16px">${cached.tweetHtml}</div>` : ''}
         </div>`;
       } else {
-        bodyHtml = `<div class="card-body"><p>${n.summary}</p></div>`;
+        // Show summary instantly while AI generates in background
+        bodyHtml = `<div class="card-body">
+          <div style="font-size:11px;color:var(--text-muted);margin-bottom:10px;display:flex;align-items:center;gap:6px">
+            <span>By TourFeed Staff</span>
+            ${n.time ? `<span>·</span><span>${n.time} ago</span>` : ''}
+          </div>
+          <div style="line-height:1.7;font-size:14px;color:var(--text)"><p>${n.summary}</p></div>
+        </div>`;
       }
     }
     return `
