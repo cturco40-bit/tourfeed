@@ -666,15 +666,34 @@ let newsError = null;
 let newsFetched = false;
 let articleCache = {}; // Cache generated articles by index
 
-const SOURCE_COLORS = {
-  'ESPN': { color: 'var(--green)', label: 'ESPN' },
-  'Golf Digest': { color: 'var(--gold)', label: 'GOLF DIGEST' },
-  'PGA Tour': { color: 'var(--green)', label: 'PGA TOUR' },
-  'Golf Channel': { color: '#4A90D9', label: 'GOLF CHANNEL' },
-  'DP World': { color: '#1B2538', label: 'DP WORLD' },
-  'LPGA': { color: '#E91E8C', label: 'LPGA' },
-  'Golf News': { color: 'var(--text-muted)', label: 'GOLF NEWS' },
-};
+function categorizeArticle(title, summary) {
+  const text = `${title} ${summary}`.toLowerCase();
+  if (/injur|withdraw|wd|pull out|sidelined|surgery|wrist|back|knee/i.test(text))
+    return { tag: 'INJURY', color: 'var(--s-red)' };
+  if (/masters|u\.?s\.?\s*open|pga championship|open championship|the open|major/i.test(text))
+    return { tag: 'MAJOR', color: 'var(--gold)' };
+  if (/liv golf|liv\b/i.test(text))
+    return { tag: 'LIV GOLF', color: '#D4A853' };
+  if (/lpga|women|nelly|lexi|ko jin/i.test(text))
+    return { tag: 'LPGA', color: '#E91E8C' };
+  if (/dp world|european tour|race to dubai|rolex/i.test(text))
+    return { tag: 'DP WORLD', color: '#4A90D9' };
+  if (/ryder cup|presidents cup|solheim/i.test(text))
+    return { tag: 'TEAM EVENT', color: 'var(--gold)' };
+  if (/sign|deal|contract|sponsor|endorse|equipment|switch|titleist|callaway|taylormade/i.test(text))
+    return { tag: 'EQUIPMENT', color: 'var(--text-muted)' };
+  if (/rank|world ranking|fedex|playoff|standings/i.test(text))
+    return { tag: 'RANKINGS', color: '#4A90D9' };
+  if (/trade|transfer|defect|join|move|leave/i.test(text))
+    return { tag: 'TRANSFER', color: 'var(--gold)' };
+  if (/rule|usga|r&a|penalty|disqualif/i.test(text))
+    return { tag: 'RULES', color: 'var(--s-red)' };
+  if (/preview|tee time|field|course|bet|odds|pick|wager/i.test(text))
+    return { tag: 'PREVIEW', color: 'var(--green)' };
+  if (/recap|result|win|champion|victory|leader|shot|round|birdie|eagle|bogey|score|leaderboard/i.test(text))
+    return { tag: 'TOURNAMENT', color: 'var(--green)' };
+  return { tag: 'TOUR NEWS', color: 'var(--text-muted)' };
+}
 
 function timeAgo(dateStr) {
   if (!dateStr) return '';
@@ -716,15 +735,14 @@ async function fetchNews() {
     }
 
     newsData = articles.map(a => {
-      const sc = SOURCE_COLORS[a.source] || { color: 'var(--text-muted)', label: a.source?.toUpperCase() || 'NEWS' };
+      const cat = categorizeArticle(a.title || '', a.summary || '');
       return {
         title: a.title || '',
         summary: a.summary || '',
         image: a.image || '',
         time: timeAgo(a.published),
-        tag: sc.label,
-        tc: sc.color,
-        source: a.source || '',
+        tag: cat.tag,
+        tc: cat.color,
       };
     });
     newsFetched = true;
@@ -1400,11 +1418,17 @@ function renderNews() {
           <div style="height:10px;width:80%;background:var(--card-border);border-radius:4px;animation:pulse 1.5s ease-in-out infinite;animation-delay:0.35s"></div>
         </div>`;
       } else if (cached?.body) {
+        const wordCount = cached.body.replace(/<[^>]+>/g, '').split(/\s+/).length;
+        const readTime = Math.max(1, Math.ceil(wordCount / 200));
         bodyHtml = `<div class="card-body">
-          ${n.image ? `<img src="${n.image}" style="width:100%;border-radius:8px;margin-bottom:12px" alt="" onerror="this.style.display='none'">` : ''}
-          ${cached.title ? `<div style="font-size:17px;font-weight:800;color:var(--text);margin-bottom:8px;line-height:1.3">${cached.title}</div>` : ''}
-          <div style="font-size:11px;color:var(--text-muted);margin-bottom:12px">By TourFeed Staff${n.time ? ` · ${n.time} ago` : ''}</div>
-          ${cached.body}
+          ${n.image ? `<img src="${n.image}" style="width:100%;border-radius:8px;margin-bottom:14px" alt="" onerror="this.style.display='none'">` : ''}
+          ${cached.title ? `<div style="font-size:18px;font-weight:800;color:var(--text);margin-bottom:8px;line-height:1.3">${cached.title}</div>` : ''}
+          <div style="font-size:11px;color:var(--text-muted);margin-bottom:14px;display:flex;align-items:center;gap:6px">
+            <span>By TourFeed Staff</span>
+            ${n.time ? `<span>·</span><span>${n.time} ago</span>` : ''}
+            <span>·</span><span>${readTime} min read</span>
+          </div>
+          <div style="line-height:1.7;font-size:14px;color:var(--text)">${cached.body}</div>
         </div>`;
       } else {
         bodyHtml = `<div class="card-body"><p>${n.summary}</p></div>`;
