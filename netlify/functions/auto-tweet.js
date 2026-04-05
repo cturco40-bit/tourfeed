@@ -329,8 +329,8 @@ exports.handler = async (event) => {
     const tagStr = '\n\n' + hashtags.join(' ');
     if (tweetText.length + tagStr.length <= 280) tweetText += tagStr;
 
-    const graphicUrl = getLeaderboardGraphic(tourneyName, top8);
-    const result = await postTweet(tweetText, graphicUrl);
+    // Use TourFeed branded banner as tweet image
+    const result = await postTweet(tweetText, 'https://tourfeed.co/og-image.png');
 
     return {
       statusCode: 200,
