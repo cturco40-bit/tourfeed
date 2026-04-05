@@ -721,7 +721,7 @@ async function fetchNews() {
     // Try multi-source aggregator first
     let articles = null;
     try {
-      const res = await fetch('/.netlify/functions/fetch-news', { method: 'POST' });
+      const res = await fetch('/.netlify/functions/fetch-news');
       if (res.ok) {
         const text = await res.text();
         if (text.startsWith('{')) {
