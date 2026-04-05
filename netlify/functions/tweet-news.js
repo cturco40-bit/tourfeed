@@ -101,11 +101,14 @@ exports.handler = async (event) => {
   const headers = { 'Content-Type': 'application/json' };
 
   try {
-    // Fetch news
-    const newsRes = await fetch('https://tourfeed.co/.netlify/functions/fetch-news');
-    if (!newsRes.ok) throw new Error(`News fetch ${newsRes.status}`);
+    // Fetch news directly from ESPN (most reliable source)
+    const newsRes = await fetch('https://site.api.espn.com/apis/site/v2/sports/golf/pga/news?limit=12');
+    if (!newsRes.ok) throw new Error(`ESPN news ${newsRes.status}`);
     const newsData = await newsRes.json();
-    const articles = newsData.articles || [];
+    const articles = (newsData.articles || []).map(a => ({
+      title: a.headline || '',
+      summary: a.description || '',
+    }));
 
     if (articles.length === 0) {
       return { statusCode: 200, headers, body: JSON.stringify({ skipped: 'No articles' }) };
