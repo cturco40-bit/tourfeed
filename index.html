@@ -278,7 +278,7 @@
 // ============================================
 
 
-const TABS = ['Scores','News','Insights','Standings','Schedule','Players'];
+const TABS = ['Scores','News','Insights','Standings','Schedule'];
 let currentTab = 0;
 let expandedCard = null;
 let lbSearch = '';
@@ -1001,9 +1001,9 @@ function switchTab(i) {
   renderNav();
   // Trigger data fetches on tab switch
   if (i === 1 && !newsFetched) fetchNews();
+  if (i === 2 && !scheduleFetched) fetchESPNSchedule(); // Insights needs schedule for upcoming
   if (i === 3 && !standingsFetched[standingsFilter]) fetchESPNStandings(standingsFilter);
   if (i === 4 && !scheduleFetched) fetchESPNSchedule();
-  if (i === 5) buildPlayerProfiles();
   renderApp();
 }
 
@@ -1941,7 +1941,6 @@ function renderApp() {
     case 2: html += renderInsights(); break;
     case 3: html += renderStandings(); break;
     case 4: html += renderSchedule(); break;
-    case 5: html += renderPlayers(); break;
   }
 
   html += '</div>';
