@@ -757,15 +757,15 @@ async function fetchNews() {
     newsLoading = false;
     renderApp();
 
-    // Pre-generate articles in background so they're instant on click
-    // Run 3 at a time to avoid overwhelming the function
+    // Pre-generate top 8 articles in background (controls API costs)
     (async () => {
-      for (let i = 0; i < newsData.length; i += 3) {
+      const limit = Math.min(8, newsData.length);
+      for (let i = 0; i < limit; i += 3) {
         await Promise.allSettled([
           generateArticle(i),
-          generateArticle(i + 1),
-          generateArticle(i + 2),
-        ]);
+          i + 1 < limit ? generateArticle(i + 1) : null,
+          i + 2 < limit ? generateArticle(i + 2) : null,
+        ].filter(Boolean));
       }
     })();
   } catch(e) {
