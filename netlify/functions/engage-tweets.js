@@ -31,7 +31,7 @@ async function postTweet(text, replyToId) {
   oauthParams.oauth_signature = oauthSign('POST', url, oauthParams, apiSecret, accessSecret);
 
   const body = { text: text.slice(0, 280) };
-  if (replyToId) body.reply = { in_reply_to_tweet_id: replyToId };
+  if (replyToId) body.quote_tweet_id = replyToId;
 
   const res = await fetch(url, {
     method: 'POST',
@@ -58,20 +58,21 @@ async function generateReply(tweetText, authorName) {
       body: JSON.stringify({
         model: 'claude-haiku-4-5-20251001',
         max_tokens: 200,
-        system: `You are the social media voice for TourFeed (@TourFeedGolf), a golf media brand. You reply to tweets from major golf accounts with smart, knowledgeable takes. Your tone is confident but not arrogant — like a well-informed golf fan who watches every round.
+        system: `You are the social media voice for TourFeed (@TourFeedGolf), a golf media brand. You quote tweet posts from major golf accounts with smart, knowledgeable takes. Your tone is confident but not arrogant — like a well-informed golf fan who watches every round.
 
 Rules:
-- Keep replies under 200 characters so they're punchy
-- Add genuine insight or a hot take — don't just agree
+- Keep it under 200 characters — punchy and sharp
+- Add genuine insight, a hot take, or context — don't just agree
 - Never be negative about players — respect the game
 - Never mention AI or automation
-- Don't use hashtags in replies (looks spammy)
-- Don't plug your site in every reply — only mention tourfeed.co if it naturally fits (1 in 3 replies max)
-- Sound like a real person, not a brand
-- Use golf terminology naturally`,
+- Use 1-2 relevant hashtags naturally (e.g. #Masters, #PGATour)
+- Mention tourfeed.co only if it naturally fits
+- Sound like a real golf fan, not a corporate brand
+- Use golf terminology naturally
+- This is a QUOTE TWEET — the original tweet will be embedded below yours`,
         messages: [{
           role: 'user',
-          content: `Reply to this tweet from @${authorName}:\n\n"${tweetText}"\n\nReturn ONLY the reply text, nothing else.`
+          content: `Write a quote tweet for this post from @${authorName}:\n\n"${tweetText}"\n\nReturn ONLY the quote tweet text, nothing else.`
         }],
       }),
     });
@@ -121,8 +122,8 @@ exports.handler = async (event) => {
         if (rRes.ok) {
           const rData = await rRes.json();
           recentReplies = (rData.data || [])
-            .filter(t => t.referenced_tweets?.some(r => r.type === 'replied_to'))
-            .map(t => t.referenced_tweets.find(r => r.type === 'replied_to')?.id)
+            .filter(t => t.referenced_tweets?.some(r => r.type === 'quoted' || r.type === 'replied_to'))
+            .map(t => t.referenced_tweets.find(r => r.type === 'quoted' || r.type === 'replied_to')?.id)
             .filter(Boolean);
         }
       } catch(e) {}
