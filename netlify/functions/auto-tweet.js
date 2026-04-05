@@ -87,6 +87,54 @@ function extractLeaderFromTweet(text) {
   return null;
 }
 
+// Tweet about the next upcoming event when no tournament is active
+async function tweetNextEvent(headers, force) {
+  try {
+    const lastTweet = await getLastTweet();
+    const minsSinceLast = lastTweet ? (Date.now() - lastTweet.time.getTime()) / 60000 : 999;
+
+    // Only tweet next event once every 4 hours
+    if (!force && minsSinceLast < 240) {
+      return { statusCode: 200, headers, body: JSON.stringify({ skipped: 'Too soon for next event tweet', minutesSinceLast: Math.round(minsSinceLast) }) };
+    }
+    // Don't repeat if last tweet already mentioned upcoming
+    if (!force && lastTweet?.text?.includes('Up Next')) {
+      return { statusCode: 200, headers, body: JSON.stringify({ skipped: 'Already tweeted next event' }) };
+    }
+
+    // Fetch schedule to find next event
+    const res = await fetch('https://site.api.espn.com/apis/site/v2/sports/golf/pga/scoreboard?dates=2026');
+    if (!res.ok) return { statusCode: 200, headers, body: JSON.stringify({ skipped: 'Could not fetch schedule' }) };
+    const data = await res.json();
+
+    const now = Date.now();
+    const upcoming = (data.events || [])
+      .filter(e => new Date(e.date).getTime() > now)
+      .sort((a, b) => new Date(a.date) - new Date(b.date));
+
+    if (upcoming.length === 0) {
+      return { statusCode: 200, headers, body: JSON.stringify({ skipped: 'No upcoming events' }) };
+    }
+
+    const next = upcoming[0];
+    const comp = next.competitions?.[0];
+    const name = next.shortName || next.name || 'Tournament';
+    const course = comp?.venue?.fullName || '';
+    const startDate = new Date(next.date);
+    const dateStr = startDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    const isMajor = /masters|pga championship|u\.?s\.?\s*open|open championship/i.test(name);
+
+    let tweetText = isMajor
+      ? `🏌️ Up Next: ${name}\n\n📍 ${course}\n📅 ${dateStr}\n\nGet ready. Live scores + coverage at https://tourfeed.co\n\n#Golf #PGATour`
+      : `⛳ Up Next: ${name}\n\n📍 ${course}\n📅 ${dateStr}\n\nLive scores → https://tourfeed.co\n\n#PGATour #Golf`;
+
+    const result = await postTweet(tweetText);
+    return { statusCode: 200, headers, body: JSON.stringify({ success: true, reason: 'next_event', tweet_id: result.data?.id, text: tweetText }) };
+  } catch (err) {
+    return { statusCode: 200, headers, body: JSON.stringify({ skipped: 'Next event tweet failed', error: err.message }) };
+  }
+}
+
 exports.handler = async (event) => {
   const headers = { 'Content-Type': 'application/json' };
 
@@ -124,7 +172,10 @@ exports.handler = async (event) => {
       } catch(e) { continue; }
     }
 
-    if (!evt || !comp) return { statusCode: 200, headers, body: JSON.stringify({ skipped: 'No active event on any tour' }) };
+    if (!evt || !comp) {
+      // No active event — try to tweet about the next upcoming event
+      return await tweetNextEvent(headers, force);
+    }
 
     const status = comp.status || {};
     const round = status.period || 1;
@@ -135,9 +186,9 @@ exports.handler = async (event) => {
 
     if (players.length === 0) return { statusCode: 200, headers, body: JSON.stringify({ skipped: 'No players' }) };
 
-    // Only tweet during active tournament states
+    // Not during active play — tweet next event preview
     if (!force && stState !== 'in' && stState !== 'post' && stName !== 'STATUS_FINAL') {
-      return { statusCode: 200, headers, body: JSON.stringify({ skipped: 'Not during active play', state: stState }) };
+      return await tweetNextEvent(headers, force);
     }
 
     const top5 = players.slice(0, 5).map(p => ({
@@ -221,11 +272,30 @@ exports.handler = async (event) => {
     } else if (reason === 'big_mover' && bigMover) {
       tweetText = `🔥 ${bigMover.fullName} is ${bigMover.today} today at the ${tourneyName}\n\nNow at ${bigMover.score} overall\n\n${tied.length > 1 ? `Leaders (${leader.score}): ${tied.map(p=>p.name).join(', ')}` : `Leader: ${leader.name} (${leader.score})`}\n\n→ https://tourfeed.co`;
     } else {
-      // Hourly update
+      // Hourly update with pick
+      // Find a value pick — player 2-5 spots back with a good today score
+      const parseScore = (s) => s === 'E' ? 0 : (parseInt(s) || 0);
+      const leaderNum = parseScore(leader.score);
+      const contenders = players.slice(1, 15).map(p => ({
+        name: p.athlete?.shortName || '?',
+        score: typeof p.score === 'string' ? p.score : '?',
+        today: p.linescores?.[round - 1]?.displayValue || '',
+        back: Math.abs(parseScore(typeof p.score === 'string' ? p.score : '0') - leaderNum),
+      })).filter(p => p.back >= 1 && p.back <= 5);
+
+      const hotPick = contenders
+        .filter(p => p.today && p.today !== '-' && parseScore(p.today) < 0)
+        .sort((a, b) => parseScore(a.today) - parseScore(b.today))[0];
+
+      let pickLine = '';
+      if (hotPick) {
+        pickLine = `\n\n🎯 TourFeed Pick: ${hotPick.name} (${hotPick.score}, ${hotPick.today} today)`;
+      }
+
       if (tied.length > 1) {
-        tweetText = `⛳ ${tourneyName} — R${round} Update\n\nTied at ${leader.score}:\n${tied.map(p => p.name).join(', ')}\n\n${top5.filter(p => p.score !== leader.score).slice(0,2).map(p => `${p.name} (${p.score})`).join(' | ')}\n\n→ https://tourfeed.co`;
+        tweetText = `⛳ ${tourneyName} — R${round} Update\n\nTied at ${leader.score}:\n${tied.map(p => p.name).join(', ')}${pickLine}\n\n→ https://tourfeed.co`;
       } else {
-        tweetText = `⛳ ${tourneyName} — R${round} Update\n\n🥇 ${leader.name} (${leader.score})\n${top5.slice(1, 4).map((p,i) => `${i+2}. ${p.name} (${p.score})`).join('\n')}\n\n→ https://tourfeed.co`;
+        tweetText = `⛳ ${tourneyName} — R${round} Update\n\n🥇 ${leader.name} (${leader.score})\n${top5.slice(1, 3).map((p,i) => `${i+2}. ${p.name} (${p.score})`).join('\n')}${pickLine}\n\n→ https://tourfeed.co`;
       }
     }
 
