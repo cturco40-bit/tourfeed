@@ -126,7 +126,7 @@ async function tweetNextEvent(headers, force) {
 
     let tweetText = isMajor
       ? `🏌️ Up Next: ${name}\n\n📍 ${course}\n📅 ${dateStr}\n\nGet ready. Live scores + coverage at https://tourfeed.co\n\n#Golf #PGATour`
-      : `⛳ Up Next: ${name}\n\n📍 ${course}\n📅 ${dateStr}\n\nLive scores → https://tourfeed.co\n\n#PGATour #Golf`;
+      : `⛳ Up Next: ${name}\n\n📍 ${course}\n📅 ${dateStr}\n\nLive scores → https://tourfeed.co/?ref=x\n\n#PGATour #Golf`;
 
     const result = await postTweet(tweetText);
     return { statusCode: 200, headers, body: JSON.stringify({ success: true, reason: 'next_event', tweet_id: result.data?.id, text: tweetText }) };
@@ -253,24 +253,24 @@ exports.handler = async (event) => {
 
     if (isFinal) {
       if (tied.length > 1) {
-        tweetText = `🏆 PLAYOFF at the ${tourneyName}!\n\n${tied.map(p => `${p.name} (${p.score})`).join('\n')}\n\nStay locked in → https://tourfeed.co`;
+        tweetText = `🏆 PLAYOFF at the ${tourneyName}!\n\n${tied.map(p => `${p.name} (${p.score})`).join('\n')}\n\nStay locked in → https://tourfeed.co/?ref=x`;
       } else {
-        tweetText = `🏆 ${leader.fullName} wins the ${tourneyName} at ${leader.score}!\n\n${top5.slice(1, 4).map((p,i) => `${i+2}. ${p.name} (${p.score})`).join('\n')}\n\nFull leaderboard → https://tourfeed.co`;
+        tweetText = `🏆 ${leader.fullName} wins the ${tourneyName} at ${leader.score}!\n\n${top5.slice(1, 4).map((p,i) => `${i+2}. ${p.name} (${p.score})`).join('\n')}\n\nFull leaderboard → https://tourfeed.co/?ref=x`;
       }
     } else if (isRoundComplete) {
       if (tied.length > 1) {
-        tweetText = `📊 R${round} Complete — ${tourneyName}\n\n${tied.length}-way tie at ${leader.score}:\n${tied.map(p => p.name).join(', ')}\n\nLive scores → https://tourfeed.co`;
+        tweetText = `📊 R${round} Complete — ${tourneyName}\n\n${tied.length}-way tie at ${leader.score}:\n${tied.map(p => p.name).join(', ')}\n\nLive scores → https://tourfeed.co/?ref=x`;
       } else {
-        tweetText = `📊 R${round} Complete — ${tourneyName}\n\n🥇 ${leader.name} leads at ${leader.score}\n${top5.slice(1, 3).map((p,i) => `${i+2}. ${p.name} (${p.score})`).join('\n')}\n\nLive scores → https://tourfeed.co`;
+        tweetText = `📊 R${round} Complete — ${tourneyName}\n\n🥇 ${leader.name} leads at ${leader.score}\n${top5.slice(1, 3).map((p,i) => `${i+2}. ${p.name} (${p.score})`).join('\n')}\n\nLive scores → https://tourfeed.co/?ref=x`;
       }
     } else if (reason === 'leader_change') {
       if (tied.length > 1) {
-        tweetText = `🔄 NEW LEADERS — ${tourneyName} R${round}\n\nTied at ${leader.score}:\n${tied.map(p => p.name).join(', ')}\n\n→ https://tourfeed.co`;
+        tweetText = `🔄 NEW LEADERS — ${tourneyName} R${round}\n\nTied at ${leader.score}:\n${tied.map(p => p.name).join(', ')}\n\n→ https://tourfeed.co/?ref=x`;
       } else {
-        tweetText = `🔄 LEAD CHANGE — ${tourneyName} R${round}\n\n🥇 ${leader.fullName} takes the lead at ${leader.score}\n\n${top5.slice(1, 3).map((p,i) => `${i+2}. ${p.name} (${p.score})`).join('\n')}\n\n→ https://tourfeed.co`;
+        tweetText = `🔄 LEAD CHANGE — ${tourneyName} R${round}\n\n🥇 ${leader.fullName} takes the lead at ${leader.score}\n\n${top5.slice(1, 3).map((p,i) => `${i+2}. ${p.name} (${p.score})`).join('\n')}\n\n→ https://tourfeed.co/?ref=x`;
       }
     } else if (reason === 'big_mover' && bigMover) {
-      tweetText = `🔥 ${bigMover.fullName} is ${bigMover.today} today at the ${tourneyName}\n\nNow at ${bigMover.score} overall\n\n${tied.length > 1 ? `Leaders (${leader.score}): ${tied.map(p=>p.name).join(', ')}` : `Leader: ${leader.name} (${leader.score})`}\n\n→ https://tourfeed.co`;
+      tweetText = `🔥 ${bigMover.fullName} is ${bigMover.today} today at the ${tourneyName}\n\nNow at ${bigMover.score} overall\n\n${tied.length > 1 ? `Leaders (${leader.score}): ${tied.map(p=>p.name).join(', ')}` : `Leader: ${leader.name} (${leader.score})`}\n\n→ https://tourfeed.co/?ref=x`;
     } else {
       // Hourly update with pick
       // Find a value pick — player 2-5 spots back with a good today score
@@ -293,9 +293,9 @@ exports.handler = async (event) => {
       }
 
       if (tied.length > 1) {
-        tweetText = `⛳ ${tourneyName} — R${round} Update\n\nTied at ${leader.score}:\n${tied.map(p => p.name).join(', ')}${pickLine}\n\n→ https://tourfeed.co`;
+        tweetText = `⛳ ${tourneyName} — R${round} Update\n\nTied at ${leader.score}:\n${tied.map(p => p.name).join(', ')}${pickLine}\n\n→ https://tourfeed.co/?ref=x`;
       } else {
-        tweetText = `⛳ ${tourneyName} — R${round} Update\n\n🥇 ${leader.name} (${leader.score})\n${top5.slice(1, 3).map((p,i) => `${i+2}. ${p.name} (${p.score})`).join('\n')}${pickLine}\n\n→ https://tourfeed.co`;
+        tweetText = `⛳ ${tourneyName} — R${round} Update\n\n🥇 ${leader.name} (${leader.score})\n${top5.slice(1, 3).map((p,i) => `${i+2}. ${p.name} (${p.score})`).join('\n')}${pickLine}\n\n→ https://tourfeed.co/?ref=x`;
       }
     }
 
