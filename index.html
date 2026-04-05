@@ -1498,7 +1498,7 @@ function renderNews() {
 
   // News feed list
   return newsData.map((n,i) => `
-    <div class="card" onclick="expandedCard=${100+i};if(!articleCache['article_${i}'])generateArticle(${i});renderApp();window.scrollTo(0,0)">
+    <div class="card" onclick="expandedCard=${100+i};if(!articleCache[&quot;article_${i}&quot;])generateArticle(${i});renderApp();window.scrollTo(0,0)">
       <div class="card-header">
         <span class="tag" style="color:${n.tc};background:${n.tc}15">${n.tag}</span>
         <span class="card-time">${n.time}</span>
