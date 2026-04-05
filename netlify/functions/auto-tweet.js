@@ -13,31 +13,58 @@ function buildAuthHeader(params) {
     .map(k => `${encodeURIComponent(k)}="${encodeURIComponent(params[k])}"`).join(', ');
 }
 
-async function postTweet(text) {
-  const apiKey = process.env.TWITTER_API_KEY;
-  const apiSecret = process.env.TWITTER_API_SECRET;
-  const accessToken = process.env.TWITTER_ACCESS_TOKEN;
-  const accessSecret = process.env.TWITTER_ACCESS_SECRET;
-  if (!apiKey || !apiSecret || !accessToken || !accessSecret) throw new Error('Missing Twitter creds');
-
-  const url = 'https://api.twitter.com/2/tweets';
-  const oauthParams = {
-    oauth_consumer_key: apiKey,
-    oauth_nonce: crypto.randomBytes(16).toString('hex'),
-    oauth_signature_method: 'HMAC-SHA1',
-    oauth_timestamp: Math.floor(Date.now() / 1000).toString(),
-    oauth_token: accessToken,
-    oauth_version: '1.0',
-  };
-  oauthParams.oauth_signature = oauthSign('POST', url, oauthParams, apiSecret, accessSecret);
-
-  const res = await fetch(url, {
+async function postTweet(text, imageUrl) {
+  const res = await fetch('https://tourfeed.co/.netlify/functions/post-tweet', {
     method: 'POST',
-    headers: { 'Authorization': buildAuthHeader(oauthParams), 'Content-Type': 'application/json' },
-    body: JSON.stringify({ text: text.slice(0, 280) }),
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ text: text.slice(0, 280), image: imageUrl || null }),
   });
-  if (!res.ok) throw new Error(`Twitter ${res.status}: ${await res.text()}`);
+  if (!res.ok) throw new Error(`post-tweet ${res.status}: ${await res.text()}`);
   return await res.json();
+}
+
+// Fetch a relevant image — try ESPN news, then Google News images
+async function getGolfImage(topic) {
+  const keywords = (topic || 'golf pga tour').toLowerCase();
+
+  // Try ESPN news first — look for relevant article
+  try {
+    const res = await fetch('https://site.api.espn.com/apis/site/v2/sports/golf/pga/news?limit=10');
+    if (res.ok) {
+      const data = await res.json();
+      const articles = data.articles || [];
+      // Try to match topic
+      const matched = articles.find(a =>
+        keywords.split(' ').some(w => (a.headline || '').toLowerCase().includes(w))
+      );
+      if (matched?.images?.[0]?.url) return matched.images[0].url;
+      // Fall back to first article with image
+      for (const a of articles) {
+        if (a.images?.[0]?.url) return a.images[0].url;
+      }
+    }
+  } catch(e) {}
+
+  // Try fetching from our own news aggregator
+  try {
+    const res = await fetch('https://tourfeed.co/.netlify/functions/fetch-news', { method: 'POST' });
+    if (res.ok) {
+      const text = await res.text();
+      if (text.startsWith('{')) {
+        const data = JSON.parse(text);
+        const articles = data.articles || [];
+        const matched = articles.find(a =>
+          a.image && keywords.split(' ').some(w => (a.title || '').toLowerCase().includes(w))
+        );
+        if (matched?.image) return matched.image;
+        for (const a of articles) {
+          if (a.image) return a.image;
+        }
+      }
+    }
+  } catch(e) {}
+
+  return null;
 }
 
 // Check our last tweet to avoid duplicates and detect what's changed
@@ -128,7 +155,8 @@ async function tweetNextEvent(headers, force) {
       ? `🏌️ Up Next: ${name}\n\n📍 ${course}\n📅 ${dateStr}\n\nGet ready. Live scores + coverage at https://tourfeed.co\n\n#Golf #PGATour`
       : `⛳ Up Next: ${name}\n\n📍 ${course}\n📅 ${dateStr}\n\nLive scores → https://tourfeed.co/?ref=x\n\n#PGATour #Golf`;
 
-    const result = await postTweet(tweetText);
+    const nextImg = await getGolfImage(name);
+    const result = await postTweet(tweetText, nextImg);
     return { statusCode: 200, headers, body: JSON.stringify({ success: true, reason: 'next_event', tweet_id: result.data?.id, text: tweetText }) };
   } catch (err) {
     return { statusCode: 200, headers, body: JSON.stringify({ skipped: 'Next event tweet failed', error: err.message }) };
@@ -317,7 +345,8 @@ exports.handler = async (event) => {
     const tagStr = '\n\n' + hashtags.join(' ');
     if (tweetText.length + tagStr.length <= 280) tweetText += tagStr;
 
-    const result = await postTweet(tweetText);
+    const image = await getGolfImage(tourneyName);
+    const result = await postTweet(tweetText, image);
 
     return {
       statusCode: 200,
