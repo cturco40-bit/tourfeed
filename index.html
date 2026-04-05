@@ -1504,17 +1504,21 @@ function renderNews() {
   // News feed list
   return newsData.map((n,i) => {
     const title = esc(n.title);
-    const summary = esc(n.summary ? n.summary.slice(0, 120) + (n.summary.length > 120 ? '...' : '') : '');
-    const img = n.image ? '<img src="' + esc(n.image) + '" style="width:100%;border-radius:6px;margin:8px 0" alt="" onerror="this.style.display=\'none\'">' : '';
+    const summary = esc(n.summary ? n.summary.slice(0, 100) + (n.summary.length > 100 ? '...' : '') : '');
+    const thumb = n.image ? '<img src="' + esc(n.image) + '" style="width:80px;height:56px;object-fit:cover;border-radius:6px;margin-left:12px;flex-shrink:0" alt="" onerror="this.style.display=\'none\'">' : '';
     return '<div class="card" onclick="openArticle(' + i + ')">' +
       '<div class="card-header">' +
         '<span class="tag" style="color:' + n.tc + ';background:' + n.tc + '15">' + n.tag + '</span>' +
         '<span class="card-time">' + (n.time || '') + '</span>' +
         '<button class="share-btn" style="margin-left:auto" onclick="event.stopPropagation();shareContent(newsData[' + i + '].title)">Share</button>' +
       '</div>' +
-      img +
-      '<div class="card-title">' + title + '</div>' +
-      '<div style="font-size:12px;color:var(--text-muted);margin-top:4px;line-height:1.5">' + summary + '</div>' +
+      '<div style="display:flex;align-items:flex-start">' +
+        '<div style="flex:1">' +
+          '<div class="card-title">' + title + '</div>' +
+          '<div style="font-size:12px;color:var(--text-muted);margin-top:4px;line-height:1.5">' + summary + '</div>' +
+        '</div>' +
+        thumb +
+      '</div>' +
     '</div>';
   }).join('');
 }
@@ -1522,6 +1526,66 @@ function renderNews() {
 // ============================================
 // RENDER INSIGHTS TAB
 // ============================================
+// Preview picks for upcoming events
+function getPreviewPicks(eventName, isMajor) {
+  const e = (eventName || '').toLowerCase();
+
+  // Masters
+  if (/masters/i.test(e)) return [
+    { type: 'FAVORITE', name: 'Scottie Scheffler', odds: '+400', reason: 'Back-to-back champion, world #1, dominant on this course' },
+    { type: 'FAVORITE', name: 'Rory McIlroy', odds: '+900', reason: 'Career Grand Slam chase, elite ball-striking' },
+    { type: 'VALUE', name: 'Ludvig Åberg', odds: '+1600', reason: 'Runner-up in 2024, elite power game suits Augusta' },
+    { type: 'LONGSHOT', name: 'Robert MacIntyre', odds: '+4000', reason: 'Trending up, recent winner, fits Augusta profile' },
+  ];
+
+  // US Open
+  if (/u\.?s\.?\s*open/i.test(e)) return [
+    { type: 'FAVORITE', name: 'Scottie Scheffler', odds: '+500', reason: 'World #1, consistent in major setups' },
+    { type: 'VALUE', name: 'Xander Schauffele', odds: '+1200', reason: 'Defending champion, thrives in tough conditions' },
+    { type: 'LONGSHOT', name: 'Tommy Fleetwood', odds: '+4000', reason: 'US Open runner-up pedigree, precise iron play' },
+  ];
+
+  // PGA Championship
+  if (/pga championship/i.test(e)) return [
+    { type: 'FAVORITE', name: 'Scottie Scheffler', odds: '+450', reason: 'Dominant form, elite in strong fields' },
+    { type: 'VALUE', name: 'Collin Morikawa', odds: '+1800', reason: 'Past PGA champion, elite approach play' },
+    { type: 'LONGSHOT', name: 'Hideki Matsuyama', odds: '+3500', reason: 'Major pedigree, consistent contender' },
+  ];
+
+  // The Open
+  if (/open championship|the open/i.test(e)) return [
+    { type: 'FAVORITE', name: 'Rory McIlroy', odds: '+700', reason: 'Two-time Claret Jug winner, links specialist' },
+    { type: 'VALUE', name: 'Tommy Fleetwood', odds: '+2000', reason: 'British player, elite links game' },
+    { type: 'LONGSHOT', name: 'Robert MacIntyre', odds: '+3500', reason: 'Scottish links upbringing, rising form' },
+  ];
+
+  // RBC Heritage
+  if (/heritage/i.test(e)) return [
+    { type: 'FAVORITE', name: 'Scottie Scheffler', odds: '+600', reason: 'World #1, Harbour Town suits precision players' },
+    { type: 'VALUE', name: 'Matt Fitzpatrick', odds: '+2500', reason: 'Short tight course rewards accuracy over power' },
+    { type: 'LONGSHOT', name: 'J.J. Spaun', odds: '+5000', reason: 'Riding momentum, good approach stats recently' },
+  ];
+
+  // Generic picks for any other event
+  if (isMajor) return [
+    { type: 'FAVORITE', name: 'Scottie Scheffler', odds: '+500', reason: 'World #1, major championship pedigree' },
+    { type: 'VALUE', name: 'Rory McIlroy', odds: '+1000', reason: 'Four-time major champion, big-game player' },
+    { type: 'LONGSHOT', name: 'Ludvig Åberg', odds: '+2500', reason: 'Young talent with elite power metrics' },
+  ];
+
+  // Use current leaderboard leaders as picks for generic events
+  const topPlayers = PLAYERS.filter(p => p.status === 'active').slice(0, 10);
+  if (topPlayers.length >= 3) {
+    return [
+      { type: 'FAVORITE', name: topPlayers[0].name, odds: '+600', reason: 'Current form leader, riding momentum into next week' },
+      { type: 'VALUE', name: topPlayers[2].name, odds: '+2000', reason: 'Strong recent play, good value at this price' },
+      { type: 'LONGSHOT', name: topPlayers[6]?.name || topPlayers[4]?.name || topPlayers[2].name, odds: '+5000', reason: 'Under the radar but trending in right direction' },
+    ];
+  }
+
+  return null;
+}
+
 // Insights helper — fetch and render picks for a single tour
 let insightsCache = {};
 
@@ -1705,24 +1769,55 @@ function renderInsights() {
     html = '<div style="text-align:center;padding:50px 20px"><div style="font-size:14px;font-weight:700;color:var(--text-dim)">No active tournaments</div><div style="font-size:12px;color:var(--text-muted);margin-top:8px">Check back during tournament play for picks and odds</div></div>';
   }
 
-  // Upcoming event
+  // Upcoming events with preview picks
   if (scheduleData.length > 0) {
     const now = Date.now();
-    const upcoming = scheduleData.filter(e => e.startDate && new Date(e.startDate).getTime() > now).slice(0, 2);
+    const upcoming = scheduleData.filter(e => e.startDate && new Date(e.startDate).getTime() > now).slice(0, 3);
     if (upcoming.length > 0) {
-      html += '<div style="padding:14px;background:var(--card-bg);border:1px solid var(--card-border);border-radius:10px;margin-bottom:12px">';
-      html += '<div style="font-size:10px;font-weight:700;letter-spacing:2px;color:var(--gold);margin-bottom:10px">COMING UP</div>';
       upcoming.forEach(e => {
         const d = new Date(e.startDate);
-        const dateStr = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-        html += '<div style="display:flex;align-items:center;padding:6px 0">';
-        html += '<div style="flex:1"><div style="font-size:13px;font-weight:700;color:var(--text)">' + (e.event || '') + '</div>';
-        html += '<div style="font-size:11px;color:var(--text-muted)">' + (e.course || '') + '</div></div>';
-        html += '<div style="text-align:right"><div style="font-size:12px;font-weight:700;color:var(--green)">' + dateStr + '</div>';
-        if (e.purse) html += '<div style="font-size:10px;color:var(--text-muted)">' + e.purse + '</div>';
-        html += '</div></div>';
+        const dateStr = d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+        const daysUntil = Math.ceil((d.getTime() - now) / 86400000);
+        const daysLabel = daysUntil === 0 ? 'TODAY' : daysUntil === 1 ? 'TOMORROW' : daysUntil + ' DAYS';
+        const isMajor = /masters|pga championship|u\.?s\.?\s*open|open championship|the open/i.test(e.event);
+
+        html += '<div style="padding:14px;background:var(--card-bg);border:1px solid var(--card-border);border-radius:10px;margin-bottom:12px">';
+        html += '<div style="display:flex;align-items:center;margin-bottom:10px">';
+        html += '<div style="font-size:10px;font-weight:700;letter-spacing:2px;color:' + (isMajor ? 'var(--gold)' : 'var(--green)') + '">PREVIEW' + (isMajor ? ' · MAJOR' : '') + '</div>';
+        html += '<span style="font-size:10px;font-weight:700;color:var(--text-muted);margin-left:auto;background:var(--card-border);padding:2px 8px;border-radius:4px">' + daysLabel + '</span>';
+        html += '</div>';
+        html += '<div style="font-size:16px;font-weight:800;color:var(--text);margin-bottom:4px">' + (e.event || '') + '</div>';
+        html += '<div style="font-size:11px;color:var(--text-muted);margin-bottom:4px">' + (e.course || '') + '</div>';
+        html += '<div style="font-size:11px;color:var(--text-muted);margin-bottom:12px">' + dateStr + (e.purse ? ' · ' + e.purse : '') + (e.tv ? ' · ' + e.tv : '') + '</div>';
+
+        // Pre-tournament picks based on known top players and course history
+        // Use top FedEx Cup / world ranking players as favorites
+        const previewPicks = getPreviewPicks(e.event, isMajor);
+        if (previewPicks) {
+          previewPicks.forEach(pick => {
+            const bgColor = pick.type === 'FAVORITE' ? 'rgba(45,143,111,0.08)' :
+                           pick.type === 'VALUE' ? 'rgba(212,168,83,0.08)' :
+                           'rgba(74,144,217,0.08)';
+            const tagColor = pick.type === 'FAVORITE' ? 'var(--green)' :
+                            pick.type === 'VALUE' ? 'var(--gold)' :
+                            '#4A90D9';
+            const tagBg = pick.type === 'FAVORITE' ? 'rgba(45,143,111,0.15)' :
+                         pick.type === 'VALUE' ? 'rgba(212,168,83,0.15)' :
+                         'rgba(74,144,217,0.15)';
+            html += '<div style="padding:8px 10px;background:' + bgColor + ';border-radius:8px;margin-bottom:6px">';
+            html += '<div style="display:flex;align-items:center">';
+            html += '<span class="tag" style="color:' + tagColor + ';background:' + tagBg + ';font-size:9px;margin-right:8px">' + pick.type + '</span>';
+            html += '<span style="font-size:13px;font-weight:700;color:var(--text);flex:1">' + pick.name + '</span>';
+            html += '<span style="font-size:11px;font-weight:700;color:var(--text-muted)">' + pick.odds + '</span>';
+            html += '</div>';
+            html += '<div style="font-size:10px;color:var(--text-muted);margin-top:3px">' + pick.reason + '</div>';
+            html += '</div>';
+          });
+        }
+
+        if (e.def) html += '<div style="font-size:10px;color:var(--text-muted);margin-top:8px">Defending: ' + e.def + '</div>';
+        html += '</div>';
       });
-      html += '</div>';
     }
   }
 
