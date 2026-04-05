@@ -1,0 +1,1516 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TourFeed — Live Golf Scores, Recaps & Betting Insights</title>
+  <meta name="description" content="Live golf scores, instant recaps, and betting insights across every tour. PGA Tour, LIV, DP World, LPGA — all in one feed.">
+  <meta property="og:title" content="TourFeed — Your Daily Golf Intelligence">
+  <meta property="og:description" content="Live scores, instant recaps & betting insights across every tour.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://tourfeed.co">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="TourFeed — Your Daily Golf Intelligence">
+  <meta name="twitter:description" content="Live scores, instant recaps & betting insights across every tour.">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%232D8F6F'/><text x='4' y='22' font-family='system-ui' font-weight='900' font-size='14' fill='white'>T</text><text x='16' y='22' font-family='system-ui' font-weight='900' font-size='14' fill='%23D4A853'>F</text></svg>">
+  <link rel="manifest" href="/manifest.json">
+  <meta name="theme-color" content="#2D8F6F">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="TourFeed">
+  <meta property="og:image" content="https://tourfeed.co/og-image.png">
+  <meta name="twitter:image" content="https://tourfeed.co/og-image.png">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <!-- Supabase JS Client -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <!-- Google Analytics — replace G-XXXXXXX with your Measurement ID -->
+  <!--
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-XXXXXXX"></script>
+  <script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','G-XXXXXXX');</script>
+  -->
+  <style>
+    :root {
+      --navy: #1B2538; --navy-l: #243044; --navy-d: #111927;
+      --green: #2D8F6F; --green-l: #34A37E; --green-d: #247A5D;
+      --gold: #D4A853; --gold-l: #E0BC6A;
+      --white: #FFFFFF; --bg: #111927;
+      --g100: #F1F3F5; --g300: #CED4DA; --g400: #ADB5BD;
+      --g500: #868E96; --g700: #495057; --g900: #212529;
+      --s-green: #2DD4A0; --s-red: #FF6B6B;
+      --card-bg: rgba(255,255,255,0.02); --card-border: rgba(255,255,255,0.04);
+      --text: #FFFFFF; --text-dim: #CED4DA; --text-muted: #868E96;
+    }
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body { font-family:'DM Sans',-apple-system,sans-serif; background:var(--bg); color:var(--text); min-height:100vh; }
+    
+    /* HEADER */
+    .header { background:var(--navy); border-bottom:1px solid var(--card-border); padding:8px 16px; position:sticky; top:0; z-index:100; display:flex; justify-content:space-between; align-items:center; }
+    .logo { display:inline-flex; align-items:center; cursor:pointer; }
+    .logo-t { font-size:16px; font-weight:900; color:#fff; letter-spacing:1px; }
+    .logo-f { font-size:16px; font-weight:900; color:var(--gold); letter-spacing:1px; }
+    .header-right { display:flex; align-items:center; gap:8px; }
+    
+    /* NAV TABS */
+    .nav { background:var(--navy); padding:4px 12px 8px; display:flex; gap:3px; overflow-x:auto; -webkit-overflow-scrolling:touch; }
+    .nav::-webkit-scrollbar { display:none; }
+    .nav-btn { padding:6px 12px; border-radius:6px; border:none; background:transparent; color:var(--text-muted); font-size:12px; font-weight:500; cursor:pointer; white-space:nowrap; font-family:inherit; transition:all 0.15s; }
+    .nav-btn.active { background:var(--green); color:#fff; font-weight:700; }
+    
+    /* BROADCAST BAR */
+    .broadcast { background:linear-gradient(135deg,var(--green),var(--green-d)); padding:10px 16px; display:flex; justify-content:space-between; align-items:center; }
+    .broadcast-left { }
+    .broadcast-name { font-size:17px; font-weight:800; color:#fff; }
+    .broadcast-sub { font-size:11px; color:rgba(255,255,255,0.7); margin-top:2px; }
+    .broadcast-right { text-align:right; }
+    .broadcast-label { font-size:9px; color:rgba(255,255,255,0.5); font-weight:600; letter-spacing:1px; }
+    .broadcast-value { font-size:13px; font-weight:700; color:#fff; margin-top:1px; }
+    
+    /* WATCH BAR */
+    .watch-bar { background:var(--navy-l); padding:8px 16px; display:flex; align-items:center; gap:8px; font-size:11px; border-bottom:1px solid var(--card-border); }
+    .watch-live { width:7px; height:7px; border-radius:50%; background:var(--s-green); animation:pulse 2s infinite; }
+    .watch-text { color:var(--text-muted); }
+    .watch-channel { color:var(--text); font-weight:700; }
+    @keyframes pulse { 0%,100%{opacity:1}50%{opacity:0.3} }
+    
+    /* MAIN */
+    .main { max-width:860px; margin:0 auto; padding:0 12px; }
+    .section { display:none; }
+    .section.active { display:block; }
+    
+    /* SEARCH */
+    .search { margin:8px 0; }
+    .search input { width:100%; padding:10px 14px; background:var(--card-bg); border:1px solid var(--card-border); border-radius:8px; color:var(--text); font-size:13px; font-family:inherit; outline:none; }
+    .search input:focus { border-color:var(--green); }
+    .search input::placeholder { color:var(--g700); }
+    
+    /* LEADERBOARD */
+    .lb-header { display:flex; padding:6px 12px; font-size:9px; font-weight:700; color:var(--g700); letter-spacing:1px; }
+    .lb-row { display:flex; align-items:center; padding:8px 12px; border-radius:6px; margin-bottom:1px; cursor:pointer; transition:background 0.15s; }
+    .lb-row:hover { background:rgba(255,255,255,0.03); }
+    .lb-row.leader { background:rgba(45,143,111,0.08); }
+    .lb-pos { width:28px; font-size:12px; font-weight:700; }
+    .lb-player { flex:1; display:flex; align-items:center; gap:5px; }
+    .lb-name { font-size:13px; font-weight:600; color:var(--text-dim); }
+    .lb-name.top { font-weight:800; color:var(--text); }
+    .lb-flag { font-size:13px; }
+    .lb-move { font-size:9px; font-weight:700; }
+    .lb-round { width:30px; text-align:center; font-size:11px; color:var(--text-muted); }
+    .lb-today { width:36px; text-align:center; font-size:12px; font-weight:700; }
+    .lb-total { width:46px; text-align:right; font-size:15px; font-weight:800; }
+    .score-under { color:var(--s-green); }
+    .score-over { color:var(--s-red); }
+    .score-even { color:var(--g400); }
+    
+    /* CUT LINE */
+    .cut-line { display:flex; align-items:center; gap:8px; padding:8px 12px; margin:4px 0; }
+    .cut-line-bar { flex:1; height:1px; background:var(--s-red); opacity:0.3; }
+    .cut-line-text { font-size:10px; font-weight:700; color:var(--s-red); letter-spacing:2px; }
+    
+    /* SCORECARD */
+    .scorecard { margin:0 0 8px; padding:12px; background:var(--card-bg); border:1px solid var(--card-border); border-radius:8px; overflow-x:auto; }
+    .scorecard-title { font-size:12px; font-weight:700; margin-bottom:8px; }
+    .scorecard table { width:100%; border-collapse:collapse; font-size:11px; min-width:520px; }
+    .scorecard td { padding:4px; text-align:center; }
+    .scorecard .hole-birdie { background:rgba(45,200,150,0.15); color:var(--s-green); font-weight:700; border-radius:4px; }
+    .scorecard .hole-eagle { background:#1a7f5a; color:#fff; font-weight:700; border-radius:4px; }
+    .scorecard .hole-bogey { background:rgba(224,49,49,0.15); color:var(--s-red); font-weight:700; border-radius:4px; }
+    .scorecard .hole-double { background:rgba(224,49,49,0.3); color:var(--s-red); font-weight:700; border-radius:4px; }
+    .scorecard .hole-par { color:var(--g400); font-weight:700; }
+    .sc-stats { display:flex; gap:16px; margin-top:10px; flex-wrap:wrap; }
+    .sc-stat-label { font-size:9px; color:var(--g700); font-weight:600; letter-spacing:1px; }
+    .sc-stat-value { font-size:16px; font-weight:800; margin-top:2px; }
+    
+    /* CARDS */
+    .card { background:var(--card-bg); border:1px solid var(--card-border); border-radius:10px; padding:14px 16px; margin-bottom:6px; cursor:pointer; transition:all 0.15s; }
+    .card:hover { border-color:rgba(255,255,255,0.08); }
+    .card-header { display:flex; align-items:center; gap:8px; margin-bottom:6px; }
+    .tag { font-size:10px; font-weight:700; padding:3px 8px; border-radius:4px; letter-spacing:1px; }
+    .card-time { font-size:11px; color:var(--g700); }
+    .card-title { font-size:15px; font-weight:700; line-height:1.4; }
+    .card-body { margin-top:10px; padding-top:10px; border-top:1px solid var(--card-border); font-size:13px; color:var(--text-muted); line-height:1.7; }
+    .card-btn { display:inline-block; margin-top:12px; padding:8px 16px; background:var(--green); border-radius:8px; font-size:12px; font-weight:700; color:#fff; }
+    
+    /* INSIGHTS */
+    .insight-row { background:var(--card-bg); border:1px solid var(--card-border); border-radius:10px; padding:12px 16px; margin-bottom:5px; display:flex; align-items:center; }
+    .insight-info { flex:1; }
+    .insight-name { font-size:14px; font-weight:700; }
+    .insight-meta { display:flex; gap:10px; margin-top:3px; }
+    .insight-meta span { font-size:10px; color:var(--text-muted); }
+    .insight-odds { font-size:18px; font-weight:900; min-width:56px; text-align:right; margin-left:12px; }
+    .pick-box { background:rgba(45,143,111,0.08); border:1px solid rgba(45,143,111,0.25); border-radius:10px; padding:16px 18px; margin-top:12px; border-left:3px solid var(--green); }
+    .pick-label { font-size:10px; color:var(--green); font-weight:700; letter-spacing:2px; margin-bottom:6px; }
+    .pick-title { font-size:16px; font-weight:800; margin-bottom:8px; }
+    .pick-body { font-size:13px; color:var(--text-muted); line-height:1.7; }
+    .pick-badges { display:flex; gap:8px; margin-top:12px; flex-wrap:wrap; }
+    .pick-badge { padding:6px 12px; border-radius:6px; font-size:11px; font-weight:700; }
+    
+    /* STANDINGS */
+    .standings-row { display:flex; align-items:center; padding:9px 12px; border-radius:6px; margin-bottom:1px; }
+    .standings-row.top { background:rgba(45,143,111,0.08); }
+    
+    /* SCHEDULE */
+    .sched-card { background:var(--card-bg); border:1px solid var(--card-border); border-radius:10px; padding:14px 16px; margin-bottom:6px; }
+    .sched-card.live { background:rgba(45,143,111,0.08); border-color:rgba(45,143,111,0.2); }
+    .badge { font-size:9px; font-weight:700; padding:2px 7px; border-radius:4px; letter-spacing:1px; }
+    .badge-live { color:var(--s-green); background:rgba(45,200,150,0.15); }
+    .badge-major { color:var(--gold); background:rgba(212,168,83,0.15); }
+    
+    /* PLAYER PROFILE */
+    .profile-header { background:linear-gradient(135deg,var(--green),var(--navy-l)); border-radius:10px; padding:18px; margin-bottom:12px; }
+    .profile-stats { display:grid; grid-template-columns:repeat(3,1fr); gap:6px; margin-bottom:14px; }
+    .stat-box { background:var(--card-bg); border:1px solid var(--card-border); border-radius:8px; padding:8px 10px; text-align:center; }
+    .stat-label { font-size:8px; color:var(--g700); font-weight:600; letter-spacing:1px; text-transform:uppercase; }
+    .stat-value { font-size:16px; font-weight:800; margin-top:3px; }
+    
+    /* GRID STATS */
+    .stats-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:6px; margin:12px 0; }
+    .stats-grid-item { background:var(--card-bg); border:1px solid var(--card-border); border-radius:8px; padding:10px; text-align:center; }
+    
+    /* TOUR FILTER */
+    .filter-bar { display:flex; gap:4px; margin-bottom:10px; flex-wrap:wrap; }
+    .filter-btn { padding:6px 12px; border-radius:6px; border:none; font-size:11px; font-weight:600; cursor:pointer; font-family:inherit; background:var(--card-bg); color:var(--text-muted); }
+    .filter-btn.active { background:var(--green); color:#fff; }
+    
+    /* EMAIL POPUP */
+    .email-popup { position:fixed; bottom:-200px; left:50%; transform:translateX(-50%); width:calc(100% - 32px); max-width:480px; background:var(--navy); border:1px solid rgba(45,143,111,0.3); border-radius:14px; padding:20px; z-index:200; transition:bottom 0.5s cubic-bezier(0.16,1,0.3,1); box-shadow:0 -4px 30px rgba(0,0,0,0.4); }
+    .email-popup.show { bottom:16px; }
+    .email-popup-close { position:absolute; top:10px; right:14px; background:none; border:none; color:var(--g500); font-size:18px; cursor:pointer; padding:4px; }
+    .email-popup-title { font-size:15px; font-weight:800; margin-bottom:4px; }
+    .email-popup-sub { font-size:12px; color:var(--text-muted); margin-bottom:12px; }
+    .email-popup-form { display:flex; gap:8px; }
+    .email-popup-form input { flex:1; padding:11px 14px; background:rgba(255,255,255,0.04); border:1px solid var(--card-border); border-radius:8px; color:var(--text); font-size:13px; font-family:inherit; outline:none; }
+    .email-popup-form input:focus { border-color:var(--green); }
+    .email-popup-form button { padding:11px 20px; background:var(--green); border:none; border-radius:8px; color:#fff; font-size:13px; font-weight:700; cursor:pointer; font-family:inherit; white-space:nowrap; }
+    .email-popup-note { font-size:10px; color:var(--g700); margin-top:8px; }
+    
+    /* SHARE */
+    .share-btn { background:none; border:1px solid var(--card-border); border-radius:6px; padding:4px 10px; font-size:11px; color:var(--text-muted); cursor:pointer; font-family:inherit; font-weight:600; }
+    .share-btn:hover { border-color:var(--green); color:var(--green); }
+    
+    /* FOOTER */
+    .footer { text-align:center; padding:20px 0 32px; border-top:1px solid var(--card-border); margin-top:14px; }
+    
+    /* SECTION HEADERS */
+    .section-label { font-size:11px; font-weight:700; color:var(--text-muted); letter-spacing:2px; margin:14px 0 8px 4px; }
+    
+    /* COUNTDOWN */
+    .countdown { background:var(--navy-l); border:1px solid var(--card-border); border-radius:10px; padding:16px; text-align:center; margin:10px 0; }
+    .countdown-label { font-size:10px; color:var(--green); font-weight:700; letter-spacing:3px; }
+    .countdown-time { font-size:28px; font-weight:900; margin-top:6px; }
+    .countdown-sub { font-size:11px; color:var(--text-muted); margin-top:4px; }
+    
+    /* RESPONSIVE */
+    @media(max-width:600px) {
+      .lb-round { display:none; }
+      .lb-header .r-col { display:none; }
+      .broadcast-name { font-size:15px; }
+      .header { padding:8px 10px; }
+    }
+    
+    /* DISCLAIMER */
+    .disclaimer { font-size:9px; color:var(--g700); margin-top:10px; text-align:center; line-height:1.5; }
+  </style>
+</head>
+<body>
+  <!-- HEADER -->
+  <div class="header">
+    <div class="logo" onclick="switchTab(0)">
+      <span class="logo-t">TOUR</span><span class="logo-f">FEED</span>
+    </div>
+    <div class="header-right">
+    </div>
+  </div>
+
+  <!-- NAV -->
+  <div class="nav" id="nav"></div>
+
+  <!-- WATCH BAR (dynamic) -->
+  <div class="watch-bar" id="watchBar" style="display:none">
+    <div class="watch-live"></div>
+    <span class="watch-text">Now on</span>
+    <span class="watch-channel" id="watchChannel"></span>
+    <span class="watch-text" id="watchEvent"></span>
+  </div>
+
+  <!-- MAIN CONTENT -->
+  <div class="main" id="app"></div>
+
+  <!-- EMAIL POPUP -->
+  <div class="email-popup" id="emailPopup">
+    <button class="email-popup-close" onclick="closePopup()">✕</button>
+    <div class="email-popup-title">Get TourFeed in your inbox</div>
+    <div class="email-popup-sub">Live scores, recaps, and betting insights delivered free.</div>
+    <div class="email-popup-form">
+      <input type="email" id="emailInput" placeholder="Enter your email">
+      <button onclick="subscribeEmail()">Subscribe</button>
+    </div>
+    <div class="email-popup-note">No spam. Unsubscribe anytime.</div>
+  </div>
+
+  <!-- FOOTER -->
+  <div class="main">
+    <div class="footer">
+      <div class="logo" style="justify-content:center;margin-bottom:8px">
+        <span class="logo-t">TOUR</span><span class="logo-f">FEED</span>
+      </div>
+      <div style="font-size:10px;color:var(--g700);margin-top:6px">Live scores • Instant recaps • Betting insights</div>
+      <div style="font-size:9px;color:var(--g700);margin-top:4px">© 2026 TourFeed. All rights reserved.</div>
+      <div style="margin-top:8px;display:flex;justify-content:center;gap:12px">
+        <a href="https://x.com/TourFeedGolf" target="_blank" style="color:var(--text-muted);font-size:11px;text-decoration:none">X</a>
+        <a href="https://instagram.com/TourFeedGolf" target="_blank" style="color:var(--text-muted);font-size:11px;text-decoration:none">Instagram</a>
+        <a href="https://tiktok.com/@TourFeedGolf" target="_blank" style="color:var(--text-muted);font-size:11px;text-decoration:none">TikTok</a>
+        <a href="/privacy" style="color:var(--text-muted);font-size:11px;text-decoration:none">Privacy</a>
+        <a href="/terms" style="color:var(--text-muted);font-size:11px;text-decoration:none">Terms</a>
+      </div>
+    </div>
+  </div>
+
+<script>
+// ============================================
+// TOURFEED APP — CONFIG
+// ============================================
+const SUPABASE_URL = 'YOUR_SUPABASE_URL';
+const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY';
+// const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+const TABS = ['Scores','News','Insights','Blog','Standings','Schedule','Players'];
+let currentTab = 0;
+let expandedCard = null;
+let lbSearch = '';
+
+// ============================================
+// SAMPLE DATA (replaced by Supabase in production)
+// ============================================
+const TOURS = [
+  {id:'pga',name:'PGA Tour',short:'PGA',tier:1},
+  {id:'liv',name:'LIV Golf',short:'LIV',tier:1},
+  {id:'dpw',name:'DP World Tour',short:'DPW',tier:2},
+  {id:'lpga',name:'LPGA Tour',short:'LPGA',tier:2},
+  {id:'kft',name:'Korn Ferry Tour',short:'KFT',tier:3},
+  {id:'champ',name:'Champions Tour',short:'CHAMP',tier:3},
+];
+
+let PAR = [];
+let TOURNAMENT = null;
+let PLAYERS = [];
+let currentScoresTour = 'pga';
+let scoresLoading = true;
+let scoresError = null;
+let scorecardCache = {};
+let lastFetchTime = null;
+
+// ============================================
+// ESPN LIVE DATA ENGINE
+// ============================================
+const ESPN_SPORTS = {
+  pga: 'golf/pga',
+  lpga: 'golf/lpga',
+  dpw: 'golf/eur',
+  liv: null,
+  kft: 'golf/dev',
+  champ: 'golf/senior',
+};
+
+const COUNTRY_MAP = {
+  'united states':'US','usa':'US','u.s.':'US','america':'US',
+  'england':'GB','great britain':'GB','uk':'GB','scotland':'GB','wales':'GB','northern ireland':'GB',
+  'ireland':'IE','australia':'AU','south korea':'KR','korea':'KR',
+  'japan':'JP','norway':'NO','sweden':'SE','spain':'ES','canada':'CA',
+  'south africa':'ZA','germany':'DE','france':'FR','italy':'IT','mexico':'MX',
+  'austria':'AT','belgium':'BE','denmark':'DK','finland':'FI','switzerland':'CH',
+  'china':'CN','chinese taipei':'TW','taiwan':'TW','india':'IN','thailand':'TH',
+  'argentina':'AR','chile':'CL','colombia':'CO','brazil':'BR',
+  'new zealand':'NZ','netherlands':'NL','philippines':'PH','fiji':'FJ',
+  'venezuela':'VE','zimbabwe':'ZW','paraguay':'PY','portugal':'PT',
+  'poland':'PL','czech republic':'CZ','czechia':'CZ','hungary':'HU',
+  'singapore':'SG','malaysia':'MY','indonesia':'ID','vietnam':'VN',
+  'puerto rico':'PR','bermuda':'BM','bahamas':'BS','jamaica':'JM',
+  'trinidad and tobago':'TT','dominican republic':'DO','costa rica':'CR',
+  'panama':'PA','peru':'PE','uruguay':'UY','ecuador':'EC','bolivia':'BO',
+  'nigeria':'NG','kenya':'KE','ghana':'GH','egypt':'EG','morocco':'MA',
+  'tunisia':'TN','cameroon':'CM','ivory coast':'CI','senegal':'SN',
+  'russia':'RU','ukraine':'UA','romania':'RO','croatia':'HR','serbia':'RS',
+  'slovakia':'SK','slovenia':'SI','bosnia':'BA','montenegro':'ME',
+  'north macedonia':'MK','bulgaria':'BG','greece':'GR','turkey':'TR',
+  'israel':'IL','saudi arabia':'SA','qatar':'QA','uae':'AE',
+  'united arab emirates':'AE','bahrain':'BH','oman':'OM','kuwait':'KW',
+  'iceland':'IS','luxembourg':'LU','latvia':'LV','lithuania':'LT','estonia':'EE',
+  'malta':'MT','cyprus':'CY','georgia':'GE','armenia':'AM','azerbaijan':'AZ',
+};
+
+function countryFlag(input) {
+  if (!input) return '🏌️';
+  let code = input.trim();
+  // If it's already a 2-letter code
+  if (code.length === 2) {
+    code = code.toUpperCase();
+  } else {
+    // Look up by name
+    code = COUNTRY_MAP[code.toLowerCase()] || '';
+  }
+  if (!code || code.length !== 2) return '🏌️';
+  return String.fromCodePoint(
+    ...code.split('').map(c => 0x1F1E6 + c.charCodeAt(0) - 65)
+  );
+}
+
+function formatPurse(purse) {
+  const amt = typeof purse === 'number' ? purse : (purse?.amount || 0);
+  if (!amt) return '';
+  if (amt >= 1e6) return `$${(amt/1e6).toFixed(amt%1e6===0?0:1)}M`;
+  if (amt >= 1e3) return `$${(amt/1e3).toFixed(0)}K`;
+  return `$${amt}`;
+}
+
+function formatMovement(m) {
+  if (m === undefined || m === null || m === 0) return '—';
+  return m < 0 ? `↑${Math.abs(m)}` : `↓${m}`;
+}
+
+function parseTodayScore(linescores, round, coursePar) {
+  const roundScore = linescores?.[round - 1]?.value;
+  if (!roundScore) return '';
+  return roundScore.toString();
+}
+
+async function fetchESPNScores(tour) {
+  const sport = ESPN_SPORTS[tour];
+  if (!sport) {
+    TOURNAMENT = null;
+    PLAYERS = [];
+    scoresError = tour === 'liv' 
+      ? 'LIV Golf scores available once backend is deployed' 
+      : 'No data source for this tour';
+    scoresLoading = false;
+    renderApp();
+    return;
+  }
+
+  scoresLoading = true;
+  scoresError = null;
+  renderApp();
+
+  try {
+    const url = `https://site.api.espn.com/apis/site/v2/sports/${sport}/scoreboard`;
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`ESPN ${res.status}`);
+    const data = await res.json();
+
+    const event = data.events?.[0];
+    if (!event) {
+      scoresError = 'No active tournament';
+      scoresLoading = false;
+      TOURNAMENT = null;
+      PLAYERS = [];
+      renderApp();
+      return;
+    }
+
+    const comp = event.competitions?.[0];
+    if (!comp) throw new Error('No competition data');
+
+    const st = comp.status || {};
+    const period = st.period || 1;
+    const coursePar = 72;
+
+    // Check for major
+    const name = event.name || event.shortName || '';
+    const isMajor = /masters|pga championship|u\.?s\.? open|open championship|the open/i.test(name);
+
+    TOURNAMENT = {
+      name: event.shortName || event.name || 'Tournament',
+      course: comp.venue?.fullName || '',
+      dates: '',
+      purse: formatPurse(comp.purse),
+      status: st.type?.description || st.type?.shortDetail || 'In Progress',
+      round: period,
+      par: coursePar,
+      broadcast: comp.broadcast?.names?.join(' / ') || comp.geoBroadcasts?.map(g=>g.media?.shortName).filter(Boolean).join(' / ') || '',
+      tour: TOURS.find(t => t.id === tour)?.name || '',
+      is_major: isMajor,
+      eventId: event.id,
+    };
+
+    // Parse dates
+    try {
+      const d = new Date(event.date);
+      const mo = d.toLocaleString('en-US',{month:'short'});
+      const day = d.getDate();
+      const end = new Date(d); end.setDate(day + 3);
+      TOURNAMENT.dates = `${mo} ${day}-${end.getDate()}, ${d.getFullYear()}`;
+    } catch(e) {}
+
+    // Parse competitors
+    const competitors = comp.competitors || [];
+    PLAYERS = competitors.map((c) => {
+      const ath = c.athlete || {};
+      const ls = c.linescores || [];
+      const posTxt = c.status?.position?.displayName || c.status?.position?.id || '';
+      const statusName = (c.status?.type?.name || '').toUpperCase();
+      const statusDesc = (c.status?.type?.description || '').toLowerCase();
+
+      const isCut = statusName.includes('CUT') || statusDesc.includes('cut');
+      const isWD = statusName.includes('WD') || statusName.includes('WITHDRAW') || statusDesc.includes('wd') || statusDesc.includes('withdraw');
+      const isDQ = statusName.includes('DQ') || statusDesc.includes('disqualif');
+
+      let scoreDisp = c.score?.displayValue ?? '';
+      if (scoreDisp === '0' || scoreDisp === '+0') scoreDisp = 'E';
+
+      // Country flag
+      const flagAlt = ath.flag?.alt || '';
+      const citizenship = ath.citizenship || '';
+      const flag = countryFlag(citizenship || flagAlt);
+
+      // Today display
+      let todayDisp = '';
+      if (isCut || isWD || isDQ) {
+        todayDisp = '—';
+      } else {
+        const curRound = ls[period - 1]?.value;
+        if (curRound) todayDisp = curRound.toString();
+        else {
+          const thruVal = c.status?.displayValue || '';
+          todayDisp = /^\d/.test(thruVal) ? thruVal : (thruVal === 'F' && ls[period-1] ? ls[period-1].value?.toString() : '');
+        }
+      }
+
+      // Thru
+      let thruDisp = c.status?.displayValue || '';
+
+      return {
+        pos: isCut ? 'MC' : isWD ? 'WD' : isDQ ? 'DQ' : posTxt,
+        name: ath.displayName || 'Unknown',
+        c: flag,
+        score: scoreDisp,
+        today: todayDisp,
+        thru: thruDisp,
+        r1: ls[0]?.value || null,
+        r2: ls[1]?.value || null,
+        r3: ls[2]?.value || null,
+        r4: ls[3]?.value || null,
+        sg: '',
+        ch: formatMovement(c.movement),
+        status: isCut ? 'cut' : isWD ? 'wd' : isDQ ? 'dq' : 'active',
+        holes: [],
+        athleteId: ath.id || c.id,
+        sortOrder: c.sortOrder || 999,
+      };
+    });
+
+    // Sort by sortOrder (ESPN's official ordering)
+    PLAYERS.sort((a,b) => a.sortOrder - b.sortOrder);
+
+    lastFetchTime = new Date();
+    scoresLoading = false;
+    scoresError = null;
+  } catch(err) {
+    console.error('ESPN fetch error:', err);
+    scoresError = 'Unable to load scores — check connection';
+    scoresLoading = false;
+  }
+
+  renderApp();
+}
+
+// Scorecard fetch (on-demand when player row is expanded)
+async function fetchScorecard(playerIdx) {
+  const p = PLAYERS[playerIdx];
+  if (!p || !p.athleteId || !TOURNAMENT?.eventId) return;
+  const round = TOURNAMENT.round;
+  const cacheKey = `${p.athleteId}-${round}`;
+  if (scorecardCache[cacheKey]) {
+    PLAYERS[playerIdx].holes = scorecardCache[cacheKey].holes;
+    PAR = scorecardCache[cacheKey].par.length ? scorecardCache[cacheKey].par : PAR;
+    renderApp();
+    return;
+  }
+  try {
+    const sport = ESPN_SPORTS[currentScoresTour];
+    const res = await fetch(`https://site.api.espn.com/apis/site/v2/sports/${sport}/scoreboard/${TOURNAMENT.eventId}/competitors/${p.athleteId}/scorecard`);
+    if (!res.ok) return;
+    const data = await res.json();
+    // Try to parse rounds → holes
+    const rounds = data.rounds || data.scorecard?.rounds || [];
+    const target = rounds.find(r => r.period === round || r.roundNumber === round) || rounds[rounds.length-1];
+    if (target) {
+      const holeData = target.holes || target.linescores || [];
+      const holes = holeData.map(h => h.score ?? h.value);
+      const par = holeData.map(h => h.par ?? h.parValue ?? 4);
+      if (holes.length === 18 && holes.every(h => typeof h === 'number')) {
+        PLAYERS[playerIdx].holes = holes;
+        PAR = par;
+        scorecardCache[cacheKey] = { holes, par };
+        renderApp();
+      }
+    }
+  } catch(e) {
+    console.log('Scorecard not available via ESPN API');
+  }
+}
+
+// Auto-refresh (30s when on Scores tab, 60s otherwise)
+let refreshInterval = null;
+function startAutoRefresh() {
+  if (refreshInterval) clearInterval(refreshInterval);
+  refreshInterval = setInterval(() => {
+    if (currentTab === 0 && !scoresLoading) {
+      fetchESPNScores(currentScoresTour);
+    }
+  }, 30000);
+}
+
+// ============================================
+// ESPN NEWS
+// ============================================
+let newsData = [];
+let newsLoading = false;
+let newsError = null;
+let newsFetched = false;
+
+async function fetchESPNNews() {
+  if (newsFetched && newsData.length > 0) return;
+  newsLoading = true;
+  newsError = null;
+  renderApp();
+  try {
+    const res = await fetch('https://site.api.espn.com/apis/site/v2/sports/golf/pga/news?limit=20');
+    if (!res.ok) throw new Error(`ESPN ${res.status}`);
+    const data = await res.json();
+    newsData = (data.articles || []).map(a => {
+      const mins = Math.round((Date.now() - new Date(a.published).getTime()) / 60000);
+      let timeStr;
+      if (mins < 60) timeStr = `${mins}m`;
+      else if (mins < 1440) timeStr = `${Math.round(mins/60)}h`;
+      else timeStr = `${Math.round(mins/1440)}d`;
+      return {
+        title: a.headline || '',
+        body: a.description || '',
+        time: timeStr,
+        link: a.links?.web?.href || a.links?.api?.href || '',
+        image: a.images?.[0]?.url || '',
+        tag: a.type === 'Media' ? 'VIDEO' : 'NEWS',
+        tc: a.type === 'Media' ? 'var(--gold)' : 'var(--green)',
+      };
+    });
+    newsFetched = true;
+    newsLoading = false;
+  } catch(e) {
+    console.error('News fetch error:', e);
+    newsError = 'Unable to load news';
+    newsLoading = false;
+  }
+  renderApp();
+}
+
+// ============================================
+// ESPN STANDINGS
+// ============================================
+let standingsLive = {};
+let standingsLoading = false;
+let standingsError = null;
+let standingsFetched = {};
+
+async function fetchESPNStandings(tour) {
+  if (standingsFetched[tour]) return;
+  const sport = ESPN_SPORTS[tour];
+  if (!sport) {
+    standingsError = 'Standings not available for this tour';
+    renderApp();
+    return;
+  }
+  standingsLoading = true;
+  standingsError = null;
+  renderApp();
+  try {
+    // Try standings endpoint
+    const res = await fetch(`https://site.api.espn.com/apis/site/v2/sports/${sport}/standings`);
+    if (!res.ok) throw new Error(`ESPN ${res.status}`);
+    const data = await res.json();
+    
+    // Parse standings - structure varies by sport
+    const children = data.children || data.standings || [];
+    const standing = children[0] || data;
+    const entries = standing.entries || standing.standings?.[0]?.entries || [];
+    
+    standingsLive[tour] = entries.map((e, i) => {
+      const stats = {};
+      (e.stats || []).forEach(s => { stats[s.name || s.abbreviation] = s.displayValue || s.value; });
+      return {
+        pos: i + 1,
+        p: e.athlete?.displayName || e.team?.displayName || 'Unknown',
+        pts: stats.points || stats.cupPoints || stats.totalPoints || '—',
+        w: parseInt(stats.wins || stats.gamesWon || '0') || 0,
+        t10: parseInt(stats.top10 || stats.top10Finishes || '0') || 0,
+        earn: stats.earnings || stats.totalEarnings || stats.money || '—',
+      };
+    });
+    
+    standingsFetched[tour] = true;
+    standingsLoading = false;
+  } catch(e) {
+    console.error('Standings fetch error:', e);
+    // Fallback: try parsing from the scoreboard event standings
+    standingsError = 'Standings unavailable — check back during an active event';
+    standingsLoading = false;
+  }
+  renderApp();
+}
+
+// ============================================
+// ESPN SCHEDULE
+// ============================================
+let scheduleData = [];
+let scheduleLoading = false;
+let scheduleError = null;
+let scheduleFetched = false;
+
+async function fetchESPNSchedule() {
+  if (scheduleFetched && scheduleData.length > 0) return;
+  scheduleLoading = true;
+  scheduleError = null;
+  renderApp();
+  try {
+    // Fetch current season events from multiple tours
+    const tours = [
+      { id: 'pga', sport: 'golf/pga' },
+      { id: 'lpga', sport: 'golf/lpga' },
+      { id: 'dpw', sport: 'golf/eur' },
+      { id: 'liv', sport: null },
+    ];
+    
+    const allEvents = [];
+    
+    for (const tour of tours) {
+      if (!tour.sport) continue;
+      try {
+        const res = await fetch(`https://site.api.espn.com/apis/site/v2/sports/${tour.sport}/scoreboard?dates=2026`);
+        if (!res.ok) continue;
+        const data = await res.json();
+        (data.events || []).forEach(ev => {
+          const comp = ev.competitions?.[0];
+          const st = comp?.status?.type;
+          const isLive = st?.name === 'STATUS_IN_PROGRESS';
+          const isMajor = /masters|pga championship|u\.?s\.? open|open championship|the open/i.test(ev.name || '');
+          
+          // Parse dates
+          let dateStr = '';
+          try {
+            const d = new Date(ev.date);
+            const mo = d.toLocaleString('en-US',{month:'short'});
+            const day = d.getDate();
+            const end = new Date(d); end.setDate(day+3);
+            dateStr = `${mo} ${day}-${end.getDate()}`;
+          } catch(e) {}
+          
+          allEvents.push({
+            event: ev.shortName || ev.name || '',
+            course: comp?.venue?.fullName || '',
+            dates: dateStr,
+            purse: formatPurse(comp?.purse),
+            tour: tour.id,
+            tv: comp?.broadcast?.names?.join(' / ') || comp?.geoBroadcasts?.map(g=>g.media?.shortName).filter(Boolean).join(' / ') || '',
+            def: '',
+            live: isLive,
+            major: isMajor,
+            startDate: ev.date,
+          });
+        });
+      } catch(e) { continue; }
+    }
+    
+    // Sort by date
+    allEvents.sort((a,b) => new Date(a.startDate) - new Date(b.startDate));
+    scheduleData = allEvents;
+    scheduleFetched = true;
+    scheduleLoading = false;
+  } catch(e) {
+    console.error('Schedule fetch error:', e);
+    scheduleError = 'Unable to load schedule';
+    scheduleLoading = false;
+  }
+  renderApp();
+}
+
+// ============================================
+// ESPN PLAYER DATA
+// ============================================
+let playerProfiles = [];
+let playersLoading = false;
+
+function buildPlayerProfiles() {
+  // Build player profiles from current leaderboard data
+  if (!PLAYERS || PLAYERS.length === 0) return;
+  playerProfiles = PLAYERS
+    .filter(p => p.status === 'active')
+    .slice(0, 30) // Top 30 players
+    .map(p => ({
+      name: p.name,
+      c: p.c,
+      score: p.score,
+      pos: p.pos,
+      r1: p.r1, r2: p.r2, r3: p.r3, r4: p.r4,
+      thru: p.thru,
+      athleteId: p.athleteId,
+    }));
+}
+
+// Initial fetch
+fetchESPNScores(currentScoresTour);
+startAutoRefresh();
+
+// ... rest of data and rendering in app.js section below
+
+// ============================================
+// NAV
+// ============================================
+function renderNav() {
+  const nav = document.getElementById('nav');
+  nav.innerHTML = TABS.map((t,i) => 
+    `<button class="nav-btn ${i===currentTab?'active':''}" onclick="switchTab(${i})">${t}</button>`
+  ).join('');
+}
+
+function switchTab(i) {
+  currentTab = i;
+  expandedCard = null;
+  renderNav();
+  // Trigger data fetches on tab switch
+  if (i === 1 && !newsFetched) fetchESPNNews();
+  if (i === 4 && !standingsFetched[standingsFilter]) fetchESPNStandings(standingsFilter);
+  if (i === 5 && !scheduleFetched) fetchESPNSchedule();
+  if (i === 6) buildPlayerProfiles();
+  renderApp();
+}
+
+// ============================================
+// EMAIL POPUP
+// ============================================
+let popupClosed = false;
+
+function showPopup() {
+  if (popupClosed || localStorage.getItem('tf-subscribed') || localStorage.getItem('tf-popup-closed')) return;
+  document.getElementById('emailPopup').classList.add('show');
+}
+
+function closePopup() {
+  document.getElementById('emailPopup').classList.remove('show');
+  popupClosed = true;
+  localStorage.setItem('tf-popup-closed', '1');
+}
+
+function subscribeEmail() {
+  const input = document.getElementById('emailInput');
+  const email = input.value;
+  if (!email || !email.includes('@')) return;
+  // TODO: POST to Supabase subscribers table or Beehiiv
+  localStorage.setItem('tf-subscribed', '1');
+  const popup = document.getElementById('emailPopup');
+  popup.innerHTML = '<div style="text-align:center;padding:12px 0"><div style="font-size:20px;margin-bottom:6px">✓</div><div style="font-size:15px;font-weight:700">You\'re in!</div><div style="font-size:12px;color:var(--text-muted);margin-top:4px">We\'ll send you the good stuff.</div></div>';
+  setTimeout(() => popup.classList.remove('show'), 2500);
+}
+
+// Show popup after 10 seconds
+setTimeout(showPopup, 10000);
+
+// Also show on scroll past 50% of page
+let scrollTriggered = false;
+window.addEventListener('scroll', () => {
+  if (scrollTriggered) return;
+  const scrollPct = window.scrollY / (document.body.scrollHeight - window.innerHeight);
+  if (scrollPct > 0.5) {
+    scrollTriggered = true;
+    showPopup();
+  }
+});
+
+// ============================================
+// SHARE
+// ============================================
+function shareContent(title) {
+  if (navigator.share) {
+    navigator.share({ title: 'TourFeed — ' + title, url: 'https://tourfeed.co' });
+  } else {
+    navigator.clipboard.writeText('https://tourfeed.co');
+    alert('Link copied!');
+  }
+}
+
+// ============================================
+// SCORECARD RENDERER
+// ============================================
+function renderScorecard(p) {
+  // If no hole-by-hole data, show round summary card
+  if (!p.holes || p.holes.length === 0) {
+    const rounds = [p.r1, p.r2, p.r3, p.r4].filter(r => r !== null && r !== undefined);
+    const coursePar = TOURNAMENT?.par || 72;
+    return `<div class="scorecard">
+      <div class="scorecard-title">Round Scores — ${p.name}</div>
+      <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:8px">
+        ${rounds.map((r,i) => {
+          const diff = r - coursePar;
+          const diffStr = diff === 0 ? 'E' : (diff > 0 ? `+${diff}` : diff);
+          const color = diff < 0 ? 'var(--s-green)' : diff > 0 ? 'var(--s-red)' : 'var(--g400)';
+          return `<div style="text-align:center;min-width:56px">
+            <div style="font-size:9px;color:var(--g700);font-weight:600;letter-spacing:1px">R${i+1}</div>
+            <div style="font-size:22px;font-weight:800;margin-top:2px">${r}</div>
+            <div style="font-size:11px;font-weight:700;color:${color};margin-top:1px">${diffStr}</div>
+          </div>`;
+        }).join('')}
+        ${rounds.length > 0 ? `<div style="text-align:center;min-width:56px;border-left:1px solid var(--card-border);padding-left:12px">
+          <div style="font-size:9px;color:var(--g700);font-weight:600;letter-spacing:1px">TOTAL</div>
+          <div style="font-size:22px;font-weight:800;margin-top:2px">${rounds.reduce((a,b)=>a+b,0)}</div>
+          <div style="font-size:11px;font-weight:700;color:${p.score.startsWith('+')?'var(--s-red)':p.score==='E'?'var(--g400)':'var(--s-green)'};margin-top:1px">${p.score}</div>
+        </div>` : ''}
+      </div>
+    </div>`;
+  }
+
+  const front = p.holes.slice(0,9);
+  const back = p.holes.slice(9);
+  const frontPar = PAR.length >= 18 ? PAR.slice(0,9) : [4,4,4,3,4,3,4,5,4];
+  const backPar = PAR.length >= 18 ? PAR.slice(9) : [4,4,3,5,4,5,3,4,4];
+
+  function holeClass(score, par) {
+    const d = score - par;
+    if (d <= -2) return 'hole-eagle';
+    if (d === -1) return 'hole-birdie';
+    if (d === 1) return 'hole-bogey';
+    if (d >= 2) return 'hole-double';
+    return 'hole-par';
+  }
+
+  const rd = TOURNAMENT?.round || '';
+  return `<div class="scorecard">
+    <div class="scorecard-title">${rd ? `Round ${rd} ` : ''}Scorecard — ${p.name}
+      <button class="share-btn" style="float:right" onclick="event.stopPropagation();shareContent('${p.name} Scorecard')">Share</button>
+    </div>
+    <table>
+      <tr style="color:var(--g700);font-weight:600">
+        <td style="text-align:left;padding-left:6px">Hole</td>
+        ${[1,2,3,4,5,6,7,8,9].map(h=>`<td>${h}</td>`).join('')}
+        <td style="font-weight:800">OUT</td>
+        ${[10,11,12,13,14,15,16,17,18].map(h=>`<td>${h}</td>`).join('')}
+        <td style="font-weight:800">IN</td>
+        <td style="font-weight:800">TOT</td>
+      </tr>
+      <tr style="color:var(--text-muted)">
+        <td style="text-align:left;padding-left:6px;font-weight:600">Par</td>
+        ${frontPar.map(v=>`<td>${v}</td>`).join('')}
+        <td style="font-weight:700">${frontPar.reduce((a,b)=>a+b,0)}</td>
+        ${backPar.map(v=>`<td>${v}</td>`).join('')}
+        <td style="font-weight:700">${backPar.reduce((a,b)=>a+b,0)}</td>
+        <td style="font-weight:700">${[...frontPar,...backPar].reduce((a,b)=>a+b,0)}</td>
+      </tr>
+      <tr>
+        <td style="text-align:left;padding-left:6px;font-weight:600">Score</td>
+        ${front.map((v,i)=>`<td class="${holeClass(v,frontPar[i])}">${v}</td>`).join('')}
+        <td style="font-weight:800">${front.reduce((a,b)=>a+b,0)}</td>
+        ${back.map((v,i)=>`<td class="${holeClass(v,backPar[i])}">${v}</td>`).join('')}
+        <td style="font-weight:800">${back.reduce((a,b)=>a+b,0)}</td>
+        <td style="font-weight:800;color:var(--s-green)">${p.holes.reduce((a,b)=>a+b,0)}</td>
+      </tr>
+    </table>
+  </div>`;
+}
+
+// ============================================
+// RENDER SCORES TAB
+// ============================================
+function switchScoresTour(tour) {
+  if (tour === currentScoresTour && !scoresError) return;
+  currentScoresTour = tour;
+  expandedCard = null;
+  lbSearch = '';
+  scoresView = 'leaderboard';
+  scorecardCache = {};
+  fetchESPNScores(tour);
+}
+
+function expandPlayer(idx) {
+  if (expandedCard === idx) {
+    expandedCard = null;
+  } else {
+    expandedCard = idx;
+    // Try to fetch scorecard data
+    fetchScorecard(idx);
+  }
+  renderApp();
+}
+
+let scoresView = 'leaderboard'; // 'leaderboard' or 'teetimes'
+
+function isTeetime(thru) {
+  if (!thru) return false;
+  return /\d{1,2}:\d{2}\s*(AM|PM|am|pm)/i.test(thru) || /^[A-Z][a-z]{2}\s/i.test(thru);
+}
+
+function renderTeeTimes() {
+  // Group players by tee time
+  const withTimes = PLAYERS.filter(p => p.status === 'active' && isTeetime(p.thru));
+
+  if (withTimes.length === 0) {
+    return `
+      <div style="text-align:center;padding:40px 20px">
+        <div style="font-size:20px;margin-bottom:10px">🕐</div>
+        <div style="font-size:14px;font-weight:700;color:var(--text-dim)">No tee times available</div>
+        <div style="font-size:11px;color:var(--g700);margin-top:6px">${TOURNAMENT?.status?.toLowerCase().includes('progress') ? 'All players are on the course or have finished' : 'Tee times will appear when the next round is posted'}</div>
+      </div>`;
+  }
+
+  // Group by time string
+  const groups = {};
+  withTimes.forEach(p => {
+    const time = p.thru.trim();
+    if (!groups[time]) groups[time] = [];
+    groups[time].push(p);
+  });
+
+  // Sort times chronologically
+  const sortedTimes = Object.keys(groups).sort((a, b) => {
+    const toMin = (t) => {
+      const m = t.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
+      if (!m) return 0;
+      let h = parseInt(m[1]);
+      const min = parseInt(m[2]);
+      const pm = m[3].toUpperCase() === 'PM';
+      if (pm && h !== 12) h += 12;
+      if (!pm && h === 12) h = 0;
+      return h * 60 + min;
+    };
+    return toMin(a) - toMin(b);
+  });
+
+  let scoreClass = (s) => {
+    if (!s) return '';
+    return s.startsWith('+') ? 'score-over' : s === 'E' ? 'score-even' : 'score-under';
+  };
+
+  let html = `<div class="search"><input placeholder="Search ${withTimes.length} players..." oninput="lbSearch=this.value;renderApp()" value="${lbSearch}"></div>`;
+
+  const searchFilter = lbSearch.toLowerCase();
+
+  sortedTimes.forEach(time => {
+    let players = groups[time];
+    if (searchFilter) {
+      players = players.filter(p => p.name.toLowerCase().includes(searchFilter));
+      if (players.length === 0) return;
+    }
+
+    html += `
+      <div style="margin-top:14px;margin-bottom:6px;display:flex;align-items:center;gap:10px">
+        <div style="font-size:15px;font-weight:800;color:var(--text)">${time}</div>
+        <div style="flex:1;height:1px;background:var(--card-border)"></div>
+      </div>`;
+
+    players.forEach(p => {
+      html += `
+        <div style="display:flex;align-items:center;padding:10px 12px;background:var(--card-bg);border:1px solid var(--card-border);border-radius:8px;margin-bottom:4px">
+          <span style="font-size:14px;margin-right:8px">${p.c}</span>
+          <div style="flex:1">
+            <div style="font-size:14px;font-weight:700;color:var(--text)">${p.name}</div>
+            <div style="font-size:11px;color:var(--text-muted);margin-top:2px">${p.pos !== '' ? '#' + p.pos : ''} ${p.score && p.score !== '' ? '• ' + p.score : ''}</div>
+          </div>
+          <div class="lb-total ${scoreClass(p.score)}" style="font-size:16px">${p.score || '—'}</div>
+        </div>`;
+    });
+  });
+
+  html += `<div style="text-align:center;padding:16px 0;font-size:11px;color:var(--g700)">${withTimes.length} players with tee times</div>`;
+  return html;
+}
+
+function renderScores() {
+  // Tour filter bar
+  let html = `
+    <div class="filter-bar" style="padding-top:6px">
+      ${['pga','liv','dpw','lpga','kft','champ'].map(t =>
+        `<button class="filter-btn ${currentScoresTour===t?'active':''}" onclick="switchScoresTour('${t}')">${TOURS.find(x=>x.id===t)?.short||t}</button>`
+      ).join('')}
+    </div>`;
+
+  // Loading state
+  if (scoresLoading) {
+    return html + `
+      <div style="text-align:center;padding:60px 20px">
+        <div style="font-size:24px;margin-bottom:12px">⛳</div>
+        <div style="font-size:14px;font-weight:700;color:var(--text-dim)">Loading scores...</div>
+        <div style="font-size:11px;color:var(--g700);margin-top:6px">${TOURS.find(t=>t.id===currentScoresTour)?.name||''}</div>
+      </div>`;
+  }
+
+  // Error state
+  if (scoresError) {
+    return html + `
+      <div style="text-align:center;padding:40px 20px">
+        <div style="font-size:20px;margin-bottom:10px">⚠️</div>
+        <div style="font-size:13px;color:var(--text-muted)">${scoresError}</div>
+        <button class="filter-btn" style="margin-top:14px;color:var(--green);border:1px solid var(--green)" onclick="fetchESPNScores(currentScoresTour)">Retry</button>
+      </div>`;
+  }
+
+  // No tournament
+  if (!TOURNAMENT || PLAYERS.length === 0) {
+    return html + `
+      <div style="text-align:center;padding:40px 20px">
+        <div style="font-size:20px;margin-bottom:10px">🏌️</div>
+        <div style="font-size:14px;font-weight:700;color:var(--text-dim)">No active event</div>
+        <div style="font-size:11px;color:var(--g700);margin-top:6px">Check the Schedule tab for upcoming events</div>
+      </div>`;
+  }
+
+  // Check if tee times exist
+  const hasTeetimes = PLAYERS.some(p => p.status === 'active' && isTeetime(p.thru));
+  const allTeetimes = PLAYERS.filter(p => p.status === 'active').every(p => isTeetime(p.thru));
+  
+  // Auto-default to tee times view when nobody has teed off
+  if (allTeetimes && hasTeetimes && scoresView === 'leaderboard') {
+    scoresView = 'teetimes';
+  }
+
+  // Broadcast bar + view toggle
+  html += `
+    <div class="broadcast">
+      <div class="broadcast-left">
+        <div class="broadcast-name">${TOURNAMENT.name}</div>
+        <div class="broadcast-sub">${TOURNAMENT.course} • ${TOURNAMENT.status}</div>
+      </div>
+      <div class="broadcast-right">
+        ${TOURNAMENT.purse ? `<div class="broadcast-label">PURSE</div><div class="broadcast-value">${TOURNAMENT.purse}</div>` : ''}
+      </div>
+    </div>`;
+
+  // Leaderboard / Tee Times toggle (only show if tee times exist)
+  if (hasTeetimes) {
+    html += `
+      <div style="display:flex;gap:4px;margin:8px 0;background:var(--card-bg);border-radius:8px;padding:3px;border:1px solid var(--card-border)">
+        <button class="filter-btn" style="flex:1;text-align:center;${scoresView==='leaderboard'?'background:var(--green);color:#fff':''}" onclick="scoresView='leaderboard';renderApp()">Leaderboard</button>
+        <button class="filter-btn" style="flex:1;text-align:center;${scoresView==='teetimes'?'background:var(--green);color:#fff':''}" onclick="scoresView='teetimes';renderApp()">Tee Times</button>
+      </div>`;
+  }
+
+  // Last updated
+  const updatedStr = lastFetchTime ? lastFetchTime.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}) : '';
+  if (updatedStr) {
+    html += `<div style="display:flex;justify-content:space-between;align-items:center;padding:4px 12px;font-size:10px;color:var(--g700)"><span>Updated ${updatedStr}</span><span style="cursor:pointer;color:var(--green);font-weight:600" onclick="fetchESPNScores(currentScoresTour)">↻ Refresh</span></div>`;
+  }
+
+  // Route to tee times view
+  if (scoresView === 'teetimes' && hasTeetimes) {
+    return html + renderTeeTimes();
+  }
+
+  const filtered = PLAYERS.filter(p => 
+    lbSearch === '' || p.name.toLowerCase().includes(lbSearch.toLowerCase())
+  );
+  const active = filtered.filter(p => p.status === 'active');
+  const cut = filtered.filter(p => p.status === 'cut');
+  const wd = filtered.filter(p => p.status === 'wd' || p.status === 'dq');
+
+  const showCutLine = (i, arr) => {
+    if (!TOURNAMENT || TOURNAMENT.round > 2) return false;
+    if (i === 0) return false;
+    const prev = arr[i-1];
+    const curr = arr[i];
+    if (!curr.score || !prev.score) return false;
+    return curr.score.startsWith('+') && !prev.score.startsWith('+');
+  };
+
+  let scoreClass = (s) => {
+    if (!s) return '';
+    return s.startsWith('+') ? 'score-over' : s === 'E' ? 'score-even' : 'score-under';
+  };
+
+  // Determine which round columns to show
+  const rd = TOURNAMENT.round || 1;
+  const roundCols = [];
+  for (let r = 1; r <= Math.min(rd, 4); r++) roundCols.push(r);
+
+  html += `
+    <div class="search"><input placeholder="Search ${PLAYERS.length} players..." oninput="lbSearch=this.value;renderApp()" value="${lbSearch}"></div>
+    <div class="lb-header">
+      <div style="width:28px">POS</div><div style="flex:1">PLAYER</div>
+      ${roundCols.map(r => `<div class="r-col" style="width:30px;text-align:center">R${r}</div>`).join('')}
+      <div style="width:36px;text-align:center">THRU</div>
+      <div style="width:46px;text-align:right">TOTAL</div>
+    </div>`;
+
+  active.forEach((p,i) => {
+    if (showCutLine(i, active)) {
+      html += `<div class="cut-line"><div class="cut-line-bar"></div><span class="cut-line-text">PROJECTED CUT</span><div class="cut-line-bar"></div></div>`;
+    }
+    const idx = PLAYERS.indexOf(p);
+    const rounds = [p.r1, p.r2, p.r3, p.r4];
+    html += `
+      <div class="lb-row ${i===0?'leader':''}" onclick="expandPlayer(${idx})">
+        <div class="lb-pos" style="color:${i===0?'var(--gold)':'var(--g500)'}">${p.pos}</div>
+        <div class="lb-player">
+          <span class="lb-flag">${p.c}</span>
+          <span class="lb-name ${i===0?'top':''}">${p.name}</span>
+          ${p.ch&&p.ch!=='—'?`<span class="lb-move" style="color:${p.ch.includes('↑')?'var(--s-green)':'var(--s-red)'}">${p.ch}</span>`:''}
+        </div>
+        ${roundCols.map(r => `<div class="lb-round r-col">${rounds[r-1]||''}</div>`).join('')}
+        <div class="lb-today" style="color:var(--text-muted);font-size:11px">${p.thru||''}</div>
+        <div class="lb-total ${scoreClass(p.score)}">${p.score}</div>
+      </div>
+      ${expandedCard===idx ? renderScorecard(p) : ''}`;
+  });
+
+  // Missed cut
+  if (cut.length > 0) {
+    html += `<div class="section-label" style="margin-top:16px">MISSED CUT</div>`;
+    cut.forEach(p => {
+      const rounds = [p.r1, p.r2, p.r3, p.r4];
+      html += `
+        <div class="lb-row" style="opacity:0.5">
+          <div class="lb-pos" style="color:var(--s-red)">${p.pos}</div>
+          <div class="lb-player">
+            <span class="lb-flag">${p.c}</span>
+            <span class="lb-name">${p.name}</span>
+          </div>
+          ${roundCols.map(r => `<div class="lb-round r-col">${rounds[r-1]||'—'}</div>`).join('')}
+          <div class="lb-today">—</div>
+          <div class="lb-total score-over">${p.score}</div>
+        </div>`;
+    });
+  }
+
+  // Withdrawn / DQ
+  if (wd.length > 0) {
+    html += `<div class="section-label" style="margin-top:16px">WITHDRAWN / DQ</div>`;
+    wd.forEach(p => {
+      const rounds = [p.r1, p.r2, p.r3, p.r4];
+      html += `
+        <div class="lb-row" style="opacity:0.4">
+          <div class="lb-pos" style="color:var(--text-muted)">${p.pos}</div>
+          <div class="lb-player">
+            <span class="lb-flag">${p.c}</span>
+            <span class="lb-name">${p.name}</span>
+          </div>
+          ${roundCols.map(r => `<div class="lb-round r-col">${rounds[r-1]||'—'}</div>`).join('')}
+          <div class="lb-today">—</div>
+          <div class="lb-total score-over">${p.score||'—'}</div>
+        </div>`;
+    });
+  }
+
+  // Player count
+  html += `<div style="text-align:center;padding:16px 0;font-size:11px;color:var(--g700)">${PLAYERS.length} players • Auto-refreshing every 30s</div>`;
+
+  return html;
+}
+
+// ============================================
+// RENDER NEWS TAB
+// ============================================
+function renderNews() {
+  if (newsLoading) {
+    return `<div style="text-align:center;padding:60px 20px">
+      <div style="font-size:24px;margin-bottom:12px">📰</div>
+      <div style="font-size:14px;font-weight:700;color:var(--text-dim)">Loading news...</div>
+    </div>`;
+  }
+  if (newsError || newsData.length === 0) {
+    if (!newsFetched) fetchESPNNews();
+    return `<div style="text-align:center;padding:40px 20px">
+      <div style="font-size:20px;margin-bottom:10px">📰</div>
+      <div style="font-size:13px;color:var(--text-muted)">${newsError || 'Loading news...'}</div>
+      <button class="filter-btn" style="margin-top:14px;color:var(--green);border:1px solid var(--green)" onclick="newsFetched=false;fetchESPNNews()">Refresh</button>
+    </div>`;
+  }
+  return newsData.map((n,i) => `
+    <div class="card" onclick="expandedCard=expandedCard===${100+i}?null:${100+i};renderApp()">
+      <div class="card-header">
+        <span class="tag" style="color:${n.tc};background:${n.tc}15">${n.tag}</span>
+        <span class="card-time">${n.time}</span>
+        <button class="share-btn" style="margin-left:auto" onclick="event.stopPropagation();shareContent('${n.title.replace(/'/g,"\\'")}')">Share</button>
+      </div>
+      <div class="card-title">${n.title}</div>
+      ${expandedCard===100+i ? `<div class="card-body">${n.body}${n.link ? `<a href="${n.link}" target="_blank" class="card-btn" style="text-decoration:none;color:#fff">Read Full Story →</a>` : ''}</div>` : ''}
+    </div>
+  `).join('');
+}
+
+// ============================================
+// RENDER INSIGHTS TAB
+// ============================================
+function renderInsights() {
+  return `
+    <div style="text-align:center;padding:50px 20px">
+      <div style="font-size:32px;margin-bottom:14px">📊</div>
+      <div style="font-size:18px;font-weight:800;color:var(--text)">Betting Insights</div>
+      <div style="font-size:13px;color:var(--text-muted);margin-top:8px;line-height:1.7;max-width:360px;margin-left:auto;margin-right:auto">
+        Outright odds with model vs. implied probability, handicapper picks with confidence ratings, live props & matchups, and season record tracking.
+      </div>
+      <div style="display:flex;gap:8px;justify-content:center;margin-top:20px;flex-wrap:wrap">
+        ${['Outright Odds','Value Flags','H2H Matchups','Props','Season Record'].map(f =>
+          `<span class="tag" style="color:var(--green);background:rgba(45,143,111,0.12)">${f}</span>`
+        ).join('')}
+      </div>
+      <div style="margin-top:24px;padding:16px;background:var(--card-bg);border:1px solid var(--card-border);border-radius:10px">
+        <div style="font-size:11px;color:var(--gold);font-weight:700;letter-spacing:2px">LAUNCHING MASTERS WEEK</div>
+        <div style="font-size:12px;color:var(--text-muted);margin-top:6px">AI-powered analysis goes live with our backend deployment</div>
+      </div>
+      <div class="disclaimer" style="margin-top:20px">All picks are for entertainment purposes only. Please gamble responsibly. If you or someone you know has a gambling problem, call 1-800-GAMBLER.</div>
+    </div>
+  `;
+}
+
+// ============================================
+// RENDER BLOG TAB
+// ============================================
+function renderBlog() {
+  return `
+    <div style="text-align:center;padding:50px 20px">
+      <div style="font-size:32px;margin-bottom:14px">✍️</div>
+      <div style="font-size:18px;font-weight:800;color:var(--text)">Blog</div>
+      <div style="font-size:13px;color:var(--text-muted);margin-top:8px;line-height:1.7;max-width:360px;margin-left:auto;margin-right:auto">
+        Weekly previews, DFS playbooks, strokes gained analysis, power rankings, and deep-dive features across every tour.
+      </div>
+      <div style="display:flex;gap:8px;justify-content:center;margin-top:20px;flex-wrap:wrap">
+        ${['Preview','Analysis','DFS','Rankings','Course Guide'].map(f =>
+          `<span class="tag" style="color:var(--gold);background:rgba(212,168,83,0.12)">${f}</span>`
+        ).join('')}
+      </div>
+      <div style="margin-top:24px;padding:16px;background:var(--card-bg);border:1px solid var(--card-border);border-radius:10px">
+        <div style="font-size:11px;color:var(--gold);font-weight:700;letter-spacing:2px">LAUNCHING MASTERS WEEK</div>
+        <div style="font-size:12px;color:var(--text-muted);margin-top:6px">AI-generated content goes live with our backend deployment</div>
+      </div>
+    </div>
+  `;
+}
+
+// ============================================
+// RENDER STANDINGS TAB
+// ============================================
+let standingsFilter = 'pga';
+
+function switchStandingsTour(tour) {
+  standingsFilter = tour;
+  if (!standingsFetched[tour]) fetchESPNStandings(tour);
+  renderApp();
+}
+
+function renderStandings() {
+  const tourBar = `
+    <div class="filter-bar">
+      ${['pga','dpw','liv','lpga','kft','champ'].map(t => 
+        `<button class="filter-btn ${standingsFilter===t?'active':''}" onclick="switchStandingsTour('${t}')">${TOURS.find(x=>x.id===t)?.short||t}</button>`
+      ).join('')}
+    </div>`;
+
+  if (standingsLoading) {
+    return tourBar + `<div style="text-align:center;padding:40px 20px">
+      <div style="font-size:14px;font-weight:700;color:var(--text-dim)">Loading standings...</div>
+    </div>`;
+  }
+
+  const data = standingsLive[standingsFilter];
+  if (!data || data.length === 0) {
+    return tourBar + `<div style="text-align:center;padding:40px 20px">
+      <div style="font-size:20px;margin-bottom:10px">🏆</div>
+      <div style="font-size:13px;color:var(--text-muted)">${standingsError || 'Standings will populate once ESPN data is available'}</div>
+      <button class="filter-btn" style="margin-top:14px;color:var(--green);border:1px solid var(--green)" onclick="standingsFetched['${standingsFilter}']=false;fetchESPNStandings('${standingsFilter}')">Retry</button>
+    </div>`;
+  }
+
+  const tourNames = {pga:'FedExCup',dpw:'Race to Dubai',liv:'LIV Individual',lpga:'Race to CME Globe',kft:'Korn Ferry Points',champ:'Charles Schwab Cup'};
+  return tourBar + `
+    <div style="font-size:16px;font-weight:800;margin-bottom:10px">${tourNames[standingsFilter] || 'Standings'}</div>
+    <div class="lb-header">
+      <div style="width:28px">POS</div><div style="flex:1">PLAYER</div>
+      <div style="width:56px;text-align:center">PTS</div>
+      <div style="width:36px;text-align:center">WINS</div>
+      <div style="width:40px;text-align:center">TOP 10</div>
+      <div style="width:64px;text-align:right">EARNINGS</div>
+    </div>
+    ${data.map((r,i) => `
+      <div class="standings-row ${i===0?'top':''}" style="${i%2===0?'background:rgba(255,255,255,0.01)':''}">
+        <div style="width:28px;font-size:12px;font-weight:700;color:${i===0?'var(--gold)':'var(--g500)'}">${r.pos}</div>
+        <div style="flex:1;font-size:13px;font-weight:${i===0?800:600};color:${i===0?'var(--text)':'var(--text-dim)'}">${r.p}</div>
+        <div style="width:56px;text-align:center;font-size:13px;font-weight:700">${r.pts}</div>
+        <div style="width:36px;text-align:center;font-size:12px;color:${r.w>0?'var(--s-green)':'var(--g500)'};font-weight:700">${r.w}</div>
+        <div style="width:40px;text-align:center;font-size:12px;color:var(--text-muted)">${r.t10}</div>
+        <div style="width:64px;text-align:right;font-size:12px;color:var(--gold);font-weight:600">${r.earn}</div>
+      </div>
+    `).join('')}
+  `;
+}
+
+// ============================================
+// RENDER SCHEDULE TAB
+// ============================================
+let schedFilter = 'all';
+
+function renderSchedule() {
+  const tourBar = `
+    <div class="filter-bar">
+      ${['all','pga','liv','dpw','lpga'].map(t => 
+        `<button class="filter-btn ${schedFilter===t?'active':''}" onclick="schedFilter='${t}';renderApp()">${t==='all'?'All':TOURS.find(x=>x.id===t)?.short||t}</button>`
+      ).join('')}
+    </div>`;
+
+  if (scheduleLoading) {
+    return tourBar + `<div style="text-align:center;padding:40px 20px">
+      <div style="font-size:14px;font-weight:700;color:var(--text-dim)">Loading schedule...</div>
+    </div>`;
+  }
+
+  if (scheduleError || scheduleData.length === 0) {
+    if (!scheduleFetched) fetchESPNSchedule();
+    return tourBar + `<div style="text-align:center;padding:40px 20px">
+      <div style="font-size:20px;margin-bottom:10px">📅</div>
+      <div style="font-size:13px;color:var(--text-muted)">${scheduleError || 'Loading schedule...'}</div>
+      <button class="filter-btn" style="margin-top:14px;color:var(--green);border:1px solid var(--green)" onclick="scheduleFetched=false;fetchESPNSchedule()">Refresh</button>
+    </div>`;
+  }
+
+  const filtered = schedFilter === 'all' ? scheduleData : scheduleData.filter(s => s.tour === schedFilter);
+  
+  if (filtered.length === 0) {
+    return tourBar + `<div style="text-align:center;padding:40px 20px;font-size:13px;color:var(--text-muted)">No events found for this tour</div>`;
+  }
+
+  return tourBar + filtered.map(s => `
+    <div class="sched-card ${s.live?'live':''}">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start">
+        <div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <span style="font-size:16px;font-weight:800">${s.event}</span>
+            ${s.live?'<span class="badge badge-live">LIVE</span>':''}
+            ${s.major?'<span class="badge badge-major">MAJOR</span>':''}
+          </div>
+          <div style="font-size:12px;color:var(--text-muted);margin-top:3px">${s.course}</div>
+          <div style="font-size:11px;color:var(--g700);margin-top:2px">${s.dates} • ${TOURS.find(x=>x.id===s.tour)?.name||''}</div>
+        </div>
+        <div style="text-align:right">
+          ${s.purse ? `<div style="font-size:13px;font-weight:700">${s.purse}</div>` : ''}
+          ${s.tv ? `<div style="font-size:10px;color:var(--text-muted);margin-top:3px">${s.tv}</div>` : ''}
+        </div>
+      </div>
+    </div>
+  `).join('');
+}
+
+// ============================================
+// RENDER PLAYERS TAB
+// ============================================
+let selectedPlayerIdx = null;
+
+function renderPlayers() {
+  // Build from leaderboard if we have data
+  if (playerProfiles.length === 0) buildPlayerProfiles();
+  
+  const players = playerProfiles.length > 0 ? playerProfiles : [];
+  
+  if (players.length === 0) {
+    return `<div style="text-align:center;padding:40px 20px">
+      <div style="font-size:20px;margin-bottom:10px">🏌️</div>
+      <div style="font-size:14px;font-weight:700;color:var(--text-dim)">Player profiles</div>
+      <div style="font-size:12px;color:var(--text-muted);margin-top:6px">Player cards populate from the current tournament leaderboard</div>
+    </div>`;
+  }
+
+  if (selectedPlayerIdx !== null && selectedPlayerIdx < players.length) {
+    const p = players[selectedPlayerIdx];
+    const rounds = [p.r1, p.r2, p.r3, p.r4].filter(r => r !== null && r !== undefined);
+    let scoreClass = (s) => {
+      if (!s) return '';
+      return s.startsWith?.('+') ? 'score-over' : s === 'E' ? 'score-even' : 'score-under';
+    };
+    return `
+      <button class="filter-btn" style="margin:10px 0;color:var(--green)" onclick="selectedPlayerIdx=null;renderApp()">← All Players</button>
+      <div class="profile-header">
+        <div style="font-size:24px;margin-bottom:4px">${p.c}</div>
+        <div style="font-size:22px;font-weight:900;color:#fff">${p.name}</div>
+        <div style="font-size:12px;color:rgba(255,255,255,0.7);margin-top:4px">${TOURNAMENT?.name || 'Current Event'} • Position: ${p.pos}</div>
+      </div>
+      ${rounds.length > 0 ? `
+        <div style="font-size:12px;font-weight:700;margin-bottom:8px">Round Scores</div>
+        <div style="display:flex;gap:12px;margin-bottom:14px">
+          ${rounds.map((r,i) => `
+            <div class="stat-box" style="flex:1;text-align:center">
+              <div class="stat-label">R${i+1}</div>
+              <div class="stat-value">${r}</div>
+            </div>
+          `).join('')}
+          <div class="stat-box" style="flex:1;text-align:center;border-color:var(--green)">
+            <div class="stat-label">TOTAL</div>
+            <div class="stat-value ${scoreClass(p.score)}">${p.score}</div>
+          </div>
+        </div>
+      ` : `
+        <div style="padding:16px;background:var(--card-bg);border:1px solid var(--card-border);border-radius:10px;margin-bottom:14px;text-align:center">
+          <div style="font-size:13px;color:var(--text-muted)">Tee time: ${p.thru || 'TBD'}</div>
+        </div>
+      `}
+    `;
+  }
+
+  return `
+    <div class="section-label">${TOURNAMENT?.name ? `${TOURNAMENT.name} — FIELD` : 'PLAYERS'}</div>
+    ${players.map((p,i) => {
+      let scoreClass = '';
+      if (p.score?.startsWith?.('+')) scoreClass = 'score-over';
+      else if (p.score === 'E') scoreClass = 'score-even';
+      else if (p.score) scoreClass = 'score-under';
+      return `
+      <div class="card" onclick="selectedPlayerIdx=${i};renderApp()">
+        <div style="display:flex;align-items:center;justify-content:space-between">
+          <div style="display:flex;align-items:center;gap:10px">
+            <span style="font-size:20px">${p.c}</span>
+            <div>
+              <div style="font-size:15px;font-weight:700">${p.name}</div>
+              <div style="font-size:11px;color:var(--text-muted);margin-top:2px">${p.pos ? '#' + p.pos : ''} ${p.thru ? '• ' + p.thru : ''}</div>
+            </div>
+          </div>
+          <div class="lb-total ${scoreClass}" style="font-size:16px">${p.score || '—'}</div>
+        </div>
+      </div>`;
+    }).join('')}
+  `;
+}
+
+// ============================================
+// MAIN RENDER
+// ============================================
+function renderApp() {
+  const app = document.getElementById('app');
+  let html = '<div style="padding:10px 0">';
+
+  // Update watch bar
+  const wb = document.getElementById('watchBar');
+  if (TOURNAMENT && TOURNAMENT.broadcast && TOURNAMENT.status && !TOURNAMENT.status.toLowerCase().includes('scheduled')) {
+    wb.style.display = 'flex';
+    document.getElementById('watchChannel').textContent = TOURNAMENT.broadcast;
+    document.getElementById('watchEvent').textContent = `— ${TOURNAMENT.name} ${TOURNAMENT.status}`;
+  } else {
+    wb.style.display = 'none';
+  }
+
+  switch(currentTab) {
+    case 0: html += renderScores(); break;
+    case 1: html += renderNews(); break;
+    case 2: html += renderInsights(); break;
+    case 3: html += renderBlog(); break;
+    case 4: html += renderStandings(); break;
+    case 5: html += renderSchedule(); break;
+    case 6: html += renderPlayers(); break;
+  }
+
+  html += '</div>';
+  app.innerHTML = html;
+}
+
+// ============================================
+// INIT
+// ============================================
+renderNav();
+renderApp();
+
+// Register PWA service worker
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/sw.js').catch(() => {});
+}
+</script>
+</body>
+</html>

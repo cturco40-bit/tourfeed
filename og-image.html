@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;700;900&display=swap" rel="stylesheet">
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body { width:1200px; height:630px; background:#111927; font-family:'DM Sans',sans-serif; display:flex; flex-direction:column; justify-content:center; align-items:center; overflow:hidden; }
+    .bg { position:absolute; top:0; left:0; right:0; bottom:0; background: radial-gradient(ellipse at 30% 50%, rgba(45,143,111,0.12) 0%, transparent 50%), radial-gradient(ellipse at 70% 30%, rgba(212,168,83,0.06) 0%, transparent 50%); }
+    .content { position:relative; z-index:1; text-align:center; }
+    .logo { display:inline-flex; align-items:center; margin-bottom:24px; }
+    .logo-t { font-size:72px; font-weight:900; color:#FFFFFF; letter-spacing:2px; }
+    .logo-f { font-size:72px; font-weight:900; color:#D4A853; letter-spacing:2px; }
+    .tagline { font-size:28px; font-weight:700; color:#CED4DA; margin-bottom:32px; }
+    .tours { display:flex; gap:16px; justify-content:center; }
+    .tour { font-size:14px; font-weight:700; color:#868E96; letter-spacing:1px; }
+    .dot { color:rgba(255,255,255,0.15); font-size:14px; }
+    .url { position:absolute; bottom:32px; font-size:16px; color:#2D8F6F; font-weight:700; letter-spacing:1px; }
+  </style>
+</head>
+<body>
+  <div class="bg"></div>
+  <div class="content">
+    <div class="logo">
+      <span class="logo-t">TOUR</span><span class="logo-f">FEED</span>
+    </div>
+    <div class="tagline">Live scores. Instant recaps. Betting insights.</div>
+    <div class="tours">
+      <span class="tour">PGA TOUR</span><span class="dot">·</span>
+      <span class="tour">LIV</span><span class="dot">·</span>
+      <span class="tour">DP WORLD</span><span class="dot">·</span>
+      <span class="tour">LPGA</span><span class="dot">·</span>
+      <span class="tour">KORN FERRY</span><span class="dot">·</span>
+      <span class="tour">CHAMPIONS</span>
+    </div>
+  </div>
+  <div class="url">tourfeed.co</div>
+</body>
+</html>

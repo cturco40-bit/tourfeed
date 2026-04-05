@@ -1,0 +1,24 @@
+{
+  "name": "TourFeed",
+  "short_name": "TourFeed",
+  "description": "Live golf scores, instant recaps, and betting insights across every tour.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#111927",
+  "theme_color": "#2D8F6F",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect width='512' height='512' rx='108' fill='%232D8F6F'/><text x='60' y='340' font-family='system-ui' font-weight='900' font-size='220' fill='white'>T</text><text x='265' y='340' font-family='system-ui' font-weight='900' font-size='220' fill='%23D4A853'>F</text></svg>",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'><rect width='192' height='192' rx='40' fill='%232D8F6F'/><text x='22' y='130' font-family='system-ui' font-weight='900' font-size='84' fill='white'>T</text><text x='100' y='130' font-family='system-ui' font-weight='900' font-size='84' fill='%23D4A853'>F</text></svg>",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
