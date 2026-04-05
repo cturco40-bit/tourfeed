@@ -87,7 +87,7 @@ exports.handler = async (event) => {
                 if (tRes.ok) {
                   const tData = await tRes.json();
                   const alreadyRecapped = (tData.data || []).some(t =>
-                    t.text.includes('FULL RECAP') || (t.text.includes('wins') && t.text.toLowerCase().includes(tourneyName.toLowerCase().split(' ')[0]))
+                    t.text.includes('FULL RECAP')
                   );
                   if (alreadyRecapped) continue;
                 }
