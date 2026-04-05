@@ -130,8 +130,7 @@ async function tweetNextEvent(headers, force) {
       ? `🏌️ Up Next: ${name}\n\n📍 ${course}\n📅 ${dateStr}\n\nGet ready. Live scores + coverage at https://tourfeed.co\n\n#Golf #PGATour`
       : `⛳ Up Next: ${name}\n\n📍 ${course}\n📅 ${dateStr}\n\nLive scores → https://tourfeed.co/?ref=x\n\n#PGATour #Golf`;
 
-    const nextImg = await getGolfImage(name);
-    const result = await postTweet(tweetText, nextImg);
+    const result = await postTweet(tweetText, 'https://tourfeed.co/og-image.png');
     return { statusCode: 200, headers, body: JSON.stringify({ success: true, reason: 'next_event', tweet_id: result.data?.id, text: tweetText }) };
   } catch (err) {
     return { statusCode: 200, headers, body: JSON.stringify({ skipped: 'Next event tweet failed', error: err.message }) };

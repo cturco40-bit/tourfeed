@@ -1,41 +1,10 @@
-const crypto = require('crypto');
-
-function oauthSign(method, url, params, consumerSecret, tokenSecret) {
-  const sortedParams = Object.keys(params).sort().map(k => `${encodeURIComponent(k)}=${encodeURIComponent(params[k])}`).join('&');
-  const baseString = `${method.toUpperCase()}&${encodeURIComponent(url)}&${encodeURIComponent(sortedParams)}`;
-  const signingKey = `${encodeURIComponent(consumerSecret)}&${encodeURIComponent(tokenSecret)}`;
-  return crypto.createHmac('sha1', signingKey).update(baseString).digest('base64');
-}
-
-function buildAuthHeader(params) {
-  return 'OAuth ' + Object.keys(params).filter(k => k.startsWith('oauth_')).sort()
-    .map(k => `${encodeURIComponent(k)}="${encodeURIComponent(params[k])}"`).join(', ');
-}
-
 async function postTweet(text) {
-  const apiKey = process.env.TWITTER_API_KEY;
-  const apiSecret = process.env.TWITTER_API_SECRET;
-  const accessToken = process.env.TWITTER_ACCESS_TOKEN;
-  const accessSecret = process.env.TWITTER_ACCESS_SECRET;
-  if (!apiKey || !apiSecret || !accessToken || !accessSecret) throw new Error('Missing Twitter creds');
-
-  const url = 'https://api.twitter.com/2/tweets';
-  const oauthParams = {
-    oauth_consumer_key: apiKey,
-    oauth_nonce: crypto.randomBytes(16).toString('hex'),
-    oauth_signature_method: 'HMAC-SHA1',
-    oauth_timestamp: Math.floor(Date.now() / 1000).toString(),
-    oauth_token: accessToken,
-    oauth_version: '1.0',
-  };
-  oauthParams.oauth_signature = oauthSign('POST', url, oauthParams, apiSecret, accessSecret);
-
-  const res = await fetch(url, {
+  const res = await fetch('https://tourfeed.co/.netlify/functions/post-tweet', {
     method: 'POST',
-    headers: { 'Authorization': buildAuthHeader(oauthParams), 'Content-Type': 'application/json' },
-    body: JSON.stringify({ text: text.slice(0, 280) }),
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ text: text.slice(0, 280), image: 'https://tourfeed.co/og-image.png' }),
   });
-  if (!res.ok) throw new Error(`Twitter ${res.status}: ${await res.text()}`);
+  if (!res.ok) throw new Error(`post-tweet ${res.status}: ${await res.text()}`);
   return await res.json();
 }
 

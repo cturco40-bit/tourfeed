@@ -142,7 +142,7 @@ exports.handler = async (event) => {
     const tagStr = '\n' + tags.join(' ');
     if (tweetText.length + tagStr.length <= 280) tweetText += tagStr;
 
-    const result = await postTweet(tweetText, picked.image || null);
+    const result = await postTweet(tweetText, 'https://tourfeed.co/og-image.png');
 
     return {
       statusCode: 200,
