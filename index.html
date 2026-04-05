@@ -1438,6 +1438,11 @@ function openArticle(idx) {
   window.scrollTo(0, 0);
 }
 
+function esc(str) {
+  if (!str) return '';
+  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/`/g,'&#96;').replace(/\$/g,'&#36;');
+}
+
 function renderNews() {
   if (newsLoading) {
     return `<div style="text-align:center;padding:60px 20px">
@@ -1512,8 +1517,8 @@ function renderNews() {
         <button class="share-btn" style="margin-left:auto" onclick="event.stopPropagation();shareContent(newsData[${i}].title)">Share</button>
       </div>
       ${n.image ? `<img src="${n.image}" style="width:100%;border-radius:6px;margin:8px 0" alt="" onerror="this.style.display='none'">` : ''}
-      <div class="card-title">${n.title}</div>
-      <div style="font-size:12px;color:var(--text-muted);margin-top:4px;line-height:1.5">${(n.summary||'').slice(0, 120)}${n.summary?.length > 120 ? '...' : ''}</div>
+      <div class="card-title">${esc(n.title)}</div>
+      <div style="font-size:12px;color:var(--text-muted);margin-top:4px;line-height:1.5">${esc(n.summary ? n.summary.slice(0, 120) + (n.summary.length > 120 ? '...' : '') : '')}</div>
     </div>`;
   }).join('');
 }
