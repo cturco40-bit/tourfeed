@@ -151,6 +151,14 @@ exports.handler = async (event) => {
       return !isNaN(todayNum) && todayNum <= -4;
     });
 
+    // Never tweet if last tweet was less than 10 minutes ago (prevents duplicates)
+    if (!force && minutesSinceLastTweet < 10) {
+      return { statusCode: 200, headers, body: JSON.stringify({
+        skipped: 'Too soon since last tweet',
+        minutesSinceLastTweet: Math.round(minutesSinceLastTweet),
+      })};
+    }
+
     let reason = '';
     if (force) reason = 'forced';
     else if (isFinal) reason = 'tournament_final';
