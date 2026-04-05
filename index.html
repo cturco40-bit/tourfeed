@@ -445,7 +445,7 @@ async function fetchESPNScores(tour) {
     PLAYERS = competitors.map((c) => {
       const ath = c.athlete || {};
       const ls = c.linescores || [];
-      const posTxt = c.status?.position?.displayName || c.status?.position?.id || '';
+      const posTxt = c.status?.position?.displayName || c.status?.position?.id || c.rankedPosition || '';
       const statusName = (c.status?.type?.name || '').toUpperCase();
       const statusDesc = (c.status?.type?.description || '').toLowerCase();
 
@@ -455,6 +455,17 @@ async function fetchESPNScores(tour) {
 
       let scoreDisp = c.score?.displayValue ?? '';
       if (scoreDisp === '0' || scoreDisp === '+0') scoreDisp = 'E';
+
+      // If ESPN doesn't provide a score, compute from completed rounds
+      if (!scoreDisp && ls.length > 0) {
+        const completedRounds = ls.filter(l => l?.value && l.value > 50);
+        if (completedRounds.length > 0) {
+          const totalStrokes = completedRounds.reduce((sum, l) => sum + l.value, 0);
+          const totalPar = coursePar * completedRounds.length;
+          const diff = totalStrokes - totalPar;
+          scoreDisp = diff === 0 ? 'E' : (diff > 0 ? `+${diff}` : `${diff}`);
+        }
+      }
 
       // Country flag
       const flagAlt = ath.flag?.alt || '';
@@ -467,15 +478,15 @@ async function fetchESPNScores(tour) {
         todayDisp = '—';
       } else {
         const curRound = ls[period - 1]?.value;
-        if (curRound) todayDisp = curRound.toString();
+        if (curRound && curRound > 50) todayDisp = curRound.toString();
         else {
           const thruVal = c.status?.displayValue || '';
           todayDisp = /^\d/.test(thruVal) ? thruVal : (thruVal === 'F' && ls[period-1] ? ls[period-1].value?.toString() : '');
         }
       }
 
-      // Thru
-      let thruDisp = c.status?.displayValue || '';
+      // Thru — check multiple fields for tee time
+      let thruDisp = c.status?.displayValue || c.status?.detail || c.status?.shortDetail || '';
 
       return {
         pos: isCut ? 'MC' : isWD ? 'WD' : isDQ ? 'DQ' : posTxt,
@@ -499,6 +510,20 @@ async function fetchESPNScores(tour) {
 
     // Sort by sortOrder (ESPN's official ordering)
     PLAYERS.sort((a,b) => a.sortOrder - b.sortOrder);
+
+    // Fill in missing positions from sort order
+    let posCounter = 1;
+    PLAYERS.forEach((p, i) => {
+      if (p.status === 'active' && !p.pos) {
+        // Check if tied with previous player
+        if (i > 0 && PLAYERS[i-1].score === p.score && PLAYERS[i-1].status === 'active') {
+          p.pos = PLAYERS[i-1].pos;
+        } else {
+          p.pos = `${posCounter}`;
+        }
+      }
+      if (p.status === 'active') posCounter = i + 2;
+    });
 
     lastFetchTime = new Date();
     scoresLoading = false;
