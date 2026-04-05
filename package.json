@@ -1,0 +1,24 @@
+{
+  "name": "tourfeed",
+  "version": "1.0.0",
+  "description": "",
+  "main": "content-queue.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/cturco40-bit/tourfeed.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/cturco40-bit/tourfeed/issues"
+  },
+  "homepage": "https://github.com/cturco40-bit/tourfeed#readme",
+  "dependencies": {
+    "@netlify/functions": "^5.1.5"
+  }
+}

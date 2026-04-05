@@ -218,7 +218,3 @@ exports.handler = async (event) => {
   }
 };
 
-// Netlify Scheduled Function — runs every 10 minutes
-exports.config = {
-  schedule: '*/10 * * * *',
-};
