@@ -747,6 +747,19 @@ async function fetchNews() {
     });
     newsFetched = true;
     newsLoading = false;
+    renderApp();
+
+    // Pre-generate articles in background so they're instant on click
+    // Run 3 at a time to avoid overwhelming the function
+    (async () => {
+      for (let i = 0; i < newsData.length; i += 3) {
+        await Promise.allSettled([
+          generateArticle(i),
+          generateArticle(i + 1),
+          generateArticle(i + 2),
+        ]);
+      }
+    })();
   } catch(e) {
     console.error('News fetch error:', e);
     newsError = 'Unable to load news';
@@ -761,9 +774,9 @@ async function generateArticle(idx) {
   const cacheKey = `article_${idx}`;
   if (articleCache[cacheKey]) return; // already cached
 
-  // Set loading state
+  // Only show loading skeleton if article is currently expanded
   articleCache[cacheKey] = { loading: true };
-  renderApp();
+  if (expandedCard === 100 + idx) renderApp();
 
   try {
     const res = await fetch('/.netlify/functions/generate-article', {
