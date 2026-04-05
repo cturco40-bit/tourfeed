@@ -17,38 +17,80 @@ function buildAuthHeader(params) {
   return `OAuth ${header}`;
 }
 
-async function tweet(text) {
-  const apiKey = process.env.TWITTER_API_KEY;
-  const apiSecret = process.env.TWITTER_API_SECRET;
-  const accessToken = process.env.TWITTER_ACCESS_TOKEN;
-  const accessSecret = process.env.TWITTER_ACCESS_SECRET;
-
-  if (!apiKey || !apiSecret || !accessToken || !accessSecret) {
-    throw new Error('Twitter OAuth credentials not configured');
-  }
-
-  const url = 'https://api.twitter.com/2/tweets';
-  const oauthParams = {
-    oauth_consumer_key: apiKey,
+function getOAuthParams() {
+  return {
+    oauth_consumer_key: process.env.TWITTER_API_KEY,
     oauth_nonce: crypto.randomBytes(16).toString('hex'),
     oauth_signature_method: 'HMAC-SHA1',
     oauth_timestamp: Math.floor(Date.now() / 1000).toString(),
-    oauth_token: accessToken,
+    oauth_token: process.env.TWITTER_ACCESS_TOKEN,
     oauth_version: '1.0',
   };
+}
 
-  const signature = oauthSign('POST', url, oauthParams, apiSecret, accessSecret);
-  oauthParams.oauth_signature = signature;
+// Upload image to Twitter via v1.1 media upload
+async function uploadMedia(imageUrl) {
+  const apiSecret = process.env.TWITTER_API_SECRET;
+  const accessSecret = process.env.TWITTER_ACCESS_SECRET;
 
-  const authHeader = buildAuthHeader(oauthParams);
+  // Download the image
+  const imgRes = await fetch(imageUrl);
+  if (!imgRes.ok) throw new Error(`Image fetch failed: ${imgRes.status}`);
+  const buffer = Buffer.from(await imgRes.arrayBuffer());
+  const base64 = buffer.toString('base64');
+
+  // Determine media type
+  const contentType = imgRes.headers.get('content-type') || 'image/png';
+  const mediaType = contentType.includes('jpeg') || contentType.includes('jpg') ? 'image/jpeg' :
+                    contentType.includes('gif') ? 'image/gif' : 'image/png';
+
+  // Upload via v1.1 media/upload
+  const url = 'https://upload.twitter.com/1.1/media/upload.json';
+  const oauthParams = getOAuthParams();
+  oauthParams.oauth_signature = oauthSign('POST', url, oauthParams, apiSecret, accessSecret);
+
+  const formData = new URLSearchParams();
+  formData.append('media_data', base64);
 
   const res = await fetch(url, {
     method: 'POST',
     headers: {
-      'Authorization': authHeader,
+      'Authorization': buildAuthHeader(oauthParams),
+      'Content-Type': 'application/x-www-form-urlencoded',
+    },
+    body: formData.toString(),
+  });
+
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(`Media upload failed: ${res.status} ${err}`);
+  }
+
+  const data = await res.json();
+  return data.media_id_string;
+}
+
+// Post tweet with optional media
+async function tweet(text, mediaIds) {
+  const apiSecret = process.env.TWITTER_API_SECRET;
+  const accessSecret = process.env.TWITTER_ACCESS_SECRET;
+
+  const url = 'https://api.twitter.com/2/tweets';
+  const oauthParams = getOAuthParams();
+  oauthParams.oauth_signature = oauthSign('POST', url, oauthParams, apiSecret, accessSecret);
+
+  const body = { text: text.slice(0, 280) };
+  if (mediaIds && mediaIds.length > 0) {
+    body.media = { media_ids: mediaIds };
+  }
+
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Authorization': buildAuthHeader(oauthParams),
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({ text }),
+    body: JSON.stringify(body),
   });
 
   if (!res.ok) {
@@ -75,15 +117,33 @@ exports.handler = async (event) => {
     return { statusCode: 405, headers, body: JSON.stringify({ error: 'Method not allowed' }) };
   }
 
+  const apiKey = process.env.TWITTER_API_KEY;
+  const apiSecret = process.env.TWITTER_API_SECRET;
+  const accessToken = process.env.TWITTER_ACCESS_TOKEN;
+  const accessSecret = process.env.TWITTER_ACCESS_SECRET;
+
+  if (!apiKey || !apiSecret || !accessToken || !accessSecret) {
+    return { statusCode: 500, headers, body: JSON.stringify({ error: 'Twitter OAuth credentials not configured' }) };
+  }
+
   try {
-    const { text } = JSON.parse(event.body);
+    const { text, image } = JSON.parse(event.body);
     if (!text) {
       return { statusCode: 400, headers, body: JSON.stringify({ error: 'Missing tweet text' }) };
     }
 
-    // Enforce 280 char limit
-    const tweetText = text.slice(0, 280);
-    const result = await tweet(tweetText);
+    // Upload image if provided
+    let mediaIds = [];
+    if (image) {
+      try {
+        const mediaId = await uploadMedia(image);
+        mediaIds.push(mediaId);
+      } catch (imgErr) {
+        console.warn('Image upload failed, posting without image:', imgErr.message);
+      }
+    }
+
+    const result = await tweet(text, mediaIds);
 
     return {
       statusCode: 200,
@@ -91,7 +151,8 @@ exports.handler = async (event) => {
       body: JSON.stringify({
         success: true,
         tweet_id: result.data?.id,
-        text: tweetText,
+        text: text.slice(0, 280),
+        has_image: mediaIds.length > 0,
       }),
     };
 
@@ -104,3 +165,7 @@ exports.handler = async (event) => {
     };
   }
 };
+
+// Export for other functions to use
+exports.uploadMedia = uploadMedia;
+exports.tweet = tweet;
