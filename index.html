@@ -543,6 +543,52 @@ async function fetchESPNScores(tour) {
     lastFetchTime = new Date();
     scoresLoading = false;
     scoresError = null;
+    renderApp();
+
+    // Enrich with detailed status (tee times, precise positions, thru)
+    // Fetched in parallel after initial render for fast first paint
+    const league = sport.replace('golf/', '') || 'pga';
+    const eventId = event.id;
+    const compId = comp.id || eventId;
+    try {
+      const statusFetches = PLAYERS.map(p =>
+        fetch(`https://sports.core.api.espn.com/v2/sports/golf/leagues/${league}/events/${eventId}/competitions/${compId}/competitors/${p.athleteId}/status`)
+          .then(r => r.ok ? r.json() : null)
+          .catch(() => null)
+      );
+      const statuses = await Promise.all(statusFetches);
+      statuses.forEach((st, i) => {
+        if (!st || !PLAYERS[i]) return;
+        const p = PLAYERS[i];
+        // Position
+        if (st.position?.displayName) p.pos = st.position.displayName;
+        // Thru
+        if (st.thru != null) {
+          if (st.type?.state === 'pre' || st.thru === 0) {
+            // Not started — show tee time
+            if (st.teeTime) {
+              const t = new Date(st.teeTime);
+              p.thru = t.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+            } else {
+              p.thru = '—';
+            }
+          } else if (st.thru >= 18) {
+            p.thru = 'F';
+          } else {
+            p.thru = st.thru.toString();
+          }
+        }
+        // Status type (cut, wd, etc)
+        const stName = (st.type?.name || '').toUpperCase();
+        if (stName.includes('CUT')) { p.status = 'cut'; p.pos = 'MC'; }
+        else if (stName.includes('WD') || stName.includes('WITHDRAW')) { p.status = 'wd'; p.pos = 'WD'; }
+        else if (stName.includes('DQ')) { p.status = 'dq'; p.pos = 'DQ'; }
+      });
+      renderApp();
+    } catch(e) {
+      console.error('Status enrichment error:', e);
+    }
+    return;
   } catch(err) {
     console.error('ESPN fetch error:', err);
     scoresError = 'Unable to load scores — check connection';
