@@ -156,9 +156,15 @@ async function tryQuoteTweet(bearer, query, strategy) {
     const users = {};
     (data.includes?.users || []).forEach(u => { users[u.id] = u; });
 
-    // Sort by engagement
+    // Sort by engagement — skip tweets that are just links/media with no real text
     const sorted = tweets
-      .filter(t => (t.public_metrics?.like_count || 0) >= 3)
+      .filter(t => {
+        if ((t.public_metrics?.like_count || 0) < 3) return false;
+        // Strip URLs and check if there's actual text left
+        const textOnly = (t.text || '').replace(/https?:\/\/\S+/g, '').trim();
+        if (textOnly.length < 10) return false; // Just a link, no text to react to
+        return true;
+      })
       .sort((a, b) => (b.public_metrics?.like_count || 0) - (a.public_metrics?.like_count || 0));
 
     // Get current tournament context for smarter takes
@@ -183,6 +189,8 @@ async function tryQuoteTweet(bearer, query, strategy) {
 
       const take = await generateTake(target.text, authorName, context);
       if (!take) continue;
+      // Skip broken AI responses
+      if (/don't have access|can't see|can't view|unable to|I cannot|provide more context/i.test(take)) continue;
 
       // Send to draft queue (not post directly)
       try {
