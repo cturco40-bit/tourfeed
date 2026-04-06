@@ -286,7 +286,7 @@ exports.handler = async (event) => {
           body: article.body || '',
           source_headline: item.title,
           source_name: item.source,
-          status: 'draft',
+          status: 'pending',
           created_at: new Date().toISOString(),
         });
 
@@ -300,7 +300,7 @@ exports.handler = async (event) => {
               body: tweet,
               source_headline: item.title,
               source_name: item.source,
-              status: 'draft',
+              status: 'pending',
               created_at: new Date().toISOString(),
             });
           }

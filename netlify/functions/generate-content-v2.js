@@ -66,7 +66,7 @@ exports.handler = async (event) => {
       body,
       tournament_id: tournamentId,
       round,
-      status: 'draft',
+      status: 'pending',
       content_hash: hash,
       created_at: new Date().toISOString(),
     });
