@@ -24,18 +24,18 @@ function wrapText(text, maxChars, x, startY, lineH, fill, size, weight) {
   }
   if (line.trim()) lines.push(line.trim());
   return lines.slice(0, 6).map((l, i) =>
-    `<text x="${x}" y="${startY + i * lineH}" font-family="Arial,Helvetica,sans-serif" font-size="${size}" font-weight="${weight}" fill="${fill}">${escXml(l)}</text>`
+    `<text x="${x}" y="${startY + i * lineH}" font-family="DM Sans,Arial,sans-serif" font-size="${size}" font-weight="${weight}" fill="${fill}">${escXml(l)}</text>`
   ).join('\n');
 }
 
 function logo(x, y, size) {
-  return `<text x="${x}" y="${y}" font-family="Arial,Helvetica,sans-serif" font-size="${size}" font-weight="900" fill="${WHITE}" letter-spacing="1">TOUR</text>` +
-    `<text x="${x + size * 3}" y="${y}" font-family="Arial,Helvetica,sans-serif" font-size="${size}" font-weight="900" fill="${GOLD}" letter-spacing="1">FEED</text>`;
+  return `<text x="${x}" y="${y}" font-family="DM Sans,Arial,sans-serif" font-size="${size}" font-weight="900" fill="${WHITE}" letter-spacing="1">TOUR</text>` +
+    `<text x="${x + size * 3}" y="${y}" font-family="DM Sans,Arial,sans-serif" font-size="${size}" font-weight="900" fill="${GOLD}" letter-spacing="1">FEED</text>`;
 }
 
 function watermark(w, h) {
-  return `<text x="${w - 40}" y="${h - 20}" font-family="Arial,Helvetica,sans-serif" font-size="12" font-weight="700" fill="${GRAY}" text-anchor="end" opacity="0.5">TOUR</text>` +
-    `<text x="${w - 40 + 36}" y="${h - 20}" font-family="Arial,Helvetica,sans-serif" font-size="12" font-weight="700" fill="${GOLD}" text-anchor="end" opacity="0.5">FEED</text>`;
+  return `<text x="${w - 40}" y="${h - 20}" font-family="DM Sans,Arial,sans-serif" font-size="12" font-weight="700" fill="${GRAY}" text-anchor="end" opacity="0.5">TOUR</text>` +
+    `<text x="${w - 40 + 36}" y="${h - 20}" font-family="DM Sans,Arial,sans-serif" font-size="12" font-weight="700" fill="${GOLD}" text-anchor="end" opacity="0.5">FEED</text>`;
 }
 
 function generateLeaderboard(params) {
@@ -52,18 +52,18 @@ function generateLeaderboard(params) {
     <rect width="1080" height="4" fill="${GREEN}"/>
     <rect x="0" y="${Math.max(h, 1080) - 4}" width="1080" height="4" fill="${GREEN}" opacity="0.3"/>
     ${logo(40, 55, 28)}
-    <text x="40" y="100" font-family="Arial,Helvetica,sans-serif" font-size="16" font-weight="700" fill="${GREEN}" letter-spacing="3">${escXml(title)}</text>
-    ${subtitle ? `<text x="40" y="135" font-family="Arial,Helvetica,sans-serif" font-size="24" font-weight="800" fill="${WHITE}">${escXml(subtitle)}</text>` : ''}
+    <text x="40" y="100" font-family="DM Sans,Arial,sans-serif" font-size="16" font-weight="700" fill="${GREEN}" letter-spacing="3">${escXml(title)}</text>
+    ${subtitle ? `<text x="40" y="135" font-family="DM Sans,Arial,sans-serif" font-size="24" font-weight="800" fill="${WHITE}">${escXml(subtitle)}</text>` : ''}
     ${players.map((p, i) => {
       const y = 170 + i * 48;
       const sc = !p.score ? GRAY : p.score.startsWith('+') ? RED : p.score === 'E' ? GRAY : '#2DD4A0';
       const tc = !p.today ? GRAY : p.today.startsWith('+') ? RED : p.today === 'E' ? GRAY : '#2DD4A0';
       return `
         ${i === 0 ? `<rect x="30" y="${y - 15}" width="1020" height="42" rx="8" fill="rgba(45,143,111,0.1)"/>` : ''}
-        <text x="50" y="${y + 10}" font-family="Arial,Helvetica,sans-serif" font-size="16" font-weight="700" fill="${i === 0 ? GOLD : GRAY}">${p.pos || i + 1}</text>
-        <text x="100" y="${y + 10}" font-family="Arial,Helvetica,sans-serif" font-size="18" font-weight="${i === 0 ? '800' : '600'}" fill="${WHITE}">${escXml(p.name)}</text>
-        <text x="800" y="${y + 10}" font-family="Arial,Helvetica,sans-serif" font-size="16" font-weight="700" fill="${tc}">${escXml(p.today)}</text>
-        <text x="950" y="${y + 10}" font-family="Arial,Helvetica,sans-serif" font-size="20" font-weight="800" fill="${sc}">${escXml(p.score)}</text>
+        <text x="50" y="${y + 10}" font-family="DM Sans,Arial,sans-serif" font-size="16" font-weight="700" fill="${i === 0 ? GOLD : GRAY}">${p.pos || i + 1}</text>
+        <text x="100" y="${y + 10}" font-family="DM Sans,Arial,sans-serif" font-size="18" font-weight="${i === 0 ? '800' : '600'}" fill="${WHITE}">${escXml(p.name)}</text>
+        <text x="800" y="${y + 10}" font-family="DM Sans,Arial,sans-serif" font-size="16" font-weight="700" fill="${tc}">${escXml(p.today)}</text>
+        <text x="950" y="${y + 10}" font-family="DM Sans,Arial,sans-serif" font-size="20" font-weight="800" fill="${sc}">${escXml(p.score)}</text>
         ${i < players.length - 1 ? `<line x1="40" y1="${y + 30}" x2="1040" y2="${y + 30}" stroke="rgba(255,255,255,0.06)" stroke-width="1"/>` : ''}
       `;
     }).join('')}
@@ -87,12 +87,12 @@ function generateHeadline(params) {
     <rect x="0" y="160" width="1080" height="500" fill="url(#accent)"/>
     ${logo(50, 70, 28)}
     <rect x="50" y="110" width="${tag.length * 15 + 30}" height="34" rx="6" fill="${tagColor}" opacity="0.2"/>
-    <text x="65" y="132" font-family="Arial,Helvetica,sans-serif" font-size="13" font-weight="700" fill="${tagColor}" letter-spacing="3">${escXml(tag)}</text>
+    <text x="65" y="132" font-family="DM Sans,Arial,sans-serif" font-size="13" font-weight="700" fill="${tagColor}" letter-spacing="3">${escXml(tag)}</text>
     ${wrapText(headline, 22, 50, 240, 64, WHITE, 52, '800')}
-    ${tournament ? `<text x="50" y="940" font-family="Arial,Helvetica,sans-serif" font-size="18" font-weight="600" fill="${DIM}">${escXml(tournament)}</text>` : ''}
+    ${tournament ? `<text x="50" y="940" font-family="DM Sans,Arial,sans-serif" font-size="18" font-weight="600" fill="${DIM}">${escXml(tournament)}</text>` : ''}
     <rect x="50" y="980" width="200" height="3" rx="2" fill="${tagColor}" opacity="0.4"/>
     ${logo(50, 1040, 20)}
-    <text x="1030" y="1040" font-family="Arial,Helvetica,sans-serif" font-size="13" font-weight="600" fill="${GRAY}" text-anchor="end">tourfeed.co</text>
+    <text x="1030" y="1040" font-family="DM Sans,Arial,sans-serif" font-size="13" font-weight="600" fill="${GRAY}" text-anchor="end">tourfeed.co</text>
   </svg>`;
 }
 
@@ -112,12 +112,12 @@ function generateArticleHeader(params) {
     <rect x="0" y="100" width="1200" height="400" fill="url(#accent)"/>
     ${logo(50, 55, 24)}
     <rect x="50" y="85" width="${tag.length * 13 + 28}" height="30" rx="6" fill="${tagColor}" opacity="0.2"/>
-    <text x="64" y="105" font-family="Arial,Helvetica,sans-serif" font-size="12" font-weight="700" fill="${tagColor}" letter-spacing="2">${escXml(tag)}</text>
+    <text x="64" y="105" font-family="DM Sans,Arial,sans-serif" font-size="12" font-weight="700" fill="${tagColor}" letter-spacing="2">${escXml(tag)}</text>
     ${wrapText(headline, 38, 50, 185, 46, WHITE, 36, '800')}
-    ${tournament ? `<text x="50" y="560" font-family="Arial,Helvetica,sans-serif" font-size="15" font-weight="600" fill="${DIM}">${escXml(tournament)}</text>` : ''}
+    ${tournament ? `<text x="50" y="560" font-family="DM Sans,Arial,sans-serif" font-size="15" font-weight="600" fill="${DIM}">${escXml(tournament)}</text>` : ''}
     <rect x="50" y="585" width="160" height="3" rx="2" fill="${tagColor}" opacity="0.4"/>
     ${logo(50, 610, 18)}
-    <text x="1150" y="610" font-family="Arial,Helvetica,sans-serif" font-size="12" font-weight="600" fill="${GRAY}" text-anchor="end">tourfeed.co</text>
+    <text x="1150" y="610" font-family="DM Sans,Arial,sans-serif" font-size="12" font-weight="600" fill="${GRAY}" text-anchor="end">tourfeed.co</text>
   </svg>`;
 }
 
@@ -135,14 +135,14 @@ function generatePick(params) {
     <rect width="1080" height="5" fill="${labelColor}"/>
     ${logo(40, 60, 30)}
     <rect x="40" y="100" width="${label.length * 16 + 30}" height="36" rx="6" fill="${labelColor}" opacity="0.15"/>
-    <text x="55" y="124" font-family="Arial,Helvetica,sans-serif" font-size="14" font-weight="700" fill="${labelColor}" letter-spacing="3">${escXml(label)}</text>
-    <text x="540" y="380" font-family="Arial,Helvetica,sans-serif" font-size="60" font-weight="900" fill="${WHITE}" text-anchor="middle">${escXml(name)}</text>
-    <text x="540" y="470" font-family="Arial,Helvetica,sans-serif" font-size="52" font-weight="800" fill="${labelColor}" text-anchor="middle">${escXml(odds)}</text>
-    ${confidence ? `<text x="540" y="530" font-family="Arial,Helvetica,sans-serif" font-size="18" font-weight="600" fill="${DIM}" text-anchor="middle">Confidence: ${escXml(confidence)}/10${units ? '  |  ' + escXml(units) : ''}</text>` : ''}
+    <text x="55" y="124" font-family="DM Sans,Arial,sans-serif" font-size="14" font-weight="700" fill="${labelColor}" letter-spacing="3">${escXml(label)}</text>
+    <text x="540" y="380" font-family="DM Sans,Arial,sans-serif" font-size="60" font-weight="900" fill="${WHITE}" text-anchor="middle">${escXml(name)}</text>
+    <text x="540" y="470" font-family="DM Sans,Arial,sans-serif" font-size="52" font-weight="800" fill="${labelColor}" text-anchor="middle">${escXml(odds)}</text>
+    ${confidence ? `<text x="540" y="530" font-family="DM Sans,Arial,sans-serif" font-size="18" font-weight="600" fill="${DIM}" text-anchor="middle">Confidence: ${escXml(confidence)}/10${units ? '  |  ' + escXml(units) : ''}</text>` : ''}
     ${reason ? wrapText(reason, 40, 100, 600, 32, DIM, 20, '500') : ''}
     <line x1="40" y1="980" x2="1040" y2="980" stroke="rgba(255,255,255,0.06)" stroke-width="1"/>
     ${logo(40, 1040, 22)}
-    <text x="1040" y="1040" font-family="Arial,Helvetica,sans-serif" font-size="14" font-weight="600" fill="${GRAY}" text-anchor="end">tourfeed.co</text>
+    <text x="1040" y="1040" font-family="DM Sans,Arial,sans-serif" font-size="14" font-weight="600" fill="${GRAY}" text-anchor="end">tourfeed.co</text>
   </svg>`;
 }
 
@@ -158,14 +158,14 @@ function generateWinner(params) {
     <rect x="0" y="200" width="1080" height="400" fill="url(#glow)"/>
     <rect width="1080" height="5" fill="${GOLD}"/>
     ${logo(40, 60, 30)}
-    <text x="540" y="300" font-family="Arial,Helvetica,sans-serif" font-size="20" font-weight="700" fill="${GOLD}" text-anchor="middle" letter-spacing="8">WINNER</text>
-    <text x="540" y="420" font-family="Arial,Helvetica,sans-serif" font-size="60" font-weight="900" fill="${WHITE}" text-anchor="middle">${escXml(name)}</text>
-    ${flag ? `<text x="540" y="470" font-family="Arial,Helvetica,sans-serif" font-size="20" font-weight="600" fill="${DIM}" text-anchor="middle">${escXml(flag)}</text>` : ''}
-    <text x="540" y="550" font-family="Arial,Helvetica,sans-serif" font-size="72" font-weight="900" fill="${GREEN}" text-anchor="middle">${escXml(score)}</text>
-    <text x="540" y="630" font-family="Arial,Helvetica,sans-serif" font-size="24" font-weight="600" fill="${DIM}" text-anchor="middle">${escXml(tournament)}</text>
+    <text x="540" y="300" font-family="DM Sans,Arial,sans-serif" font-size="20" font-weight="700" fill="${GOLD}" text-anchor="middle" letter-spacing="8">WINNER</text>
+    <text x="540" y="420" font-family="DM Sans,Arial,sans-serif" font-size="60" font-weight="900" fill="${WHITE}" text-anchor="middle">${escXml(name)}</text>
+    ${flag ? `<text x="540" y="470" font-family="DM Sans,Arial,sans-serif" font-size="20" font-weight="600" fill="${DIM}" text-anchor="middle">${escXml(flag)}</text>` : ''}
+    <text x="540" y="550" font-family="DM Sans,Arial,sans-serif" font-size="72" font-weight="900" fill="${GREEN}" text-anchor="middle">${escXml(score)}</text>
+    <text x="540" y="630" font-family="DM Sans,Arial,sans-serif" font-size="24" font-weight="600" fill="${DIM}" text-anchor="middle">${escXml(tournament)}</text>
     <line x1="40" y1="980" x2="1040" y2="980" stroke="rgba(255,255,255,0.06)" stroke-width="1"/>
     ${logo(40, 1040, 22)}
-    <text x="1040" y="1040" font-family="Arial,Helvetica,sans-serif" font-size="14" font-weight="600" fill="${GRAY}" text-anchor="end">tourfeed.co</text>
+    <text x="1040" y="1040" font-family="DM Sans,Arial,sans-serif" font-size="14" font-weight="600" fill="${GRAY}" text-anchor="end">tourfeed.co</text>
   </svg>`;
 }
 
@@ -180,14 +180,14 @@ function generateStat(params) {
     <rect width="1080" height="1080" fill="url(#bg)"/>
     <rect width="1080" height="5" fill="${GREEN}"/>
     ${logo(40, 60, 30)}
-    <text x="540" y="350" font-family="Arial,Helvetica,sans-serif" font-size="120" font-weight="900" fill="${WHITE}" text-anchor="middle">${escXml(number)}</text>
-    <text x="540" y="420" font-family="Arial,Helvetica,sans-serif" font-size="22" font-weight="600" fill="${DIM}" text-anchor="middle">${escXml(label)}</text>
-    <text x="540" y="520" font-family="Arial,Helvetica,sans-serif" font-size="28" font-weight="800" fill="${WHITE}" text-anchor="middle">${escXml(player)}</text>
-    ${context ? `<text x="540" y="570" font-family="Arial,Helvetica,sans-serif" font-size="16" font-weight="600" fill="${GRAY}" text-anchor="middle">${escXml(context)}</text>` : ''}
-    ${comparison ? `<text x="540" y="650" font-family="Arial,Helvetica,sans-serif" font-size="16" font-weight="500" fill="${DIM}" text-anchor="middle">${escXml(comparison)}</text>` : ''}
+    <text x="540" y="350" font-family="DM Sans,Arial,sans-serif" font-size="120" font-weight="900" fill="${WHITE}" text-anchor="middle">${escXml(number)}</text>
+    <text x="540" y="420" font-family="DM Sans,Arial,sans-serif" font-size="22" font-weight="600" fill="${DIM}" text-anchor="middle">${escXml(label)}</text>
+    <text x="540" y="520" font-family="DM Sans,Arial,sans-serif" font-size="28" font-weight="800" fill="${WHITE}" text-anchor="middle">${escXml(player)}</text>
+    ${context ? `<text x="540" y="570" font-family="DM Sans,Arial,sans-serif" font-size="16" font-weight="600" fill="${GRAY}" text-anchor="middle">${escXml(context)}</text>` : ''}
+    ${comparison ? `<text x="540" y="650" font-family="DM Sans,Arial,sans-serif" font-size="16" font-weight="500" fill="${DIM}" text-anchor="middle">${escXml(comparison)}</text>` : ''}
     <line x1="40" y1="980" x2="1040" y2="980" stroke="rgba(255,255,255,0.06)" stroke-width="1"/>
     ${logo(40, 1040, 22)}
-    <text x="1040" y="1040" font-family="Arial,Helvetica,sans-serif" font-size="14" font-weight="600" fill="${GRAY}" text-anchor="end">tourfeed.co</text>
+    <text x="1040" y="1040" font-family="DM Sans,Arial,sans-serif" font-size="14" font-weight="600" fill="${GRAY}" text-anchor="end">tourfeed.co</text>
   </svg>`;
 }
 
@@ -205,13 +205,13 @@ function generateHotTake(params) {
     <rect x="0" y="0" width="8" height="1080" fill="${GREEN}" opacity="0.5"/>
     ${logo(50, 70, 28)}
     <rect x="50" y="110" width="130" height="34" rx="6" fill="${GREEN}" opacity="0.2"/>
-    <text x="65" y="132" font-family="Arial,Helvetica,sans-serif" font-size="13" font-weight="700" fill="${GREEN}" letter-spacing="3">HOT TAKE</text>
-    <text x="50" y="300" font-family="Arial,Helvetica,sans-serif" font-size="100" font-weight="900" fill="${GREEN}" opacity="0.15">&quot;</text>
+    <text x="65" y="132" font-family="DM Sans,Arial,sans-serif" font-size="13" font-weight="700" fill="${GREEN}" letter-spacing="3">HOT TAKE</text>
+    <text x="50" y="300" font-family="DM Sans,Arial,sans-serif" font-size="100" font-weight="900" fill="${GREEN}" opacity="0.15">&quot;</text>
     ${wrapText(quote, 24, 70, 340, 56, WHITE, 42, '700')}
-    ${context ? `<text x="540" y="920" font-family="Arial,Helvetica,sans-serif" font-size="16" font-weight="600" fill="${GRAY}" text-anchor="middle">${escXml(context)}</text>` : ''}
+    ${context ? `<text x="540" y="920" font-family="DM Sans,Arial,sans-serif" font-size="16" font-weight="600" fill="${GRAY}" text-anchor="middle">${escXml(context)}</text>` : ''}
     <rect x="50" y="980" width="200" height="3" rx="2" fill="${GREEN}" opacity="0.4"/>
     ${logo(50, 1040, 20)}
-    <text x="1030" y="1040" font-family="Arial,Helvetica,sans-serif" font-size="13" font-weight="600" fill="${GRAY}" text-anchor="end">tourfeed.co</text>
+    <text x="1030" y="1040" font-family="DM Sans,Arial,sans-serif" font-size="13" font-weight="600" fill="${GRAY}" text-anchor="end">tourfeed.co</text>
   </svg>`;
 }
 
@@ -236,13 +236,24 @@ exports.handler = async (event) => {
   if (format === 'png') {
     try {
       const { Resvg } = require('@resvg/resvg-js');
-      const resvg = new Resvg(svg, {
+      const path = require('path');
+      const fs = require('fs');
+
+      // Load bundled DM Sans font
+      const fontPath = path.join(__dirname, 'fonts', 'DMSans.ttf');
+      let fontData;
+      try { fontData = fs.readFileSync(fontPath); } catch(e) { fontData = null; }
+
+      const opts = {
         fitTo: { mode: 'width', value: 1080 },
         font: {
-          loadSystemFonts: true,
-          defaultFontFamily: 'Arial',
+          loadSystemFonts: false,
+          defaultFontFamily: 'DM Sans',
+          fontFiles: fontData ? [fontPath] : [],
         },
-      });
+      };
+
+      const resvg = new Resvg(svg, opts);
       const pngData = resvg.render();
       const pngBuffer = pngData.asPng();
 
