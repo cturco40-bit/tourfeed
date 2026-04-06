@@ -58,9 +58,9 @@ exports.handler = async (event) => {
   const SB_STORAGE_URL = 'https://yumahmnoltvbiadjefxw.supabase.co/storage/v1';
   const SB_PUBLIC_URL = 'https://yumahmnoltvbiadjefxw.supabase.co/storage/v1/object/public/images';
 
-  async function generateAndUploadImage(type, title, body, playerPhotoUrl) {
+  async function generateAndUploadImage(type, title, body) {
     try {
-      const headline = type.startsWith('tweet') ? (body || title || '').slice(0, 80) : (title || '');
+      const headline = type.startsWith('tweet') ? (body || title || '').slice(0, 120) : (title || '');
       const tag = type.startsWith('tweet') ? 'HOT TAKE' :
                   type === 'article_recap' ? 'RECAP' :
                   type === 'article_betting' ? 'BETTING' :
@@ -68,14 +68,12 @@ exports.handler = async (event) => {
                   type === 'article_preview' ? 'PREVIEW' :
                   type === 'article_analysis' ? 'ANALYSIS' : 'NEWS';
 
-      // Build generate-image URL with player photo
       const base = 'https://tourfeed.co/.netlify/functions/generate-image';
-      const photoParam = playerPhotoUrl ? `&photo=${encodeURIComponent(playerPhotoUrl)}` : '';
       let imgFnUrl;
       if (type.startsWith('tweet')) {
-        imgFnUrl = `${base}?type=hot_take&quote=${encodeURIComponent(headline)}${photoParam}`;
+        imgFnUrl = `${base}?type=hot_take&quote=${encodeURIComponent(headline)}`;
       } else {
-        imgFnUrl = `${base}?type=article_header&tag=${encodeURIComponent(tag)}&headline=${encodeURIComponent(headline)}${photoParam}`;
+        imgFnUrl = `${base}?type=article_header&tag=${encodeURIComponent(tag)}&headline=${encodeURIComponent(headline)}`;
       }
 
       // Download PNG from generate-image function
@@ -108,7 +106,7 @@ exports.handler = async (event) => {
   // Reject content that indicates AI confusion or bad data
   const BAD_PHRASES = /data limitation|can't tell|no idea who|broken leaderboard|unknown.*winner|unnamed.*competitor|mystery.*champion|don't have access|can't see|I cannot|limited data|leaderboard.*broken|completely cooked|not doing anything/i;
 
-  async function saveDraft(type, title, body, tournamentId, round, playerPhotoUrl) {
+  async function saveDraft(type, title, body, tournamentId, round) {
     // Quality check — reject garbage content
     if (BAD_PHRASES.test(title) || BAD_PHRASES.test(body)) {
       return { skipped: true, reason: 'Failed quality check' };
@@ -118,7 +116,7 @@ exports.handler = async (event) => {
       return { skipped: true, hash };
     }
     // Generate real PNG with player photo and upload to Supabase Storage
-    const imageUrl = await generateAndUploadImage(type, title, body, playerPhotoUrl);
+    const imageUrl = await generateAndUploadImage(type, title, body);
     const draft = await sb('content_drafts', 'POST', {
       type,
       title,
@@ -213,57 +211,8 @@ exports.handler = async (event) => {
     const tourName = tournament.tour_id === 'pga' ? 'PGA Tour' : tournament.tour_id === 'lpga' ? 'LPGA Tour' : tournament.tour_id === 'liv' ? 'LIV Golf' : tournament.tour_id === 'dpw' ? 'DP World Tour' : '';
     const dataBlock = `Tour: ${tourName}\nTournament: ${tournament.name}\nCourse: ${tournament.course || 'TBD'}\nRound: ${currentRound}\nStatus: ${tournament.status}\n\nLeaderboard (Top ${validPlayers.length}):\n${leaderboardText}`;
 
-    // VERIFIED ESPN headshot IDs — every ID confirmed correct
-    const VERIFIED_IDS = {
-      'tiger':462,'woods':462,'rory':3448,'mcilroy':3448,
-      'scheffler':9780,'scottie':9780,'schauffele':10140,'xander':10140,
-      'rahm':9527,'koepka':10592,'brooks':10592,'dechambeau':10046,'bryson':10046,
-      'spieth':5765,'morikawa':11098,'hovland':4364873,
-      'fleetwood':5539,'lowry':4587,'cantlay':10404,
-      'matsuyama':4375627,'hideki':4375627,
-      'fowler':3702,'rickie':3702,'finau':9478,
-      'thomas':4848,'justin thomas':4848,
-      'aberg':4375972,'ludvig':4375972,'macintyre':11378,
-      'spaun':10166,'theegala':10980,'homa':8973,
-      'cameron smith':9131,'fitzpatrick':9037,
-      'sam burns':9938,'wyndham clark':11119,
-      'tom kim':4602673,'sungjae':11382,
-    };
-
-    // Unsplash golf backgrounds for when no player is identified
-    const GOLF_BACKGROUNDS = [
-      'https://images.unsplash.com/photo-1535131749006-b7f58c99034b?w=800&q=80',
-      'https://images.unsplash.com/photo-1587174486073-ae5e5cff23aa?w=800&q=80',
-      'https://images.unsplash.com/photo-1592919505780-303950717480?w=800&q=80',
-    ];
-
-    // STRICT RULE: Only use a player's photo if they are mentioned in the text.
-    // Never fall back to tournament leader or random player.
-    function findPhotosInText(text) {
-      const found = [];
-      const usedIds = new Set();
-      const lower = (text || '').toLowerCase();
-
-      // Check verified players
-      for (const [name, id] of Object.entries(VERIFIED_IDS)) {
-        if (lower.includes(name) && !usedIds.has(id)) {
-          found.push(`https://a.espncdn.com/i/headshots/golf/players/full/${id}.png`);
-          usedIds.add(id);
-          if (found.length >= 2) break;
-        }
-      }
-
-      // STRICT: Only use VERIFIED_IDS. Never use leaderboard player IDs
-      // because Supabase player IDs don't reliably match ESPN headshot IDs.
-
-      // NO PLAYER FOUND — use golf course background, NEVER a random player
-      if (found.length === 0) {
-        const bg = GOLF_BACKGROUNDS[Math.floor(Math.random() * GOLF_BACKGROUNDS.length)];
-        return bg;
-      }
-
-      return found.join(',');
-    }
+    // Image generator picks contextual golf photos automatically
+    // No player headshot matching needed — generate-image handles photo selection
 
     const results = { tournament: tournament.name, round: currentRound, generated: [], skipped: [] };
 
@@ -298,7 +247,7 @@ Rules:
       const bodyMatch = recapRaw.match(/BODY:\s*([\s\S]+)/);
       if (bodyMatch) recapBody = bodyMatch[1].trim();
 
-      const saved = await saveDraft('article_recap', recapTitle, recapBody, tournamentId, currentRound, findPhotosInText(recapTitle + ' ' + recapBody));
+      const saved = await saveDraft('article_recap', recapTitle, recapBody, tournamentId, currentRound);
       if (saved.skipped) {
         results.skipped.push('article_recap');
       } else {
@@ -342,8 +291,7 @@ Rules:
           tournament.name + ' R' + currentRound,
           tweet,
           tournamentId,
-          currentRound,
-          findPhotosInText(tweet)
+          currentRound
         );
         if (saved.skipped) {
           results.skipped.push('tweet_reaction_' + (i + 1));
@@ -388,7 +336,7 @@ Rules:
       const bodyMatch = bettingRaw.match(/BODY:\s*([\s\S]+)/);
       if (bodyMatch) bettingBody = bodyMatch[1].trim();
 
-      const saved = await saveDraft('article_betting', bettingTitle, bettingBody, tournamentId, currentRound, findPhotosInText(bettingTitle + ' ' + bettingBody));
+      const saved = await saveDraft('article_betting', bettingTitle, bettingBody, tournamentId, currentRound);
       if (saved.skipped) {
         results.skipped.push('article_betting');
       } else {
