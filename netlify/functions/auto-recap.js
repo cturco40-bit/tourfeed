@@ -2,7 +2,7 @@ async function postTweet(text) {
   const res = await fetch('https://tourfeed.co/.netlify/functions/post-tweet', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ text: text.slice(0, 280), image: 'https://tourfeed.co/og-image.png' }),
+    body: JSON.stringify({ text: text.slice(0, 280) }),
   });
   if (!res.ok) throw new Error(`post-tweet ${res.status}: ${await res.text()}`);
   return await res.json();

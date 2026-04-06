@@ -57,7 +57,7 @@ async function getLastTweet() {
     const userId = userData.data?.id;
     if (!userId) return null;
 
-    const tweetsRes = await fetch(`https://api.twitter.com/2/users/${userId}/tweets?max_results=5&tweet.fields=created_at,text`, {
+    const tweetsRes = await fetch(`https://api.twitter.com/2/users/${userId}/tweets?max_results=20&tweet.fields=created_at,text`, {
       headers: { 'Authorization': `Bearer ${bearer}` },
     });
     if (!tweetsRes.ok) return null;
@@ -69,11 +69,24 @@ async function getLastTweet() {
       text: last.text,
       time: new Date(last.created_at),
       id: last.id,
+      allTexts: (tweetsData.data || []).map(t => t.text.toLowerCase()),
     };
   } catch (e) {
     console.warn('Could not fetch last tweet:', e.message);
     return null;
   }
+}
+
+// Check if tweet content is too similar to any recent tweet
+function isTooSimilar(newText, recentTexts) {
+  if (!recentTexts || recentTexts.length === 0) return false;
+  const newWords = newText.toLowerCase().replace(/[^a-z0-9\s]/g, '').split(/\s+/).filter(w => w.length > 3);
+  for (const recent of recentTexts) {
+    const recentWords = recent.replace(/[^a-z0-9\s]/g, '').split(/\s+/).filter(w => w.length > 3);
+    const overlap = newWords.filter(w => recentWords.includes(w)).length;
+    if (overlap >= newWords.length * 0.6) return true; // 60%+ word overlap = duplicate
+  }
+  return false;
 }
 
 // Extract leader name from a previous tweet
@@ -89,22 +102,18 @@ function extractLeaderFromTweet(text) {
   return null;
 }
 
-// Tweet about the next upcoming event when no tournament is active
+// Preview tweets when no tournament is active — rotates content types
 async function tweetNextEvent(headers, force) {
   try {
     const lastTweet = await getLastTweet();
     const minsSinceLast = lastTweet ? (Date.now() - lastTweet.time.getTime()) / 60000 : 999;
 
-    // Only tweet next event once every 4 hours
-    if (!force && minsSinceLast < 240) {
-      return { statusCode: 200, headers, body: JSON.stringify({ skipped: 'Too soon for next event tweet', minutesSinceLast: Math.round(minsSinceLast) }) };
-    }
-    // Don't repeat if last tweet already mentioned upcoming
-    if (!force && lastTweet?.text?.includes('Up Next')) {
-      return { statusCode: 200, headers, body: JSON.stringify({ skipped: 'Already tweeted next event' }) };
+    // Only tweet every 2 hours between events
+    if (!force && minsSinceLast < 120) {
+      return { statusCode: 200, headers, body: JSON.stringify({ skipped: 'Too soon for preview tweet', minutesSinceLast: Math.round(minsSinceLast) }) };
     }
 
-    // Fetch schedule to find next event
+    // Fetch schedule
     const res = await fetch('https://site.api.espn.com/apis/site/v2/sports/golf/pga/scoreboard?dates=2026');
     if (!res.ok) return { statusCode: 200, headers, body: JSON.stringify({ skipped: 'Could not fetch schedule' }) };
     const data = await res.json();
@@ -119,21 +128,52 @@ async function tweetNextEvent(headers, force) {
     }
 
     const next = upcoming[0];
-    const comp = next.competitions?.[0];
     const name = next.shortName || next.name || 'Tournament';
-    const course = comp?.venue?.fullName || '';
+    const course = next.competitions?.[0]?.venue?.fullName || '';
     const startDate = new Date(next.date);
-    const dateStr = startDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    const daysUntil = Math.ceil((startDate.getTime() - now) / 86400000);
     const isMajor = /masters|pga championship|u\.?s\.?\s*open|open championship/i.test(name);
 
-    let tweetText = isMajor
-      ? `🏌️ Up Next: ${name}\n\n📍 ${course}\n📅 ${dateStr}\n\nGet ready. Live scores + coverage at https://tourfeed.co\n\n#Golf #PGATour`
-      : `⛳ Up Next: ${name}\n\n📍 ${course}\n📅 ${dateStr}\n\nLive scores → https://tourfeed.co/?ref=x\n\n#PGATour #Golf`;
+    // Rotate between different content types based on hour
+    const hour = new Date().getHours();
+    const contentType = hour % 4; // 0=countdown, 1=picks, 2=question, 3=course info
 
-    const result = await postTweet(tweetText, 'https://tourfeed.co/og-image.png');
-    return { statusCode: 200, headers, body: JSON.stringify({ success: true, reason: 'next_event', tweet_id: result.data?.id, text: tweetText }) };
+    let tweetText = '';
+
+    if (contentType === 0) {
+      // Countdown
+      const dayWord = daysUntil === 0 ? 'TODAY' : daysUntil === 1 ? 'TOMORROW' : `${daysUntil} days away`;
+      tweetText = isMajor
+        ? `${name} is ${dayWord}.\n\n${course}\n\nThe biggest week in golf.\n\nLive scores & coverage → https://tourfeed.co/?ref=x\n\n#TheMasters #PGATour`
+        : `${name} — ${dayWord}\n\n${course}\n\n→ https://tourfeed.co/?ref=x\n\n#PGATour #Golf`;
+    } else if (contentType === 1) {
+      // Picks
+      if (isMajor && /masters/i.test(name)) {
+        tweetText = `${name} Picks\n\nFAVORITE: Scheffler (+400)\nVALUE: Morikawa (+2000)\nLONGSHOT: MacIntyre (+4000)\n\nFull picks & odds → https://tourfeed.co/?ref=x\n\n#TheMasters #PGATour`;
+      } else {
+        tweetText = `${name} Preview\n\nWho's your pick this week?\n\nPicks & analysis → https://tourfeed.co/?ref=x\n\n#PGATour #Golf`;
+      }
+    } else if (contentType === 2) {
+      // Engagement question
+      tweetText = isMajor
+        ? `${name} starts ${daysUntil === 1 ? 'tomorrow' : 'Thursday'}.\n\nWho's winning the green jacket?\n\nDrop your pick.\n\n#TheMasters #PGATour`
+        : `${name} this week.\n\nWho's taking it? Reply with your pick.\n\n#PGATour #Golf`;
+    } else {
+      // Course/event info
+      tweetText = isMajor
+        ? `${name}\n\n${course}\n\nOne of golf's ultimate tests. ${daysUntil} day${daysUntil !== 1 ? 's' : ''} out.\n\nPreviews & picks → https://tourfeed.co/?ref=x\n\n#TheMasters #Golf`
+        : `This week: ${name}\n\n${course}\n\nLive coverage → https://tourfeed.co/?ref=x\n\n#PGATour #Golf`;
+    }
+
+    // Final dedup check
+    if (lastTweet?.allTexts && isTooSimilar(tweetText, lastTweet.allTexts)) {
+      return { statusCode: 200, headers, body: JSON.stringify({ skipped: 'Preview too similar to recent tweets' }) };
+    }
+
+    const result = await postTweet(tweetText);
+    return { statusCode: 200, headers, body: JSON.stringify({ success: true, reason: 'preview_' + contentType, tweet_id: result.data?.id, text: tweetText }) };
   } catch (err) {
-    return { statusCode: 200, headers, body: JSON.stringify({ skipped: 'Next event tweet failed', error: err.message }) };
+    return { statusCode: 200, headers, body: JSON.stringify({ skipped: 'Preview tweet failed', error: err.message }) };
   }
 }
 
@@ -328,8 +368,12 @@ exports.handler = async (event) => {
     const tagStr = '\n\n' + hashtags.join(' ');
     if (tweetText.length + tagStr.length <= 280) tweetText += tagStr;
 
-    // Use TourFeed branded banner as tweet image
-    const result = await postTweet(tweetText, 'https://tourfeed.co/og-image.png');
+    // Check for duplicate content before posting
+    if (lastTweet?.allTexts && isTooSimilar(tweetText, lastTweet.allTexts)) {
+      return { statusCode: 200, headers, body: JSON.stringify({ skipped: 'Too similar to recent tweet' }) };
+    }
+
+    const result = await postTweet(tweetText);
 
     return {
       statusCode: 200,
