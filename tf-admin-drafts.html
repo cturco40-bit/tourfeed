@@ -257,14 +257,12 @@
 
           let content = '';
 
-          // Image preview — show the actual PNG that will be posted to Twitter
+          // Image preview — show the actual image that will be posted
           if (d.image_url) {
-            var pngUrl = d.image_url;
-            if (pngUrl.startsWith('/')) pngUrl = 'https://tourfeed.co' + pngUrl;
-            if (pngUrl.includes('generate-image') && !pngUrl.includes('format=')) {
-              pngUrl += (pngUrl.includes('?') ? '&' : '?') + 'format=png';
-            }
-            content += '<img src="' + pngUrl + '" class="draft-image" alt="Preview" onerror="this.style.display=\'none\'">';
+            var imgUrl = d.image_url;
+            if (imgUrl.startsWith('/')) imgUrl = 'https://tourfeed.co' + imgUrl;
+            // Use SVG directly in browser (renders fine), PNG only for Twitter
+            content += '<img src="' + imgUrl + '" class="draft-image" alt="Preview" loading="lazy" onerror="this.onerror=null;this.style.opacity=\'0.3\';this.alt=\'Image failed to load\'">';
           }
 
           if (isArticle) {
