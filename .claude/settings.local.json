@@ -1,0 +1,32 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//c/Users/cturco/Downloads/**)",
+      "Bash(curl -s \"https://site.web.api.espn.com/apis/site/v2/sports/golf/pga/scoreboard?event=401811940\")",
+      "Bash(python3 -c ':*)",
+      "Bash(curl -s \"http://sports.core.api.espn.com/v2/sports/golf/leagues/pga/events/401811940/competitions/401811940/competitors/10548/status?lang=en&region=us\")",
+      "Bash(curl -s -I \"http://sports.core.api.espn.com/v2/sports/golf/leagues/pga/events/401811940/competitions/401811940/competitors/11378/status\")",
+      "Bash(git add:*)",
+      "Bash(git commit -m ':*)",
+      "Bash(git push:*)",
+      "Bash(curl -s -X POST \"https://tourfeed.co/.netlify/functions/fetch-news\")",
+      "Bash(curl -s -w \"\\\\n%{http_code}\" \"https://tourfeed.co/.netlify/functions/fetch-news\" -H \"Accept: application/json\")",
+      "Bash(curl -s \"https://tourfeed.co\")",
+      "Bash(curl -s \"https://api.twitter.com/2/users/by/username/TourFeedGolf\" -H \"Authorization: Bearer $\\(grep -r 'TWITTER_BEARER' /c/Users/cturco/Documents/tourfeed/.env)",
+      "Bash(curl -s -X POST \"https://tourfeed.co/.netlify/functions/post-tweet\" -H \"Content-Type: application/json\" -d '{\"text\":\"test image tweet\",\"image\":\"https://tourfeed.co/og-image.png\"}')",
+      "Bash(node -c /c/Users/cturco/Documents/tourfeed/netlify/functions/auto-tweet.js)",
+      "Bash(node -c /c/Users/cturco/Documents/tourfeed/netlify/functions/tweet-news.js)",
+      "Bash(node -c /c/Users/cturco/Documents/tourfeed/netlify/functions/auto-recap.js)",
+      "Bash(node -c /c/Users/cturco/Documents/tourfeed/netlify/functions/draft-tweet.js)",
+      "Bash(curl -s -X POST https://yumahmnoltvbiadjefxw.supabase.co/rest/v1/rpc/ -H 'apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl1bWFobW5vbHR2YmlhZGplZnh3Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NTM5NjQ0MCwiZXhwIjoyMDkwOTcyNDQwfQ.VXcPybKl1c3uJAO59im8hb0zQjEmdwd4e6WGAakC-qs' -H 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl1bWFobW5vbHR2YmlhZGplZnh3Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NTM5NjQ0MCwiZXhwIjoyMDkwOTcyNDQwfQ.VXcPybKl1c3uJAO59im8hb0zQjEmdwd4e6WGAakC-qs' -H 'Content-Type: application/json')",
+      "Bash(curl:*)",
+      "Bash(node -c /c/Users/cturco/Documents/tourfeed/netlify/functions/fetch-scores-v2.js)",
+      "Bash(node -c /c/Users/cturco/Documents/tourfeed/netlify/functions/publish-approved.js)",
+      "Bash(python3 -c \"import json,sys; print\\(json.dumps\\(json.load\\(sys.stdin\\),indent=2\\)[:300]\\)\")",
+      "Bash(python3 -c \"import json,sys; print\\(json.dumps\\(json.load\\(sys.stdin\\),indent=2\\)[:400]\\)\")",
+      "Bash(node -c /c/Users/cturco/Documents/tourfeed/netlify/functions/generate-content-v2.js)",
+      "Bash(node -c /c/Users/cturco/Documents/tourfeed/netlify/functions/news-detector.js)",
+      "Bash(node -c /c/Users/cturco/Documents/tourfeed/netlify/functions/blog-scheduler.js)"
+    ]
+  }
+}

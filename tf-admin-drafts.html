@@ -57,6 +57,11 @@
 
   <script>
     const ACCESS_CODE = 'Gr33nJack3t!';
+    const SUPABASE_URL = 'https://yumahmnoltvbiadjefxw.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl1bWFobW5vbHR2YmlhZGplZnh3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUzOTY0NDAsImV4cCI6MjA5MDk3MjQ0MH0.FAXp2t0zaHlm1W7aaut72btMilrYPy33XO3p8MfyYlo';
+
+    // Store loaded drafts for access in approve/reject
+    let loadedDrafts = {};
 
     // Track handled drafts in localStorage so they never come back
     function getHandledIds() {
@@ -92,6 +97,9 @@
         const res = await fetch('/.netlify/functions/draft-tweet');
         const data = await res.json();
         const drafts = (data.drafts || []).filter(d => !isHandled(d.id));
+
+        // Store drafts for access in approveDraft
+        drafts.forEach(d => { loadedDrafts[d.id] = d; });
 
         count.textContent = drafts.length + ' pending';
         document.title = drafts.length > 0 ? `(${drafts.length}) TF Drafts` : 'TF Drafts';
@@ -157,36 +165,78 @@
       const textarea = document.getElementById('edit-' + id);
       const editedText = textarea ? textarea.value.trim() : '';
       const actions = el.querySelector('.draft-actions');
+      const draft = loadedDrafts[id] || {};
+      const isArticle = (draft.type || '').startsWith('article');
 
-      if (editedText.length > 280) {
-        actions.innerHTML = '<div class="status status-err">Over 280 characters — trim it down</div>';
-        return;
-      }
-      if (!editedText) {
-        actions.innerHTML = '<div class="status status-err">Tweet is empty</div>';
-        return;
+      if (!isArticle) {
+        // Tweet draft — enforce character limit
+        if (editedText.length > 280) {
+          actions.innerHTML = '<div class="status status-err">Over 280 characters — trim it down</div>';
+          return;
+        }
+        if (!editedText) {
+          actions.innerHTML = '<div class="status status-err">Tweet is empty</div>';
+          return;
+        }
       }
 
-      actions.innerHTML = '<div class="status">Posting...</div>';
+      actions.innerHTML = '<div class="status">' + (isArticle ? 'Publishing article...' : 'Posting...') + '</div>';
       markHandled(id);
 
       try {
-        // Post the edited version directly
-        const postRes = await fetch('/.netlify/functions/post-tweet', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ text: editedText }),
-        });
-        const data = await postRes.json();
+        if (isArticle) {
+          // Insert into Supabase articles table
+          const slug = (draft.title || 'untitled').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 80);
+          const articlePayload = {
+            type: draft.type || 'article',
+            title: draft.title || '',
+            body: editedText,
+            summary: draft.summary || '',
+            slug: slug,
+            tag: draft.tag || null,
+            published_at: new Date().toISOString(),
+            tour_id: draft.tour_id || null,
+          };
 
-        if (data.success) {
-          // Mark as published in Supabase
+          const sbRes = await fetch(SUPABASE_URL + '/rest/v1/articles', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'apikey': SUPABASE_ANON_KEY,
+              'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
+              'Prefer': 'return=minimal',
+            },
+            body: JSON.stringify(articlePayload),
+          });
+
+          if (!sbRes.ok) {
+            const errText = await sbRes.text();
+            throw new Error('Supabase insert failed: ' + errText);
+          }
+
+          // Mark draft as published
           await fetch('/.netlify/functions/draft-tweet?action=approve&id=' + id + '&text=' + encodeURIComponent(editedText));
-          actions.innerHTML = '<div class="status status-ok">Posted!</div>';
+          actions.innerHTML = '<div class="status status-ok">Article published!</div>';
           textarea.disabled = true;
           textarea.style.opacity = '0.4';
         } else {
-          actions.innerHTML = '<div class="status status-err">Failed: ' + (data.error || 'unknown') + '</div>';
+          // Tweet draft — post to Twitter
+          const postRes = await fetch('/.netlify/functions/post-tweet', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ text: editedText }),
+          });
+          const data = await postRes.json();
+
+          if (data.success) {
+            // Mark as published in Supabase
+            await fetch('/.netlify/functions/draft-tweet?action=approve&id=' + id + '&text=' + encodeURIComponent(editedText));
+            actions.innerHTML = '<div class="status status-ok">Posted!</div>';
+            textarea.disabled = true;
+            textarea.style.opacity = '0.4';
+          } else {
+            actions.innerHTML = '<div class="status status-err">Failed: ' + (data.error || 'unknown') + '</div>';
+          }
         }
       } catch(e) {
         actions.innerHTML = '<div class="status status-err">Error: ' + e.message + '</div>';

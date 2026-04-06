@@ -451,6 +451,8 @@ async function fetchESPNScores(tour) {
       tour: TOURS.find(t => t.id === tour)?.name || '',
       is_major: isMajor,
       eventId: event.id,
+      stateName: (st.type?.name || '').toUpperCase(),
+      state: st.type?.state || '',
     };
 
     // Parse dates
@@ -687,7 +689,7 @@ let refreshInterval = null;
 function startAutoRefresh() {
   if (refreshInterval) clearInterval(refreshInterval);
   refreshInterval = setInterval(() => {
-    if (currentTab === 0 && !scoresLoading) {
+    if (currentTab === 1 && !scoresLoading) {
       fetchESPNScores(currentScoresTour);
     }
   }, 30000);
@@ -2037,8 +2039,8 @@ function renderInsights() {
         name: TOURNAMENT.name,
         course: TOURNAMENT.course,
         round: TOURNAMENT.round,
-        state: 'in',
-        stateName: '',
+        state: TOURNAMENT.state || 'in',
+        stateName: TOURNAMENT.stateName || '',
         statusText: TOURNAMENT.status,
         players: active.slice(0, 20).map(p => ({
           name: p.name.split(' ').map((w,i,a) => i < a.length-1 ? w[0]+'.' : w).join(' '),

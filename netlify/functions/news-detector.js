@@ -259,8 +259,8 @@ exports.handler = async (event) => {
 
     console.log(`${newItems.length} new items to process`);
 
-    // Limit to 5 per run to stay within function time limits
-    const toProcess = newItems.slice(0, 5);
+    // Limit to 2 per run to stay within Netlify 10s timeout
+    const toProcess = newItems.slice(0, 2);
     const results = [];
 
     // 4. For each new item: extract facts, generate article, store draft

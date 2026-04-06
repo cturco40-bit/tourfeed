@@ -181,7 +181,9 @@ async function tweetNextEvent(headers, force) {
 exports.handler = async (event) => {
   const headers = { 'Content-Type': 'application/json' };
 
-  // Allow force=true to bypass checks
+  // v2 pipeline handles all content now — disabled
+  return { statusCode: 200, headers, body: JSON.stringify({ skipped: 'Disabled — v2 pipeline active' }) };
+
   const force = event.queryStringParameters?.force === 'true' ||
     (event.body && JSON.parse(event.body).force === true);
 

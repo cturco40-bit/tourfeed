@@ -1,29 +1,26 @@
 import { schedule } from '@netlify/functions';
 
 const handler = async () => {
-  const minute = new Date().getMinutes();
+  const base = 'https://tourfeed.co/.netlify/functions';
 
   try {
-    // Every 20 min: tweet a news headline
-    if (minute % 20 === 0) {
-      const res = await fetch('https://tourfeed.co/.netlify/functions/tweet-news', { method: 'POST' });
-      const data = await res.json();
-      console.log('News tweet:', JSON.stringify(data));
-    }
+    // v2 pipeline — all content flows through Supabase drafts
 
-    // Every 30 min: reply to a big golf account tweet
-    if (minute % 30 === 0) {
-      const res = await fetch('https://tourfeed.co/.netlify/functions/engage-tweets', { method: 'POST' });
-      const data = await res.json();
-      console.log('Engage tweet:', JSON.stringify(data));
-    }
+    // 1. Fetch latest scores into Supabase
+    await fetch(`${base}/fetch-scores-v2`, { method: 'POST' }).catch(() => {});
 
-    // Every 10 min: check for score updates (leader changes, big plays, hourly)
-    const res = await fetch('https://tourfeed.co/.netlify/functions/auto-tweet', { method: 'POST' });
-    const data = await res.json();
-    console.log('Score tweet:', JSON.stringify(data));
+    // 2. Generate content from leaderboard data (recaps, tweets, betting)
+    await fetch(`${base}/generate-content-v2`, { method: 'POST' }).catch(() => {});
+
+    // 3. Generate original tweets from headlines
+    await fetch(`${base}/generate-tweets`, { method: 'POST' }).catch(() => {});
+
+    // 4. Publish any approved drafts
+    await fetch(`${base}/publish-approved`, { method: 'POST' }).catch(() => {});
+
+    console.log('v2 pipeline run complete');
   } catch (err) {
-    console.error('Scheduled tweet error:', err);
+    console.error('Scheduled pipeline error:', err);
   }
 };
 

@@ -69,6 +69,9 @@ function getEmoji(title) {
 exports.handler = async (event) => {
   const headers = { 'Content-Type': 'application/json' };
 
+  // v2 pipeline handles all content now — disabled
+  return { statusCode: 200, headers, body: JSON.stringify({ skipped: 'Disabled — v2 pipeline active' }) };
+
   try {
     // Fetch news directly from ESPN (most reliable source)
     const newsRes = await fetch('https://site.api.espn.com/apis/site/v2/sports/golf/pga/news?limit=12');
