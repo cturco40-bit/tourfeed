@@ -92,33 +92,44 @@ exports.handler = async (event) => {
             const last = tData.data?.[0];
             if (last) {
               const mins = (Date.now() - new Date(last.created_at).getTime()) / 60000;
-              if (mins < 30) return { statusCode: 200, headers, body: JSON.stringify({ skipped: 'Cooldown', mins: Math.round(mins) }) };
+              if (mins < 10) return { statusCode: 200, headers, body: JSON.stringify({ skipped: 'Cooldown', mins: Math.round(mins) }) };
             }
           }
         }
       }
     } catch(e) {}
 
-    // Strategy 1: Quote tweet PGA Tour highlight clips (highest value)
+    // Draft multiple tweets at once — queue up content for approval
+    const results = [];
+
+    // Strategy 1: PGA Tour / Masters highlight clips
     const highlightQuery = HIGHLIGHT_ACCOUNTS.map(a => `from:${a}`).join(' OR ');
-    let engaged = await tryQuoteTweet(bearer, `(${highlightQuery}) has:videos -is:retweet`, 'highlight');
-    if (engaged) return { statusCode: 200, headers, body: JSON.stringify(engaged) };
+    const h = await tryQuoteTweet(bearer, `(${highlightQuery}) has:videos -is:retweet`, 'highlight');
+    if (h) results.push(h);
 
-    // Strategy 2: React to trending golf media takes
+    // Strategy 2: Trending Masters/golf content with video
+    const t = await tryQuoteTweet(bearer, `(#TheMasters OR #Masters OR "the masters" OR "augusta") has:videos -is:retweet min_faves:10`, 'trending_masters');
+    if (t) results.push(t);
+
+    // Strategy 3: Golf media reactions
     const mediaQuery = GOLF_MEDIA.map(a => `from:${a}`).join(' OR ');
-    engaged = await tryQuoteTweet(bearer, `(${mediaQuery}) -is:retweet -is:reply`, 'media_react');
-    if (engaged) return { statusCode: 200, headers, body: JSON.stringify(engaged) };
+    const m = await tryQuoteTweet(bearer, `(${mediaQuery}) -is:retweet -is:reply`, 'media_react');
+    if (m) results.push(m);
 
-    // Strategy 3: React to player tweets
+    // Strategy 4: Player tweets
     const playerQuery = PLAYERS.slice(0, 5).map(a => `from:${a}`).join(' OR ');
-    engaged = await tryQuoteTweet(bearer, `(${playerQuery}) -is:retweet -is:reply`, 'player_react');
-    if (engaged) return { statusCode: 200, headers, body: JSON.stringify(engaged) };
+    const p = await tryQuoteTweet(bearer, `(${playerQuery}) -is:retweet -is:reply`, 'player_react');
+    if (p) results.push(p);
 
-    // Strategy 4: Jump on trending golf conversations
-    engaged = await tryQuoteTweet(bearer, `(#TheMasters OR #PGATour OR #LIVGolf) has:videos -is:retweet min_faves:50`, 'trending');
-    if (engaged) return { statusCode: 200, headers, body: JSON.stringify(engaged) };
+    // Strategy 5: Trending golf conversations
+    const g = await tryQuoteTweet(bearer, `(#PGATour OR #LIVGolf OR #Golf) has:videos -is:retweet min_faves:20`, 'trending');
+    if (g) results.push(g);
 
-    return { statusCode: 200, headers, body: JSON.stringify({ skipped: 'No suitable content found' }) };
+    if (results.length === 0) {
+      return { statusCode: 200, headers, body: JSON.stringify({ skipped: 'No suitable content found' }) };
+    }
+
+    return { statusCode: 200, headers, body: JSON.stringify({ drafted: results.length, results }) };
 
   } catch (err) {
     console.error('Engage error:', err);
