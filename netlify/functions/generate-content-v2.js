@@ -254,7 +254,7 @@ Rules:
         if (!tweet) continue;
         const saved = await saveDraft(
           'tweet_reaction',
-          'Tweet Reaction R' + currentRound + ' #' + (i + 1),
+          tournament.name + ' R' + currentRound,
           tweet,
           tournamentId,
           currentRound

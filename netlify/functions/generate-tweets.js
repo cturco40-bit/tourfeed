@@ -157,7 +157,7 @@ RULES:
 ${context}`,
         messages: [{
           role: 'user',
-          content: `Latest golf headlines from across the internet:\n\n${headlineList}\n\nPick the 5 most interesting/diverse topics and write an original tweet for each. Different angle per tweet.\n\nReturn ONLY a JSON array:\n["tweet 1","tweet 2","tweet 3","tweet 4","tweet 5"]`
+          content: `Latest golf headlines from across the internet:\n\n${headlineList}\n\nPick the 5 most interesting/diverse topics and write an original tweet for each. Different angle per tweet.\n\nReturn ONLY a JSON array of objects with the source headline and your tweet:\n[{"source":"the headline you're reacting to","tweet":"your original tweet"},{"source":"...","tweet":"..."}]`
         }],
       }),
     });
@@ -175,7 +175,10 @@ ${context}`,
     if (!Array.isArray(tweets)) return { statusCode: 200, headers, body: JSON.stringify({ skipped: 'Not array' }) };
 
     const drafted = [];
-    for (const tweet of tweets) {
+    for (const item of tweets) {
+      // Support both old format (string) and new format ({source, tweet})
+      const tweet = typeof item === 'string' ? item : item?.tweet;
+      const source = typeof item === 'string' ? 'generate-original' : (item?.source || 'generate-original');
       if (!tweet || tweet.length < 15) continue;
       if (/don't have|can't see|I cannot|data limitation|broken leaderboard|no idea who|unknown.*winner|unnamed|mystery.*champion/i.test(tweet)) continue;
       // Dedup against existing drafts
@@ -186,7 +189,7 @@ ${context}`,
       });
       if (isDupe) continue;
 
-      const result = await postDraft(tweet, 'generate-original');
+      const result = await postDraft(tweet, source);
       if (result?.success) {
         drafted.push(tweet);
         recentTexts.push(tweet.toLowerCase());

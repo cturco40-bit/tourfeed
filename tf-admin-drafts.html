@@ -280,6 +280,13 @@
             content += '<div style="font-size:10px;color:#495057;margin-bottom:6px">' + wordCount + ' words</div>';
             content += '<div class="draft-article-full" style="display:block">' + (d.body || '') + '</div>';
           } else {
+            // Source context — what headline/event is this reacting to
+            var sourceCtx = d.source_event || d.title || '';
+            if (sourceCtx && sourceCtx !== 'generate-original' && sourceCtx !== 'auto') {
+              content += '<div style="padding:8px 10px;background:#0F1923;border-left:3px solid #4A90D9;border-radius:0 6px 6px 0;margin-bottom:8px;font-size:11px">';
+              content += '<div style="color:#4A90D9;font-weight:700;font-size:9px;letter-spacing:1px;margin-bottom:2px">REACTING TO</div>';
+              content += '<div style="color:#868E96">' + escHtml(sourceCtx) + '</div></div>';
+            }
             // Tweet preview
             content += '<div class="tweet-preview">';
             content += '<div class="tweet-header"><div class="tweet-avatar">TF</div><div><div class="tweet-name">TourFeed</div><div class="tweet-handle">@TourFeedGolf</div></div></div>';
