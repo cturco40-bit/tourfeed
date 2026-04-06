@@ -280,10 +280,13 @@ exports.handler = async (event) => {
         }
 
         // Store article draft in content_drafts
+        const articleTitle = article.title || 'Breaking Golf News';
+        const articleImage = `https://tourfeed.co/.netlify/functions/generate-image?type=headline&tag=BREAKING&headline=${encodeURIComponent(articleTitle)}`;
         const articleDraft = await sb('content_drafts', 'POST', {
           type: 'article_news',
-          title: article.title || 'Breaking Golf News',
+          title: articleTitle,
           body: article.body || '',
+          image_url: articleImage,
           source_headline: item.title,
           source_name: item.source,
           status: 'pending',

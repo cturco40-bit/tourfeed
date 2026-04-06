@@ -116,10 +116,14 @@ Rules:
     if (existingHash.length > 0) return { statusCode: 200, headers, body: JSON.stringify({ skipped: 'Duplicate hash' }) };
 
     await sb('content_hashes', 'POST', { hash, type: config.type, source: 'blog-scheduler' });
+    const tagMap = { 'article_analysis': 'ANALYSIS', 'article_preview': 'PREVIEW', 'article_betting': 'BETTING' };
+    const imgTag = tagMap[config.type] || 'NEWS';
+    const imageUrl = `https://tourfeed.co/.netlify/functions/generate-image?type=headline&tag=${imgTag}&headline=${encodeURIComponent(article.title)}`;
     await sb('content_drafts', 'POST', {
       type: config.type,
       title: article.title,
       body: article.body,
+      image_url: imageUrl,
       tournament_id: tournament?.id,
       source_event: 'blog-scheduler',
       content_hash: hash,

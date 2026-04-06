@@ -55,15 +55,28 @@ exports.handler = async (event) => {
   }
 
   // --- Save draft with dedup ---
+  // Generate branded image URL based on content type
+  function getImageUrl(type, title, tournament) {
+    const base = 'https://tourfeed.co/.netlify/functions/generate-image';
+    if (type === 'article_recap') return `${base}?type=headline&tag=RECAP&headline=${encodeURIComponent(title || '')}`;
+    if (type === 'article_betting') return `${base}?type=headline&tag=BETTING&headline=${encodeURIComponent(title || '')}`;
+    if (type === 'article_news') return `${base}?type=headline&tag=BREAKING&headline=${encodeURIComponent(title || '')}`;
+    if (type === 'article_preview') return `${base}?type=headline&tag=PREVIEW&headline=${encodeURIComponent(title || '')}`;
+    if (type === 'article_analysis') return `${base}?type=headline&tag=ANALYSIS&headline=${encodeURIComponent(title || '')}`;
+    return `${base}?type=headline&tag=NEWS&headline=${encodeURIComponent(title || '')}`;
+  }
+
   async function saveDraft(type, title, body, tournamentId, round) {
     const hash = hashText(title + ' ' + body);
     if (await isDuplicate(hash)) {
       return { skipped: true, hash };
     }
+    const imageUrl = getImageUrl(type, title);
     const draft = await sb('content_drafts', 'POST', {
       type,
       title,
       body,
+      image_url: imageUrl,
       tournament_id: tournamentId,
       round,
       status: 'pending',

@@ -108,9 +108,17 @@
           const tweetEmbed = tweetUrlMatch
             ? '<div style="margin-bottom:10px;padding:10px;background:#1B2538;border-radius:8px;border-left:3px solid #4A90D9"><div style="font-size:10px;color:#4A90D9;margin-bottom:4px">QUOTING</div><a href="' + tweetUrlMatch[0] + '" target="_blank" style="font-size:12px;color:#868E96;word-break:break-all">' + tweetUrlMatch[0] + '</a><blockquote class="twitter-tweet" data-theme="dark" data-conversation="none"><a href="' + tweetUrlMatch[0] + '"></a></blockquote></div>'
             : '';
+          const imagePreview = d.image_url
+            ? '<div style="margin-bottom:10px"><img src="' + d.image_url + '" style="width:100%;border-radius:8px;max-height:300px;object-fit:cover" onerror="this.style.display=\'none\'"></div>'
+            : '';
+          const titlePreview = d.title
+            ? '<div style="font-size:15px;font-weight:800;color:#fff;margin-bottom:8px">' + escHtml(d.title) + '</div>'
+            : '';
           return `
             <div class="draft" id="draft-${d.id}">
-              <div class="draft-source">${d.source_event || 'auto'}</div>
+              <div class="draft-source">${d.type || d.source_event || 'auto'}</div>
+              ${imagePreview}
+              ${titlePreview}
               ${tweetEmbed}
               <div style="font-size:10px;color:#495057;margin-bottom:4px">YOUR TWEET</div>
               <textarea class="draft-edit" id="edit-${d.id}" rows="4">${d.body}</textarea>
