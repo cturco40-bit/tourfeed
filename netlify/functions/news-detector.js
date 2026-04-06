@@ -119,8 +119,27 @@ function extractFacts(title, desc) {
 }
 
 // ---------- Call Claude Haiku to generate original article ----------
+async function fetchPlayerFacts() {
+  try {
+    const r = await fetch('https://yumahmnoltvbiadjefxw.supabase.co/rest/v1/player_facts?select=player_name,world_ranking,total_majors,masters_wins,masters_best,career_grand_slam,recent_notes,hot_topics&limit=30', {
+      headers: { 'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl1bWFobW5vbHR2YmlhZGplZnh3Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NTM5NjQ0MCwiZXhwIjoyMDkwOTcyNDQwfQ.VXcPybKl1c3uJAO59im8hb0zQjEmdwd4e6WGAakC-qs' }
+    });
+    if (!r.ok) return '';
+    const pf = await r.json();
+    return '\n\nPLAYER FACTS — DO NOT CONTRADICT:\n' + pf.map(f => {
+      let s = f.player_name + ': #' + (f.world_ranking||'?') + ', ' + f.total_majors + ' majors';
+      if (f.masters_wins) s += ', ' + f.masters_wins + 'x Masters champ';
+      if (f.career_grand_slam) s += ', Career Grand Slam';
+      if (f.masters_best) s += ', Masters best: ' + f.masters_best;
+      if (f.recent_notes) s += '. ' + f.recent_notes;
+      return s;
+    }).join('\n') + '\n\nCRITICAL: NEVER say a player is "chasing" a major they have already won. Check PLAYER FACTS above.';
+  } catch(e) { return ''; }
+}
+
 async function generateArticle(facts, apiKey) {
-  const factsText = `WHO: ${facts.who.join(', ') || 'Unknown'}\nWHAT: ${facts.what}\nWHEN: ${facts.when || 'Recent'}\nDETAILS: ${facts.details || 'No additional details.'}`;
+  const playerFacts = await fetchPlayerFacts();
+  const factsText = `WHO: ${facts.who.join(', ') || 'Unknown'}\nWHAT: ${facts.what}\nWHEN: ${facts.when || 'Recent'}\nDETAILS: ${facts.details || 'No additional details.'}${playerFacts}`;
 
   const res = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',

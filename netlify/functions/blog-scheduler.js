@@ -76,6 +76,24 @@ exports.handler = async (event) => {
       return { statusCode: 200, headers, body: JSON.stringify({ skipped: `Already generated ${config.type} today` }) };
     }
 
+    // Fetch player facts for context
+    let playerFacts = '';
+    try {
+      const pfRes = await fetch('https://yumahmnoltvbiadjefxw.supabase.co/rest/v1/player_facts?select=player_name,world_ranking,total_majors,masters_wins,masters_best,career_grand_slam,recent_notes&limit=30', {
+        headers: { 'apikey': SUPABASE_KEY }
+      });
+      if (pfRes.ok) {
+        const pf = await pfRes.json();
+        playerFacts = '\n\nPLAYER FACTS — DO NOT CONTRADICT:\n' + pf.map(f => {
+          let s = f.player_name + ': #' + (f.world_ranking||'?') + ', ' + f.total_majors + ' majors';
+          if (f.masters_wins) s += ', ' + f.masters_wins + 'x Masters champ';
+          if (f.career_grand_slam) s += ', Career Grand Slam';
+          if (f.recent_notes) s += '. ' + f.recent_notes;
+          return s;
+        }).join('\n');
+      }
+    } catch(e) {}
+
     // Generate the article
     const res = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -85,7 +103,10 @@ exports.handler = async (event) => {
         max_tokens: 3000,
         system: `You are a senior golf analyst writing for TourFeed. Your content is original, data-driven, and written with authority. ZERO emojis. ZERO hashtags.
 
-FACTS: Rory McIlroy is defending Masters champion (won 2025). It is 2026. Don't invent specific stats you're unsure about.
+Year is 2026. Use ONLY the player facts provided below — never guess at major counts, rankings, or records.
+
+CRITICAL: Rory McIlroy WON the 2025 Masters. He is DEFENDING champion. Career Grand Slam holder. NEVER say he is "chasing" his first Masters.
+${playerFacts}
 
 Rules:
 - MINIMUM 600 words, aim for 800+. These are flagship articles.
@@ -94,7 +115,8 @@ Rules:
 - Voice: smart golf fan in the group chat. Confident, opinionated, fun to read.
 - Never mention AI, automation, or data limitations
 - Include specific player names, analysis, and strong opinions
-- Author is "TourFeed Staff" — write like a real media outlet`,
+- Author is "TourFeed Staff" — write like a real media outlet
+- NEVER say a player is "chasing" or "looking for their first" major unless player facts confirm zero wins in that major`,
         messages: [{
           role: 'user',
           content: `${config.prompt}\n\nContext:\n${tournament ? `Recent tournament: ${tournament.name} at ${tournament.course}` : 'No recent tournament data.'}\n${leaderboard}\n${upcoming}\n\nReturn ONLY valid JSON:\n{"title":"headline","body":"full HTML article"}`

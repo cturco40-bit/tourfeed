@@ -211,8 +211,72 @@ exports.handler = async (event) => {
     const tourName = tournament.tour_id === 'pga' ? 'PGA Tour' : tournament.tour_id === 'lpga' ? 'LPGA Tour' : tournament.tour_id === 'liv' ? 'LIV Golf' : tournament.tour_id === 'dpw' ? 'DP World Tour' : '';
     const dataBlock = `Tour: ${tourName}\nTournament: ${tournament.name}\nCourse: ${tournament.course || 'TBD'}\nRound: ${currentRound}\nStatus: ${tournament.status}\n\nLeaderboard (Top ${validPlayers.length}):\n${leaderboardText}`;
 
-    // Image generator picks contextual golf photos automatically
-    // No player headshot matching needed — generate-image handles photo selection
+    // ── CONTEXT ENGINE — fetch player facts for accurate prompts ──
+  async function getPlayerContext(playerNames) {
+    try {
+      const facts = await sb('player_facts?select=*');
+      if (!facts.length) return '';
+      // Match relevant players
+      const relevant = facts.filter(f => {
+        const name = f.player_name.toLowerCase();
+        return playerNames.some(p => name.includes(p.toLowerCase()) || p.toLowerCase().includes(name.split(' ').pop().toLowerCase()));
+      });
+      if (!relevant.length) return '';
+      return '\n\nPLAYER CONTEXT — USE THIS, DO NOT CONTRADICT:\n' + relevant.map(f => {
+        let ctx = f.player_name + ': World #' + (f.world_ranking || '?') + ', ' + (f.current_tour || 'PGA').toUpperCase() + ' Tour';
+        if (f.status !== 'active') ctx += ' (' + f.status + ')';
+        if (f.current_injury) ctx += ' — ' + f.current_injury;
+        ctx += '. ' + f.total_majors + ' major' + (f.total_majors !== 1 ? 's' : '') + ' (';
+        const majors = [];
+        if (f.masters_wins) majors.push('Masters ' + f.masters_wins + 'x');
+        if (f.us_open_wins) majors.push('US Open ' + f.us_open_wins + 'x');
+        if (f.open_wins) majors.push('Open ' + f.open_wins + 'x');
+        if (f.pga_champ_wins) majors.push('PGA ' + f.pga_champ_wins + 'x');
+        ctx += majors.join(', ') || 'none';
+        ctx += ').';
+        if (f.career_grand_slam) ctx += ' Career Grand Slam holder.';
+        if (f.masters_best) ctx += ' Masters best: ' + f.masters_best + '.';
+        ctx += ' ' + (f.pga_wins || 0) + ' PGA Tour wins.';
+        if (f.recent_notes) ctx += ' Recent: ' + f.recent_notes;
+        if (f.hot_topics) ctx += ' Current: ' + f.hot_topics;
+        return ctx;
+      }).join('\n');
+    } catch(e) { return ''; }
+  }
+
+  async function getTournamentContext(tournamentName) {
+    try {
+      const facts = await sb('tournament_facts?select=*');
+      const match = facts.find(f => tournamentName.toLowerCase().includes(f.name.toLowerCase().replace('the ', '')) || f.name.toLowerCase().includes(tournamentName.toLowerCase().replace('the ', '')));
+      if (!match) return '';
+      return '\n\nTOURNAMENT CONTEXT — USE THIS:\n' +
+        match.name + ' at ' + match.course + ' (Par ' + match.par + '). ' +
+        'Defending champion: ' + match.defending_champion + ' (' + match.defending_score + '). ' +
+        'Course record: ' + match.course_record + '. ' +
+        (match.notable_history || '') + ' ' +
+        (match.course_fit || '') + ' ' +
+        (match.key_stats || '');
+    } catch(e) { return ''; }
+  }
+
+  const FACT_CHECK_RULES = `
+CRITICAL FACT-CHECK RULES:
+1. NEVER say a player is "chasing" or "looking for their first" major unless PLAYER CONTEXT confirms zero wins in that major.
+2. NEVER guess at major championship counts. Use ONLY what PLAYER CONTEXT provides.
+3. NEVER say "first time since" or "hasn't happened since" unless the specific fact is in context.
+4. If unsure about ANY fact, write around it. Say "looking to add another title" instead of "looking for his first."
+5. NEVER fabricate quotes.
+6. Rory McIlroy WON the 2025 Masters. He is DEFENDING champion. He has a career Grand Slam. NEVER say he is chasing his first Masters.
+7. If PLAYER CONTEXT is not provided, use ONLY leaderboard data. No biographical claims.
+`;
+
+  // Image generator picks contextual golf photos automatically
+
+    // ── Fetch context for all players in the leaderboard ──
+    const playerNames = validPlayers.map(p => p.players?.name).filter(Boolean);
+    const playerContext = await getPlayerContext(playerNames);
+    const tournamentContext = await getTournamentContext(tournament.name);
+    const contextBlock = playerContext + tournamentContext + '\n' + FACT_CHECK_RULES;
 
     const results = { tournament: tournament.name, round: currentRound, generated: [], skipped: [] };
 
@@ -234,7 +298,7 @@ Rules:
 - Never mention AI, data limitations, or that you're working from data
 - Author is "TourFeed Staff" — write like a real media outlet
 - If this is a ${tourName} event, write for that tour's audience`;
-      const recapPrompt = `Write a FULL round recap article (minimum 500 words, aim for 600+) based on this leaderboard data. This will be published on tourfeed.co as a standalone article. Make it worth reading — not a summary, a real article with analysis and narrative.\n\nReturn your response in this exact format:\n\nHEADLINE: <your headline here>\n\nBODY:\n<your HTML article here using <p> tags>\n\n${dataBlock}`;
+      const recapPrompt = `Write a FULL round recap article (minimum 500 words, aim for 600+) based on this leaderboard data. This will be published on tourfeed.co as a standalone article. Make it worth reading — not a summary, a real article with analysis and narrative.\n\nReturn your response in this exact format:\n\nHEADLINE: <your headline here>\n\nBODY:\n<your HTML article here using <p> tags>\n\n${dataBlock}\n${contextBlock}`;
 
       const recapRaw = await askClaude(recapSystem, recapPrompt, 2500);
 
@@ -261,7 +325,7 @@ Rules:
     // --- CONTENT 2: Tweet Reactions (4 tweets) ---
     try {
       const tweetSystem = `Write 4 tweets about this ${tourName} tournament. Voice: golf fan in a group chat. ZERO emojis. ZERO hashtags. Never mention TourFeed. 1-2 sentences each. ONLY reference players and scores from the data. Do NOT invent specific shots, holes, or moments. Do NOT complain about data quality. Rory McIlroy is defending Masters champ (won 2025). Year 2026.`;
-      const tweetPrompt = `Write 4 tweets reacting to this round. Number them 1-4, each on its own line.\n\n${dataBlock}`;
+      const tweetPrompt = `Write 4 tweets reacting to this round. Number them 1-4, each on its own line.\n\n${dataBlock}\n${contextBlock}`;
 
       const tweetRaw = await askClaude(tweetSystem, tweetPrompt, 800);
 
@@ -323,7 +387,7 @@ Rules:
 - Voice: sharp handicapper in the group chat. Confident, fun, not stuffy.
 - Rory McIlroy is defending Masters champ (won 2025). Year 2026.
 - Author is "TourFeed Staff"`;
-      const bettingPrompt = `Write a FULL betting analysis article (minimum 600 words) based on this leaderboard data. This is the main betting content on tourfeed.co — make it comprehensive.\n\nReturn your response in this exact format:\n\nHEADLINE: <your headline here>\n\nBODY:\n<your HTML article here using <p> and <h3> tags>\n\n${dataBlock}`;
+      const bettingPrompt = `Write a FULL betting analysis article (minimum 600 words) based on this leaderboard data. This is the main betting content on tourfeed.co — make it comprehensive.\n\nReturn your response in this exact format:\n\nHEADLINE: <your headline here>\n\nBODY:\n<your HTML article here using <p> and <h3> tags>\n\n${dataBlock}\n${contextBlock}`;
 
       const bettingRaw = await askClaude(bettingSystem, bettingPrompt, 2500);
 

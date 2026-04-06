@@ -128,6 +128,25 @@ exports.handler = async (event) => {
       if (dRes.ok) recentTexts = ((await dRes.json()).drafts || []).map(d => d.text.toLowerCase());
     } catch(e) {}
 
+    // Player facts for accurate context
+    let playerFactsContext = '';
+    try {
+      const pfRes = await fetch('https://yumahmnoltvbiadjefxw.supabase.co/rest/v1/player_facts?select=player_name,world_ranking,total_majors,masters_wins,career_grand_slam,recent_notes,hot_topics&limit=30', {
+        headers: { 'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl1bWFobW5vbHR2YmlhZGplZnh3Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NTM5NjQ0MCwiZXhwIjoyMDkwOTcyNDQwfQ.VXcPybKl1c3uJAO59im8hb0zQjEmdwd4e6WGAakC-qs' }
+      });
+      if (pfRes.ok) {
+        const pf = await pfRes.json();
+        playerFactsContext = '\n\nPLAYER FACTS — DO NOT CONTRADICT:\n' + pf.map(f => {
+          let s = f.player_name + ': #' + (f.world_ranking||'?') + ', ' + f.total_majors + ' majors';
+          if (f.masters_wins) s += ', ' + f.masters_wins + 'x Masters champ';
+          if (f.career_grand_slam) s += ', Career Grand Slam';
+          if (f.recent_notes) s += '. ' + f.recent_notes;
+          if (f.hot_topics) s += ' ' + f.hot_topics;
+          return s;
+        }).join('\n');
+      }
+    } catch(e) {}
+
     // Tournament context
     let context = '';
     try {
@@ -161,10 +180,10 @@ exports.handler = async (event) => {
 
 VOICE: Golf fan in the group chat. Foreplay meets a sharp handicapper.
 
-FACTS:
-- Rory McIlroy: defending Masters champion (won 2025), career Grand Slam holder
-- Year: 2026
-- Don't state stats/records you're unsure about
+FACTS: Year is 2026. Do NOT state stats/records unless confirmed in PLAYER FACTS below.
+${playerFactsContext}
+
+CRITICAL: Rory McIlroy WON the 2025 Masters. He is DEFENDING champion. Career Grand Slam holder. NEVER say he is "chasing" his first Masters.
 
 RULES:
 - ZERO emojis. ZERO hashtags. No exceptions.
