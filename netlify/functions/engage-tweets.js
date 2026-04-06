@@ -77,32 +77,56 @@ exports.handler = async (event) => {
   if (!bearer) return { statusCode: 200, headers, body: JSON.stringify({ skipped: 'No bearer token' }) };
 
   try {
-    // No cooldown — drafts go to review queue, not posted directly
+    // Collect tweet IDs already posted or in drafts — never re-draft these
+    const usedIds = new Set();
+    try {
+      const uRes = await fetch('https://api.twitter.com/2/users/by/username/TourFeedGolf', {
+        headers: { 'Authorization': `Bearer ${bearer}` },
+      });
+      if (uRes.ok) {
+        const userId = (await uRes.json()).data?.id;
+        if (userId) {
+          const tRes = await fetch(`https://api.twitter.com/2/users/${userId}/tweets?max_results=20&tweet.fields=text`, {
+            headers: { 'Authorization': `Bearer ${bearer}` },
+          });
+          if (tRes.ok) (await tRes.json()).data?.forEach(t => {
+            const m = t.text.match(/twitter\.com\/\w+\/status\/(\d+)/);
+            if (m) usedIds.add(m[1]);
+          });
+        }
+      }
+    } catch(e) {}
+    try {
+      const dRes = await fetch('https://tourfeed.co/.netlify/functions/draft-tweet');
+      if (dRes.ok) (await dRes.json()).drafts?.forEach(d => {
+        const m = d.text.match(/twitter\.com\/\w+\/status\/(\d+)/);
+        if (m) usedIds.add(m[1]);
+      });
+    } catch(e) {}
 
-    // Draft multiple tweets at once — queue up content for approval
     const results = [];
 
     // Strategy 1: PGA Tour / Masters highlight clips
     const highlightQuery = HIGHLIGHT_ACCOUNTS.map(a => `from:${a}`).join(' OR ');
-    const h = await tryQuoteTweet(bearer, `(${highlightQuery}) has:videos -is:retweet`, 'highlight');
+    const h = await tryQuoteTweet(bearer, `(${highlightQuery}) has:videos -is:retweet`, 'highlight', usedIds);
     if (h) results.push(h);
 
     // Strategy 2: Trending Masters/golf content with video
-    const t = await tryQuoteTweet(bearer, `(#TheMasters OR #Masters OR "the masters" OR "augusta") has:videos -is:retweet min_faves:10`, 'trending_masters');
+    const t = await tryQuoteTweet(bearer, `(#TheMasters OR #Masters OR "the masters" OR "augusta") has:videos -is:retweet min_faves:10`, 'trending_masters', usedIds);
     if (t) results.push(t);
 
     // Strategy 3: Golf media reactions
     const mediaQuery = GOLF_MEDIA.map(a => `from:${a}`).join(' OR ');
-    const m = await tryQuoteTweet(bearer, `(${mediaQuery}) -is:retweet -is:reply`, 'media_react');
+    const m = await tryQuoteTweet(bearer, `(${mediaQuery}) -is:retweet -is:reply`, 'media_react', usedIds);
     if (m) results.push(m);
 
     // Strategy 4: Player tweets
     const playerQuery = PLAYERS.slice(0, 5).map(a => `from:${a}`).join(' OR ');
-    const p = await tryQuoteTweet(bearer, `(${playerQuery}) -is:retweet -is:reply`, 'player_react');
+    const p = await tryQuoteTweet(bearer, `(${playerQuery}) -is:retweet -is:reply`, 'player_react', usedIds);
     if (p) results.push(p);
 
     // Strategy 5: Trending golf conversations
-    const g = await tryQuoteTweet(bearer, `(#PGATour OR #LIVGolf OR #Golf) has:videos -is:retweet min_faves:20`, 'trending');
+    const g = await tryQuoteTweet(bearer, `(#PGATour OR #LIVGolf OR #Golf) has:videos -is:retweet min_faves:20`, 'trending', usedIds);
     if (g) results.push(g);
 
     if (results.length === 0) {
@@ -117,7 +141,7 @@ exports.handler = async (event) => {
   }
 };
 
-async function tryQuoteTweet(bearer, query, strategy) {
+async function tryQuoteTweet(bearer, query, strategy, usedIds) {
   try {
     const searchUrl = new URL('https://api.twitter.com/2/tweets/search/recent');
     searchUrl.searchParams.set('query', query);
@@ -136,13 +160,13 @@ async function tryQuoteTweet(bearer, query, strategy) {
     const users = {};
     (data.includes?.users || []).forEach(u => { users[u.id] = u; });
 
-    // Sort by engagement — skip tweets that are just links/media with no real text
+    // Sort by engagement — skip used, link-only, and low-engagement tweets
     const sorted = tweets
       .filter(t => {
+        if (usedIds && usedIds.has(t.id)) return false; // Already drafted or posted
         if ((t.public_metrics?.like_count || 0) < 3) return false;
-        // Strip URLs and check if there's actual text left
         const textOnly = (t.text || '').replace(/https?:\/\/\S+/g, '').trim();
-        if (textOnly.length < 10) return false; // Just a link, no text to react to
+        if (textOnly.length < 10) return false;
         return true;
       })
       .sort((a, b) => (b.public_metrics?.like_count || 0) - (a.public_metrics?.like_count || 0));
@@ -174,6 +198,7 @@ async function tryQuoteTweet(bearer, query, strategy) {
 
       // Send to draft queue (not post directly)
       try {
+        if (usedIds) usedIds.add(target.id); // Mark as used for this run
         const result = await postDraft(take + '\n\nhttps://twitter.com/' + authorName + '/status/' + target.id, 'engage-' + strategy);
         return {
           success: true,
