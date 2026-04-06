@@ -58,7 +58,7 @@ exports.handler = async (event) => {
   const SB_STORAGE_URL = 'https://yumahmnoltvbiadjefxw.supabase.co/storage/v1';
   const SB_PUBLIC_URL = 'https://yumahmnoltvbiadjefxw.supabase.co/storage/v1/object/public/images';
 
-  async function generateAndUploadImage(type, title, body) {
+  async function generateAndUploadImage(type, title, body, playerPhotoUrl) {
     try {
       const headline = type.startsWith('tweet') ? (body || title || '').slice(0, 80) : (title || '');
       const tag = type.startsWith('tweet') ? 'HOT TAKE' :
@@ -68,13 +68,14 @@ exports.handler = async (event) => {
                   type === 'article_preview' ? 'PREVIEW' :
                   type === 'article_analysis' ? 'ANALYSIS' : 'NEWS';
 
-      // Build generate-image URL with PNG format
+      // Build generate-image URL with player photo
       const base = 'https://tourfeed.co/.netlify/functions/generate-image';
+      const photoParam = playerPhotoUrl ? `&photo=${encodeURIComponent(playerPhotoUrl)}` : '';
       let imgFnUrl;
       if (type.startsWith('tweet')) {
-        imgFnUrl = `${base}?type=hot_take&quote=${encodeURIComponent(headline)}&format=png`;
+        imgFnUrl = `${base}?type=hot_take&quote=${encodeURIComponent(headline)}${photoParam}`;
       } else {
-        imgFnUrl = `${base}?type=article_header&tag=${encodeURIComponent(tag)}&headline=${encodeURIComponent(headline)}&format=png`;
+        imgFnUrl = `${base}?type=article_header&tag=${encodeURIComponent(tag)}&headline=${encodeURIComponent(headline)}${photoParam}`;
       }
 
       // Download PNG from generate-image function
@@ -107,7 +108,7 @@ exports.handler = async (event) => {
   // Reject content that indicates AI confusion or bad data
   const BAD_PHRASES = /data limitation|can't tell|no idea who|broken leaderboard|unknown.*winner|unnamed.*competitor|mystery.*champion|don't have access|can't see|I cannot|limited data|leaderboard.*broken|completely cooked|not doing anything/i;
 
-  async function saveDraft(type, title, body, tournamentId, round) {
+  async function saveDraft(type, title, body, tournamentId, round, playerPhotoUrl) {
     // Quality check — reject garbage content
     if (BAD_PHRASES.test(title) || BAD_PHRASES.test(body)) {
       return { skipped: true, reason: 'Failed quality check' };
@@ -116,8 +117,8 @@ exports.handler = async (event) => {
     if (await isDuplicate(hash)) {
       return { skipped: true, hash };
     }
-    // Generate real PNG and upload to Supabase Storage
-    const imageUrl = await generateAndUploadImage(type, title, body);
+    // Generate real PNG with player photo and upload to Supabase Storage
+    const imageUrl = await generateAndUploadImage(type, title, body, playerPhotoUrl);
     const draft = await sb('content_drafts', 'POST', {
       type,
       title,
@@ -171,7 +172,7 @@ exports.handler = async (event) => {
     // 2. Get top 15 leaderboard entries for this tournament
     // Join leaderboard with players to get names
     const leaderboard = await sb(
-      'leaderboard?tournament_id=eq.' + tournamentId + '&select=*,players(name,country)&order=position.asc&limit=15'
+      'leaderboard?tournament_id=eq.' + tournamentId + '&select=*,players(id,name,country)&order=position.asc&limit=15'
     );
     if (!leaderboard.length) {
       return { statusCode: 200, headers, body: JSON.stringify({ message: 'No leaderboard data found for tournament: ' + tournament.name }) };
@@ -212,6 +213,10 @@ exports.handler = async (event) => {
     const tourName = tournament.tour_id === 'pga' ? 'PGA Tour' : tournament.tour_id === 'lpga' ? 'LPGA Tour' : tournament.tour_id === 'liv' ? 'LIV Golf' : tournament.tour_id === 'dpw' ? 'DP World Tour' : '';
     const dataBlock = `Tour: ${tourName}\nTournament: ${tournament.name}\nCourse: ${tournament.course || 'TBD'}\nRound: ${currentRound}\nStatus: ${tournament.status}\n\nLeaderboard (Top ${validPlayers.length}):\n${leaderboardText}`;
 
+    // Get leader's ESPN headshot for images
+    const leaderId = validPlayers[0]?.players?.id;
+    const leaderPhoto = leaderId ? `https://a.espncdn.com/i/headshots/golf/players/full/${leaderId}.png` : '';
+
     const results = { tournament: tournament.name, round: currentRound, generated: [], skipped: [] };
 
     // --- CONTENT 1: Round Recap Article ---
@@ -245,7 +250,7 @@ Rules:
       const bodyMatch = recapRaw.match(/BODY:\s*([\s\S]+)/);
       if (bodyMatch) recapBody = bodyMatch[1].trim();
 
-      const saved = await saveDraft('article_recap', recapTitle, recapBody, tournamentId, currentRound);
+      const saved = await saveDraft('article_recap', recapTitle, recapBody, tournamentId, currentRound, leaderPhoto);
       if (saved.skipped) {
         results.skipped.push('article_recap');
       } else {
@@ -289,7 +294,8 @@ Rules:
           tournament.name + ' R' + currentRound,
           tweet,
           tournamentId,
-          currentRound
+          currentRound,
+          leaderPhoto
         );
         if (saved.skipped) {
           results.skipped.push('tweet_reaction_' + (i + 1));
@@ -334,7 +340,7 @@ Rules:
       const bodyMatch = bettingRaw.match(/BODY:\s*([\s\S]+)/);
       if (bodyMatch) bettingBody = bodyMatch[1].trim();
 
-      const saved = await saveDraft('article_betting', bettingTitle, bettingBody, tournamentId, currentRound);
+      const saved = await saveDraft('article_betting', bettingTitle, bettingBody, tournamentId, currentRound, leaderPhoto);
       if (saved.skipped) {
         results.skipped.push('article_betting');
       } else {

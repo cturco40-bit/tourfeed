@@ -1,18 +1,29 @@
 // Generate branded TourFeed images as PNG using canvas
 // All images are real PNGs with bundled DM Sans font — no SVG, no font issues
 
-const { createCanvas, GlobalFonts } = require('@napi-rs/canvas');
+const { createCanvas, GlobalFonts, loadImage } = require('@napi-rs/canvas');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
 
-// Load font from embedded base64 data — avoids all file path issues on Netlify
+// Load font from embedded base64 data
 const fontB64 = require('./font-data');
 const fontPath = path.join(os.tmpdir(), 'DMSans.ttf');
 if (!fs.existsSync(fontPath)) {
   fs.writeFileSync(fontPath, Buffer.from(fontB64, 'base64'));
 }
 GlobalFonts.registerFromPath(fontPath, 'DM Sans');
+
+// Fetch a remote image and return as canvas Image, or null on failure
+async function fetchImage(url) {
+  if (!url) return null;
+  try {
+    const res = await fetch(url);
+    if (!res.ok) return null;
+    const buf = Buffer.from(await res.arrayBuffer());
+    return await loadImage(buf);
+  } catch(e) { return null; }
+}
 
 const NAVY = '#1B2538';
 const NAVY_D = '#0F1923';
@@ -118,52 +129,107 @@ function drawFooter(ctx, w, h, color) {
   ctx.textAlign = 'left';
 }
 
+// Draw player headshot on right side with gradient fade
+function drawPlayerPhoto(ctx, img, w, h, color) {
+  if (!img) return;
+  // Draw player on the right side, fading into the background
+  const imgH = h * 0.85;
+  const imgW = imgH * (img.width / img.height);
+  const x = w - imgW + 60; // slightly off-screen right
+  const y = h - imgH;
+
+  // Dark overlay gradient from left to right so text stays readable
+  ctx.save();
+  ctx.globalAlpha = 0.7;
+  ctx.drawImage(img, x, y, imgW, imgH);
+  ctx.globalAlpha = 1;
+
+  // Gradient overlay to fade the photo into the background on left side
+  const fade = ctx.createLinearGradient(x - 50, 0, x + imgW * 0.5, 0);
+  fade.addColorStop(0, NAVY_D);
+  fade.addColorStop(0.4, NAVY_D + 'CC');
+  fade.addColorStop(1, 'transparent');
+  ctx.fillStyle = fade;
+  ctx.fillRect(x - 50, 0, imgW + 100, h);
+
+  // Bottom fade
+  const bottomFade = ctx.createLinearGradient(0, h - 150, 0, h);
+  bottomFade.addColorStop(0, 'transparent');
+  bottomFade.addColorStop(1, NAVY_D);
+  ctx.fillStyle = bottomFade;
+  ctx.fillRect(x - 50, h - 150, imgW + 100, 150);
+
+  // Top fade
+  const topFade = ctx.createLinearGradient(0, 0, 0, 120);
+  topFade.addColorStop(0, NAVY_D);
+  topFade.addColorStop(1, 'transparent');
+  ctx.fillStyle = topFade;
+  ctx.fillRect(x - 50, 0, imgW + 100, 120);
+  ctx.restore();
+}
+
 // ────── HEADLINE (1080x1080) ──────
-function generateHeadline(params) {
+async function generateHeadline(params) {
   const tag = params.tag || 'BREAKING';
   const headline = params.headline || '';
+  const photo = params.photo || '';
   const tagColor = tag === 'RECAP' ? GREEN : tag === 'BETTING' ? GOLD : tag === 'PREVIEW' ? GREEN : tag === 'ANALYSIS' ? '#4A90D9' : RED;
 
   const c = createCanvas(1080, 1080);
   const ctx = c.getContext('2d');
   drawGradientBg(ctx, 1080, 1080);
+
+  // Player photo (behind everything else)
+  const playerImg = await fetchImage(photo);
+  if (playerImg) drawPlayerPhoto(ctx, playerImg, 1080, 1080, tagColor);
+
   drawAccent(ctx, 1080, 1080, tagColor);
   drawLogo(ctx, 50, 65, 26);
   drawTag(ctx, tag, 50, 120, tagColor);
   ctx.font = font(800, 48);
   ctx.fillStyle = WHITE;
-  wrapText(ctx, headline, 50, 260, 980, 60, 6);
+  wrapText(ctx, headline, 50, 260, playerImg ? 680 : 980, 60, 6);
   drawFooter(ctx, 1080, 1080, tagColor);
   return c.toBuffer('image/png');
 }
 
 // ────── ARTICLE HEADER (1200x630) ──────
-function generateArticleHeader(params) {
+async function generateArticleHeader(params) {
   const tag = params.tag || 'NEWS';
   const headline = params.headline || '';
+  const photo = params.photo || '';
   const tagColor = tag === 'RECAP' ? GREEN : tag === 'BETTING' ? GOLD : tag === 'PREVIEW' ? GREEN : tag === 'ANALYSIS' ? '#4A90D9' : tag === 'BREAKING' ? RED : GREEN;
 
   const c = createCanvas(1200, 630);
   const ctx = c.getContext('2d');
   drawGradientBg(ctx, 1200, 630);
+
+  const playerImg = await fetchImage(photo);
+  if (playerImg) drawPlayerPhoto(ctx, playerImg, 1200, 630, tagColor);
+
   drawAccent(ctx, 1200, 630, tagColor);
   drawLogo(ctx, 50, 55, 22);
   drawTag(ctx, tag, 50, 100, tagColor);
   ctx.font = font(800, 38);
   ctx.fillStyle = WHITE;
-  wrapText(ctx, headline, 50, 190, 1100, 50, 6);
+  wrapText(ctx, headline, 50, 190, playerImg ? 750 : 1100, 50, 6);
   drawFooter(ctx, 1200, 630, tagColor);
   return c.toBuffer('image/png');
 }
 
 // ────── HOT TAKE (1080x1080) ──────
-function generateHotTake(params) {
+async function generateHotTake(params) {
   const quote = params.quote || '';
   const context = params.context || '';
+  const photo = params.photo || '';
 
   const c = createCanvas(1080, 1080);
   const ctx = c.getContext('2d');
   drawGradientBg(ctx, 1080, 1080);
+
+  const playerImg = await fetchImage(photo);
+  if (playerImg) drawPlayerPhoto(ctx, playerImg, 1080, 1080, GREEN);
+
   drawAccent(ctx, 1080, 1080, GREEN);
   drawLogo(ctx, 50, 65, 26);
   drawTag(ctx, 'HOT TAKE', 50, 120, GREEN);
@@ -176,7 +242,7 @@ function generateHotTake(params) {
   // Quote text
   ctx.font = font(700, 40);
   ctx.fillStyle = WHITE;
-  wrapText(ctx, quote, 60, 350, 960, 52, 6);
+  wrapText(ctx, quote, 60, 350, playerImg ? 640 : 960, 52, 6);
 
   if (context) {
     ctx.font = font(600, 15);
@@ -191,34 +257,39 @@ function generateHotTake(params) {
 }
 
 // ────── PICK (1080x1080) ──────
-function generatePick(params) {
+async function generatePick(params) {
   const label = params.label || 'BEST BET';
   const name = params.name || '';
   const odds = params.odds || '';
   const reason = params.reason || '';
   const labelColor = label === 'LONGSHOT' ? GOLD : label === 'FADE' ? RED : label === 'VALUE PLAY' ? '#4A90D9' : GREEN;
 
+  const photo = params.photo || '';
   const c = createCanvas(1080, 1080);
   const ctx = c.getContext('2d');
   drawGradientBg(ctx, 1080, 1080);
+
+  const playerImg = await fetchImage(photo);
+  if (playerImg) drawPlayerPhoto(ctx, playerImg, 1080, 1080, labelColor);
+
   drawAccent(ctx, 1080, 1080, labelColor);
   drawLogo(ctx, 50, 65, 26);
   drawTag(ctx, label, 50, 120, labelColor);
 
   ctx.font = font(900, 56);
   ctx.fillStyle = WHITE;
-  ctx.textAlign = 'center';
-  ctx.fillText(name, 540, 400);
+  ctx.textAlign = playerImg ? 'left' : 'center';
+  ctx.fillText(name, playerImg ? 50 : 540, 400);
 
   ctx.font = font(800, 48);
   ctx.fillStyle = labelColor;
-  ctx.fillText(odds, 540, 480);
+  ctx.fillText(odds, playerImg ? 50 : 540, 480);
   ctx.textAlign = 'left';
 
   if (reason) {
     ctx.font = font(500, 20);
     ctx.fillStyle = DIM;
-    wrapText(ctx, reason, 80, 560, 920, 30, 4);
+    wrapText(ctx, reason, 80, 560, playerImg ? 580 : 920, 30, 4);
   }
 
   drawFooter(ctx, 1080, 1080, labelColor);
@@ -226,14 +297,18 @@ function generatePick(params) {
 }
 
 // ────── WINNER (1080x1080) ──────
-function generateWinner(params) {
+async function generateWinner(params) {
   const name = params.name || '';
   const tournament = params.tournament || '';
   const score = params.score || '';
 
+  const photo = params.photo || '';
   const c = createCanvas(1080, 1080);
   const ctx = c.getContext('2d');
   drawGradientBg(ctx, 1080, 1080);
+
+  const playerImg = await fetchImage(photo);
+  if (playerImg) drawPlayerPhoto(ctx, playerImg, 1080, 1080, GOLD);
 
   // Gold glow
   const glow = ctx.createLinearGradient(0, 200, 0, 600);
@@ -269,7 +344,7 @@ function generateWinner(params) {
 }
 
 // ────── STAT CARD (1080x1080) ──────
-function generateStat(params) {
+async function generateStat(params) {
   const number = params.number || '';
   const label = params.label || '';
   const player = params.player || '';
@@ -306,7 +381,7 @@ function generateStat(params) {
 }
 
 // ────── LEADERBOARD (1080x1080) ──────
-function generateLeaderboard(params) {
+async function generateLeaderboard(params) {
   const title = params.title || 'LEADERBOARD';
   const subtitle = params.subtitle || '';
   const players = (params.players || '').split(',').filter(Boolean).map(p => {
@@ -370,14 +445,14 @@ exports.handler = async (event) => {
 
   let pngBuffer;
   switch (type) {
-    case 'leaderboard': pngBuffer = generateLeaderboard(params); break;
-    case 'headline': pngBuffer = generateHeadline(params); break;
-    case 'article_header': pngBuffer = generateArticleHeader(params); break;
-    case 'pick': pngBuffer = generatePick(params); break;
-    case 'winner': pngBuffer = generateWinner(params); break;
-    case 'stat': pngBuffer = generateStat(params); break;
-    case 'hot_take': pngBuffer = generateHotTake(params); break;
-    default: pngBuffer = generateHeadline(params);
+    case 'leaderboard': pngBuffer = await generateLeaderboard(params); break;
+    case 'headline': pngBuffer = await generateHeadline(params); break;
+    case 'article_header': pngBuffer = await generateArticleHeader(params); break;
+    case 'pick': pngBuffer = await generatePick(params); break;
+    case 'winner': pngBuffer = await generateWinner(params); break;
+    case 'stat': pngBuffer = await generateStat(params); break;
+    case 'hot_take': pngBuffer = await generateHotTake(params); break;
+    default: pngBuffer = await generateHeadline(params);
   }
 
   return {
