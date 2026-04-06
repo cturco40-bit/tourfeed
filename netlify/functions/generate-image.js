@@ -77,17 +77,22 @@ function generateHeadline(params) {
   const tournament = params.tournament || '';
   const tagColor = tag === 'RECAP' ? GREEN : tag === 'BETTING' ? GOLD : tag === 'PREVIEW' ? GREEN : tag === 'ANALYSIS' ? '#4A90D9' : RED;
   return `<svg width="1080" height="1080" xmlns="http://www.w3.org/2000/svg">
-    <defs><linearGradient id="bg" x1="0" y1="0" x2="0.5" y2="1"><stop offset="0%" stop-color="${NAVY}"/><stop offset="100%" stop-color="#0F1923"/></linearGradient></defs>
+    <defs>
+      <linearGradient id="bg" x1="0" y1="0" x2="0.5" y2="1"><stop offset="0%" stop-color="${NAVY}"/><stop offset="100%" stop-color="#0F1923"/></linearGradient>
+      <linearGradient id="accent" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${tagColor}" stop-opacity="0.15"/><stop offset="100%" stop-color="${tagColor}" stop-opacity="0"/></linearGradient>
+    </defs>
     <rect width="1080" height="1080" fill="url(#bg)"/>
     <rect width="1080" height="5" fill="${tagColor}"/>
-    ${logo(40, 60, 30)}
-    <rect x="40" y="100" width="${tag.length * 16 + 30}" height="36" rx="6" fill="${tagColor}" opacity="0.15"/>
-    <text x="55" y="124" font-family="Arial,Helvetica,sans-serif" font-size="14" font-weight="700" fill="${tagColor}" letter-spacing="3">${escXml(tag)}</text>
-    ${wrapText(headline, 26, 40, 240, 56, WHITE, 46, '800')}
-    ${tournament ? `<text x="40" y="940" font-family="Arial,Helvetica,sans-serif" font-size="18" font-weight="600" fill="${DIM}">${escXml(tournament)}</text>` : ''}
-    <line x1="40" y1="980" x2="1040" y2="980" stroke="rgba(255,255,255,0.06)" stroke-width="1"/>
-    ${logo(40, 1040, 22)}
-    <text x="1040" y="1040" font-family="Arial,Helvetica,sans-serif" font-size="14" font-weight="600" fill="${GRAY}" text-anchor="end">tourfeed.co</text>
+    <rect x="0" y="0" width="8" height="1080" fill="${tagColor}" opacity="0.6"/>
+    <rect x="0" y="160" width="1080" height="500" fill="url(#accent)"/>
+    ${logo(50, 70, 28)}
+    <rect x="50" y="110" width="${tag.length * 15 + 30}" height="34" rx="6" fill="${tagColor}" opacity="0.2"/>
+    <text x="65" y="132" font-family="Arial,Helvetica,sans-serif" font-size="13" font-weight="700" fill="${tagColor}" letter-spacing="3">${escXml(tag)}</text>
+    ${wrapText(headline, 22, 50, 240, 64, WHITE, 52, '800')}
+    ${tournament ? `<text x="50" y="940" font-family="Arial,Helvetica,sans-serif" font-size="18" font-weight="600" fill="${DIM}">${escXml(tournament)}</text>` : ''}
+    <rect x="50" y="980" width="200" height="3" rx="2" fill="${tagColor}" opacity="0.4"/>
+    ${logo(50, 1040, 20)}
+    <text x="1030" y="1040" font-family="Arial,Helvetica,sans-serif" font-size="13" font-weight="600" fill="${GRAY}" text-anchor="end">tourfeed.co</text>
   </svg>`;
 }
 
@@ -185,18 +190,23 @@ function generateHotTake(params) {
   const quote = params.quote || '';
   const context = params.context || '';
   return `<svg width="1080" height="1080" xmlns="http://www.w3.org/2000/svg">
-    <defs><linearGradient id="bg" x1="0" y1="0" x2="0.5" y2="1"><stop offset="0%" stop-color="${NAVY}"/><stop offset="100%" stop-color="#0F1923"/></linearGradient></defs>
+    <defs>
+      <linearGradient id="bg" x1="0" y1="0" x2="0.5" y2="1"><stop offset="0%" stop-color="${NAVY}"/><stop offset="100%" stop-color="#0F1923"/></linearGradient>
+      <linearGradient id="glow" x1="0" y1="0.2" x2="0" y2="0.8"><stop offset="0%" stop-color="${GREEN}" stop-opacity="0.08"/><stop offset="50%" stop-color="${GREEN}" stop-opacity="0.03"/><stop offset="100%" stop-color="transparent"/></linearGradient>
+    </defs>
     <rect width="1080" height="1080" fill="url(#bg)"/>
+    <rect x="0" y="150" width="1080" height="700" fill="url(#glow)"/>
     <rect width="1080" height="5" fill="${GREEN}"/>
-    ${logo(40, 60, 30)}
-    <rect x="40" y="100" width="130" height="36" rx="6" fill="${GREEN}" opacity="0.15"/>
-    <text x="55" y="124" font-family="Arial,Helvetica,sans-serif" font-size="14" font-weight="700" fill="${GREEN}" letter-spacing="3">HOT TAKE</text>
-    <text x="60" y="270" font-family="Arial,Helvetica,sans-serif" font-size="80" font-weight="900" fill="${GREEN}" opacity="0.2">"</text>
-    ${wrapText(quote, 28, 80, 320, 52, WHITE, 40, '700')}
-    ${context ? `<text x="540" y="900" font-family="Arial,Helvetica,sans-serif" font-size="16" font-weight="600" fill="${GRAY}" text-anchor="middle">${escXml(context)}</text>` : ''}
-    <line x1="40" y1="980" x2="1040" y2="980" stroke="rgba(255,255,255,0.06)" stroke-width="1"/>
-    ${logo(40, 1040, 22)}
-    <text x="1040" y="1040" font-family="Arial,Helvetica,sans-serif" font-size="14" font-weight="600" fill="${GRAY}" text-anchor="end">tourfeed.co</text>
+    <rect x="0" y="0" width="8" height="1080" fill="${GREEN}" opacity="0.5"/>
+    ${logo(50, 70, 28)}
+    <rect x="50" y="110" width="130" height="34" rx="6" fill="${GREEN}" opacity="0.2"/>
+    <text x="65" y="132" font-family="Arial,Helvetica,sans-serif" font-size="13" font-weight="700" fill="${GREEN}" letter-spacing="3">HOT TAKE</text>
+    <text x="50" y="300" font-family="Arial,Helvetica,sans-serif" font-size="100" font-weight="900" fill="${GREEN}" opacity="0.15">&quot;</text>
+    ${wrapText(quote, 24, 70, 340, 56, WHITE, 42, '700')}
+    ${context ? `<text x="540" y="920" font-family="Arial,Helvetica,sans-serif" font-size="16" font-weight="600" fill="${GRAY}" text-anchor="middle">${escXml(context)}</text>` : ''}
+    <rect x="50" y="980" width="200" height="3" rx="2" fill="${GREEN}" opacity="0.4"/>
+    ${logo(50, 1040, 20)}
+    <text x="1030" y="1040" font-family="Arial,Helvetica,sans-serif" font-size="13" font-weight="600" fill="${GRAY}" text-anchor="end">tourfeed.co</text>
   </svg>`;
 }
 
