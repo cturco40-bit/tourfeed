@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script async src="https://platform.twitter.com/widgets.js" charset="utf-8"></script>
   <meta name="robots" content="noindex, nofollow">
   <title>TF Drafts</title>
   <style>
@@ -87,9 +88,16 @@
 
         list.innerHTML = drafts.map(d => {
           const time = new Date(d.created).toLocaleString();
+          // Extract twitter URL from draft text for preview
+          const tweetUrlMatch = d.text.match(/https?:\/\/twitter\.com\/\w+\/status\/\d+/);
+          const tweetEmbed = tweetUrlMatch
+            ? '<div style="margin-bottom:10px;padding:10px;background:#1B2538;border-radius:8px;border-left:3px solid #4A90D9"><div style="font-size:10px;color:#4A90D9;margin-bottom:4px">QUOTING</div><a href="' + tweetUrlMatch[0] + '" target="_blank" style="font-size:12px;color:#868E96;word-break:break-all">' + tweetUrlMatch[0] + '</a><blockquote class="twitter-tweet" data-theme="dark" data-conversation="none"><a href="' + tweetUrlMatch[0] + '"></a></blockquote></div>'
+            : '';
           return `
             <div class="draft" id="draft-${d.id}">
               <div class="draft-source">${d.source || 'auto'}</div>
+              ${tweetEmbed}
+              <div style="font-size:10px;color:#495057;margin-bottom:4px">YOUR TWEET</div>
               <textarea class="draft-edit" id="edit-${d.id}" rows="4">${d.text}</textarea>
               <div style="font-size:11px;color:#495057;margin-top:4px;text-align:right"><span id="chars-${d.id}">${d.text.length}</span>/280</div>
               <div class="draft-time">${time}</div>
@@ -100,6 +108,9 @@
             </div>
           `;
         }).join('');
+
+        // Load Twitter embeds
+        if (window.twttr && window.twttr.widgets) window.twttr.widgets.load();
 
         // Add character counters
         drafts.forEach(d => {
