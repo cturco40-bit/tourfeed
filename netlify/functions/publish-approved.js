@@ -72,6 +72,7 @@ exports.handler = async (event) => {
           };
 
           await sb('articles', 'POST', {
+            type: draft.type?.replace('article_', '') || 'news',
             title: draft.title || 'TourFeed Article',
             body: draft.body,
             summary: draft.body.replace(/<[^>]+>/g, '').slice(0, 200),
@@ -80,9 +81,8 @@ exports.handler = async (event) => {
             read_time: readTime,
             tag: tagMap[draft.type] || 'NEWS',
             published_at: new Date().toISOString(),
-            tour: draft.tour_id || 'pga',
+            tour_id: draft.tour_id || 'pga',
             tournament_id: draft.tournament_id,
-            source_url: draft.article_url,
           });
 
           await sb(`content_drafts?id=eq.${draft.id}`, 'PATCH', {

@@ -281,6 +281,18 @@
 // ============================================
 // TOURFEED APP — CONFIG
 // ============================================
+const SB_URL = 'https://yumahmnoltvbiadjefxw.supabase.co';
+const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl1bWFobW5vbHR2YmlhZGplZnh3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUzOTY0NDAsImV4cCI6MjA5MDk3MjQ0MH0.FAXp2t0zaHlm1W7aaut72btMilrYPy33XO3p8MfyYlo';
+const sb = supabase.createClient(SB_URL, SB_KEY);
+
+// Fetch published articles from Supabase
+async function fetchArticles(limit = 20) {
+  try {
+    const { data, error } = await sb.from('articles').select('*').order('published_at', { ascending: false }).limit(limit);
+    if (error) throw error;
+    return data || [];
+  } catch(e) { console.warn('Articles fetch failed:', e); return []; }
+}
 
 
 const TABS = ['Home','Scores','News','Insights','Standings','Schedule'];
@@ -761,9 +773,31 @@ async function fetchNews() {
       }));
     }
 
-    newsData = articles.map(a => {
+    // Also fetch our own published articles from Supabase
+    let sbArticles = [];
+    try {
+      sbArticles = await fetchArticles(10);
+    } catch(e) {}
+
+    // Merge: Supabase articles first (our original content), then RSS
+    const allItems = [];
+    sbArticles.forEach(a => {
+      allItems.push({
+        title: a.title || '',
+        summary: a.summary || a.body?.replace(/<[^>]+>/g, '').slice(0, 200) || '',
+        image: a.header_image || '',
+        source: 'TourFeed',
+        time: timeAgo(a.published_at),
+        tag: a.tag || 'NEWS',
+        tc: a.tag === 'RECAP' ? 'var(--green)' : a.tag === 'BETTING' ? 'var(--gold)' : a.tag === 'PREVIEW' ? 'var(--green)' : 'var(--text-muted)',
+        slug: a.slug,
+        body: a.body, // Already have the full article
+        isOriginal: true,
+      });
+    });
+    articles.forEach(a => {
       const cat = categorizeArticle(a.title || '', a.summary || '');
-      return {
+      allItems.push({
         title: a.title || '',
         summary: a.summary || '',
         image: a.image || '',
@@ -771,8 +805,10 @@ async function fetchNews() {
         time: timeAgo(a.published),
         tag: cat.tag,
         tc: cat.color,
-      };
+      });
     });
+
+    newsData = allItems;
     newsFetched = true;
     newsLoading = false;
     renderApp();
@@ -1635,7 +1671,17 @@ function renderScores() {
 // ============================================
 function openArticle(idx) {
   expandedCard = 100 + idx;
-  if (!articleCache['article_' + idx]) generateArticle(idx);
+  const n = newsData[idx];
+  // If it's an original Supabase article, cache the body directly
+  if (n?.isOriginal && n?.body) {
+    articleCache['article_' + idx] = { title: n.title, body: n.body };
+  } else if (!articleCache['article_' + idx]) {
+    generateArticle(idx);
+  }
+  // Update URL for sharing
+  if (n?.slug) {
+    history.pushState(null, '', '/article/' + n.slug);
+  }
   renderApp();
   window.scrollTo(0, 0);
 }
@@ -2323,6 +2369,24 @@ function _doRender() {
 // ============================================
 // INIT
 // ============================================
+
+// Check for article URL (/article/slug)
+const pathMatch = window.location.pathname.match(/^\/article\/(.+)/);
+if (pathMatch) {
+  const slug = pathMatch[1];
+  currentTab = 2; // News tab
+  expandedCard = 'supabase-article';
+  (async () => {
+    try {
+      const { data } = await sb.from('articles').select('*').eq('slug', slug).limit(1);
+      if (data?.[0]) {
+        recapArticle = { title: data[0].title, body: data[0].body, tournament: data[0].tag || 'NEWS' };
+        expandedCard = 'recap';
+        renderApp();
+      }
+    } catch(e) {}
+  })();
+}
 
 // Check for recap deep link (?recap=slug)
 const urlParams = new URLSearchParams(window.location.search);
