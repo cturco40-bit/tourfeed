@@ -277,7 +277,7 @@ async function loadDrafts() {
           '<button class="btn-action btn-approve" onclick="approveDraft(' + d.id + ')">Approve</button>' +
           '<button class="btn-action btn-edit" onclick="document.getElementById(\'edit-'+d.id+'\').classList.toggle(\'show\')">Edit</button>' +
           '<button class="btn-action btn-reject" onclick="rejectDraft(' + d.id + ')">Reject</button>' +
-          (!d.image_url ? '<button class="btn-add-img" onclick="openImageEditor(' + d.id + ')">+ Image</button>' : '') +
+          '<button class="btn-add-img" onclick="openImageEditor(' + d.id + ')">' + (d.image_url ? 'Replace Image' : '+ Image') + '</button>' +
         '</div></div>';
     }).join('');
 
