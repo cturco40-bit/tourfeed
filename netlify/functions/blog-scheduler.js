@@ -122,7 +122,23 @@ Rules:
     await sb('content_hashes', 'POST', { hash, type: config.type, source: 'blog-scheduler' });
     const tagMap = { 'article_analysis': 'ANALYSIS', 'article_preview': 'PREVIEW', 'article_betting': 'BETTING' };
     const imgTag = tagMap[config.type] || 'NEWS';
-    const imageUrl = `https://tourfeed.co/.netlify/functions/generate-image?type=headline&tag=${imgTag}&headline=${encodeURIComponent(article.title)}`;
+    // Generate PNG and upload to Supabase Storage
+    let imageUrl = null;
+    try {
+      const imgRes = await fetch(`https://tourfeed.co/.netlify/functions/generate-image?type=article_header&tag=${encodeURIComponent(imgTag)}&headline=${encodeURIComponent(article.title)}&format=png`);
+      if (imgRes.ok) {
+        const buf = Buffer.from(await imgRes.arrayBuffer());
+        if (buf.length > 1000) {
+          const fname = 'blog-' + Date.now() + '.png';
+          const upRes = await fetch('https://yumahmnoltvbiadjefxw.supabase.co/storage/v1/object/images/' + fname, {
+            method: 'POST',
+            headers: { 'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl1bWFobW5vbHR2YmlhZGplZnh3Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NTM5NjQ0MCwiZXhwIjoyMDkwOTcyNDQwfQ.VXcPybKl1c3uJAO59im8hb0zQjEmdwd4e6WGAakC-qs', 'Content-Type': 'image/png', 'x-upsert': 'true' },
+            body: buf,
+          });
+          if (upRes.ok) imageUrl = 'https://yumahmnoltvbiadjefxw.supabase.co/storage/v1/object/public/images/' + fname;
+        }
+      }
+    } catch(e) { console.error('Image upload failed:', e.message); }
     await sb('content_drafts', 'POST', {
       type: config.type,
       title: article.title,

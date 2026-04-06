@@ -54,23 +54,54 @@ exports.handler = async (event) => {
     await sb('content_hashes', 'POST', { hash, content_type: contentType, created_at: new Date().toISOString() });
   }
 
-  // --- Save draft with dedup ---
-  // Generate branded image URL based on content type
-  function getImageUrl(type, title, body) {
-    const base = 'https://tourfeed.co/.netlify/functions/generate-image';
-    // For tweets, use body text (the actual tweet) as the headline, not the internal title
-    const headline = type.startsWith('tweet') ? (body || title || '').slice(0, 80) : (title || '');
-    const tag = type.startsWith('tweet') ? 'HOT TAKE' :
-                type === 'article_recap' ? 'RECAP' :
-                type === 'article_betting' ? 'BETTING' :
-                type === 'article_news' ? 'BREAKING' :
-                type === 'article_preview' ? 'PREVIEW' :
-                type === 'article_analysis' ? 'ANALYSIS' : 'NEWS';
-    const imgType = type.startsWith('tweet') ? 'hot_take&quote' : 'headline&headline';
-    if (type.startsWith('tweet')) {
-      return `${base}?type=hot_take&quote=${encodeURIComponent(headline)}&context=${encodeURIComponent(title || '')}`;
+  // --- Generate PNG image, upload to Supabase Storage, return public URL ---
+  const SB_STORAGE_URL = 'https://yumahmnoltvbiadjefxw.supabase.co/storage/v1';
+  const SB_PUBLIC_URL = 'https://yumahmnoltvbiadjefxw.supabase.co/storage/v1/object/public/images';
+
+  async function generateAndUploadImage(type, title, body) {
+    try {
+      const headline = type.startsWith('tweet') ? (body || title || '').slice(0, 80) : (title || '');
+      const tag = type.startsWith('tweet') ? 'HOT TAKE' :
+                  type === 'article_recap' ? 'RECAP' :
+                  type === 'article_betting' ? 'BETTING' :
+                  type === 'article_news' ? 'BREAKING' :
+                  type === 'article_preview' ? 'PREVIEW' :
+                  type === 'article_analysis' ? 'ANALYSIS' : 'NEWS';
+
+      // Build generate-image URL with PNG format
+      const base = 'https://tourfeed.co/.netlify/functions/generate-image';
+      let imgFnUrl;
+      if (type.startsWith('tweet')) {
+        imgFnUrl = `${base}?type=hot_take&quote=${encodeURIComponent(headline)}&format=png`;
+      } else {
+        imgFnUrl = `${base}?type=article_header&tag=${encodeURIComponent(tag)}&headline=${encodeURIComponent(headline)}&format=png`;
+      }
+
+      // Download PNG from generate-image function
+      const imgRes = await fetch(imgFnUrl);
+      if (!imgRes.ok) throw new Error('Image generation failed: ' + imgRes.status);
+      const pngBuffer = Buffer.from(await imgRes.arrayBuffer());
+      if (pngBuffer.length < 1000) throw new Error('Image too small, likely blank');
+
+      // Upload to Supabase Storage
+      const filename = type.replace(/[^a-z0-9]/g, '-') + '-' + Date.now() + '.png';
+      const uploadRes = await fetch(`${SB_STORAGE_URL}/object/images/${filename}`, {
+        method: 'POST',
+        headers: {
+          'Authorization': 'Bearer ' + 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl1bWFobW5vbHR2YmlhZGplZnh3Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NTM5NjQ0MCwiZXhwIjoyMDkwOTcyNDQwfQ.VXcPybKl1c3uJAO59im8hb0zQjEmdwd4e6WGAakC-qs',
+          'Content-Type': 'image/png',
+          'x-upsert': 'true',
+        },
+        body: pngBuffer,
+      });
+
+      if (!uploadRes.ok) throw new Error('Storage upload failed: ' + await uploadRes.text());
+
+      return `${SB_PUBLIC_URL}/${filename}`;
+    } catch (e) {
+      console.error('Image generation/upload failed:', e.message);
+      return null; // Draft will be created without image
     }
-    return `${base}?type=headline&tag=${encodeURIComponent(tag)}&headline=${encodeURIComponent(headline)}`;
   }
 
   // Reject content that indicates AI confusion or bad data
@@ -85,7 +116,8 @@ exports.handler = async (event) => {
     if (await isDuplicate(hash)) {
       return { skipped: true, hash };
     }
-    const imageUrl = getImageUrl(type, title, body);
+    // Generate real PNG and upload to Supabase Storage
+    const imageUrl = await generateAndUploadImage(type, title, body);
     const draft = await sb('content_drafts', 'POST', {
       type,
       title,

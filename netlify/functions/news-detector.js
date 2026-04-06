@@ -44,6 +44,30 @@ async function sb(path, method, body) {
   return res.ok;
 }
 
+// ---------- Generate PNG + upload to Supabase Storage ----------
+async function uploadImage(tag, headline) {
+  try {
+    const base = 'https://tourfeed.co/.netlify/functions/generate-image';
+    const url = `${base}?type=article_header&tag=${encodeURIComponent(tag)}&headline=${encodeURIComponent(headline)}&format=png`;
+    const res = await fetch(url);
+    if (!res.ok) return null;
+    const buf = Buffer.from(await res.arrayBuffer());
+    if (buf.length < 1000) return null;
+    const filename = 'news-' + Date.now() + '.png';
+    const upRes = await fetch('https://yumahmnoltvbiadjefxw.supabase.co/storage/v1/object/images/' + filename, {
+      method: 'POST',
+      headers: {
+        'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl1bWFobW5vbHR2YmlhZGplZnh3Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NTM5NjQ0MCwiZXhwIjoyMDkwOTcyNDQwfQ.VXcPybKl1c3uJAO59im8hb0zQjEmdwd4e6WGAakC-qs',
+        'Content-Type': 'image/png',
+        'x-upsert': 'true',
+      },
+      body: buf,
+    });
+    if (!upRes.ok) return null;
+    return 'https://yumahmnoltvbiadjefxw.supabase.co/storage/v1/object/public/images/' + filename;
+  } catch(e) { return null; }
+}
+
 // ---------- Simple RSS parser (regex, no npm) ----------
 function parseRSS(xml) {
   const items = [];
@@ -284,7 +308,7 @@ exports.handler = async (event) => {
 
         // Store article draft in content_drafts
         const articleTitle = article.title || 'Breaking Golf News';
-        const articleImage = `https://tourfeed.co/.netlify/functions/generate-image?type=headline&tag=BREAKING&headline=${encodeURIComponent(articleTitle)}`;
+        const articleImage = await uploadImage('BREAKING', articleTitle);
         const articleDraft = await sb('content_drafts', 'POST', {
           type: 'article_news',
           title: articleTitle,

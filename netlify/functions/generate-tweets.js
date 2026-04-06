@@ -1,9 +1,30 @@
 // Scrape ALL golf sources, generate tweets from the freshest content
 
+async function uploadTweetImage(text) {
+  try {
+    const headline = text.slice(0, 80);
+    const url = `https://tourfeed.co/.netlify/functions/generate-image?type=hot_take&quote=${encodeURIComponent(headline)}&format=png`;
+    const res = await fetch(url);
+    if (!res.ok) return null;
+    const buf = Buffer.from(await res.arrayBuffer());
+    if (buf.length < 1000) return null;
+    const fname = 'tweet-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6) + '.png';
+    const upRes = await fetch('https://yumahmnoltvbiadjefxw.supabase.co/storage/v1/object/images/' + fname, {
+      method: 'POST',
+      headers: {
+        'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl1bWFobW5vbHR2YmlhZGplZnh3Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NTM5NjQ0MCwiZXhwIjoyMDkwOTcyNDQwfQ.VXcPybKl1c3uJAO59im8hb0zQjEmdwd4e6WGAakC-qs',
+        'Content-Type': 'image/png',
+        'x-upsert': 'true',
+      },
+      body: buf,
+    });
+    if (!upRes.ok) return null;
+    return 'https://yumahmnoltvbiadjefxw.supabase.co/storage/v1/object/public/images/' + fname;
+  } catch(e) { return null; }
+}
+
 async function postDraft(text, source) {
-  // Generate a branded image for the tweet
-  const headline = text.slice(0, 60);
-  const imageUrl = `https://tourfeed.co/.netlify/functions/generate-image?type=headline&tag=HOT+TAKE&headline=${encodeURIComponent(headline)}`;
+  const imageUrl = await uploadTweetImage(text);
   const res = await fetch('https://tourfeed.co/.netlify/functions/draft-tweet', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },

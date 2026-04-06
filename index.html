@@ -934,12 +934,7 @@ function renderArticleDetail(a) {
   html += '<button onclick="closeArticleDetail()" style="background:none;border:none;color:var(--green);font-size:13px;font-weight:700;cursor:pointer;padding:8px 0;font-family:inherit">&larr; ' + backLabel + '</button>';
 
   if (a.header_image) {
-    var headerUrl = a.header_image;
-    // For generated images, use article_header format (1200x630) as PNG
-    if (headerUrl.includes('generate-image')) {
-      headerUrl = 'https://tourfeed.co/.netlify/functions/generate-image?type=article_header&tag=' + encodeURIComponent(a.tag || 'NEWS') + '&headline=' + encodeURIComponent(a.title || '') + '&format=png';
-    }
-    html += '<img src="' + esc(headerUrl) + '" class="article-detail-img" alt="" onerror="this.style.display=\'none\'">';
+    html += '<img src="' + esc(a.header_image) + '" class="article-detail-img" alt="" onerror="this.style.display=\'none\'">';
   }
 
   html += '<div class="article-detail-title">' + esc(a.title) + '</div>';
@@ -987,18 +982,11 @@ function renderArticleDetail(a) {
 // ============================================
 // ARTICLE CARD RENDERER
 // ============================================
-function fixImageUrl(url) {
-  if (!url) return '';
-  // Skip generated SVG function URLs for thumbnails — they look bad small
-  if (url.includes('generate-image')) return '';
-  return url;
-}
-
 function renderArticleCard(a) {
   const tc = tagColor(a.tag);
   const summary = (a.summary || (a.body ? a.body.replace(/<[^>]+>/g, '').slice(0, 120) : '')).slice(0, 120);
   const time = timeAgo(a.published_at);
-  const imgSrc = fixImageUrl(a.header_image);
+  const imgSrc = a.header_image || '';
 
   let html = '<div class="article-card" onclick="openArticleDetail(this._article)" style="cursor:pointer">';
   html += '<div class="article-card-body">';
@@ -1148,8 +1136,7 @@ function renderHome() {
       html += '<div style="font-size:13px;font-weight:700;color:var(--text);line-height:1.3;margin-top:3px">' + esc(n.title) + '</div>';
       html += '<div style="font-size:10px;color:var(--text-muted);margin-top:3px">' + timeAgo(n.published_at) + '</div>';
       html += '</div>';
-      var thumbSrc = fixImageUrl(n.header_image);
-      if (thumbSrc) html += '<img src="' + esc(thumbSrc) + '" style="width:60px;height:42px;object-fit:cover;border-radius:4px;flex-shrink:0" alt="" onerror="this.style.display=\'none\'">';
+      if (n.header_image) html += '<img src="' + esc(n.header_image) + '" style="width:60px;height:42px;object-fit:cover;border-radius:4px;flex-shrink:0" alt="" onerror="this.style.display=\'none\'">';
       html += '</div></div>';
     });
   } else {
