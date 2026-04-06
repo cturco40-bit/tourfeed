@@ -31,7 +31,6 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="TourFeed">
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-  <!-- Supabase JS Client -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
     :root {
@@ -47,30 +46,28 @@
     }
     * { margin:0; padding:0; box-sizing:border-box; }
     body { font-family:'DM Sans',-apple-system,sans-serif; background:var(--bg); color:var(--text); min-height:100vh; }
-    
+
     /* HEADER */
     .header { background:var(--navy); border-bottom:none; padding:14px 20px 0; position:sticky; top:0; z-index:100; display:flex; justify-content:space-between; align-items:center; }
-    .logo { display:inline-flex; align-items:center; cursor:pointer; }
+    .logo { display:inline-flex; align-items:center; cursor:pointer; text-decoration:none; }
     .logo-t { font-size:20px; font-weight:900; color:#fff; letter-spacing:1.5px; }
     .logo-f { font-size:20px; font-weight:900; color:var(--gold); letter-spacing:1.5px; }
     .header-right { display:flex; align-items:center; gap:8px; }
-    
-    /* NAV — editorial section bar */
+
+    /* NAV */
     .nav { background:var(--navy); padding:0 16px; display:flex; gap:0; overflow-x:auto; -webkit-overflow-scrolling:touch; border-bottom:1px solid var(--card-border); }
     .nav::-webkit-scrollbar { display:none; }
     .nav-btn { padding:10px 14px; border-radius:0; border:none; border-bottom:2px solid transparent; background:transparent; color:var(--text-muted); font-size:12px; font-weight:600; cursor:pointer; white-space:nowrap; font-family:inherit; transition:all 0.15s; letter-spacing:0.5px; }
     .nav-btn:hover { color:var(--text); }
     .nav-btn.active { color:var(--text); border-bottom-color:var(--green); font-weight:700; }
-    
+
     /* BROADCAST BAR */
     .broadcast { background:linear-gradient(135deg,var(--green),var(--green-d)); padding:10px 16px; display:flex; justify-content:space-between; align-items:center; }
-    .broadcast-left { }
     .broadcast-name { font-size:17px; font-weight:800; color:#fff; }
     .broadcast-sub { font-size:11px; color:rgba(255,255,255,0.7); margin-top:2px; }
-    .broadcast-right { text-align:right; }
     .broadcast-label { font-size:9px; color:rgba(255,255,255,0.5); font-weight:600; letter-spacing:1px; }
     .broadcast-value { font-size:13px; font-weight:700; color:#fff; margin-top:1px; }
-    
+
     /* WATCH BAR */
     .watch-bar { background:var(--navy-l); padding:8px 16px; display:flex; align-items:center; gap:8px; font-size:11px; border-bottom:1px solid var(--card-border); }
     .watch-live { width:7px; height:7px; border-radius:50%; background:var(--s-green); animation:pulse 2s infinite; }
@@ -78,18 +75,18 @@
     .watch-channel { color:var(--text); font-weight:700; }
     @keyframes pulse { 0%,100%{opacity:1}50%{opacity:0.3} }
     @keyframes spin { to { transform: rotate(360deg); } }
-    
+
     /* MAIN */
-    .main { max-width:680px; margin:0 auto; padding:0 20px; }
+    .main { max-width:720px; margin:0 auto; padding:0 20px; }
     .section { display:none; }
     .section.active { display:block; }
-    
+
     /* SEARCH */
     .search { margin:8px 0; }
     .search input { width:100%; padding:10px 14px; background:var(--card-bg); border:1px solid var(--card-border); border-radius:8px; color:var(--text); font-size:13px; font-family:inherit; outline:none; }
     .search input:focus { border-color:var(--green); }
     .search input::placeholder { color:var(--g700); }
-    
+
     /* LEADERBOARD */
     .lb-header { display:flex; padding:6px 12px; font-size:9px; font-weight:700; color:var(--g700); letter-spacing:1px; }
     .lb-row { display:flex; align-items:center; padding:8px 12px; border-radius:6px; margin-bottom:1px; cursor:pointer; transition:background 0.15s; }
@@ -107,12 +104,12 @@
     .score-under { color:var(--s-green); }
     .score-over { color:var(--s-red); }
     .score-even { color:var(--g400); }
-    
+
     /* CUT LINE */
     .cut-line { display:flex; align-items:center; gap:8px; padding:8px 12px; margin:4px 0; }
     .cut-line-bar { flex:1; height:1px; background:var(--s-red); opacity:0.3; }
     .cut-line-text { font-size:10px; font-weight:700; color:var(--s-red); letter-spacing:2px; }
-    
+
     /* SCORECARD */
     .scorecard { margin:0 0 8px; padding:12px; background:var(--card-bg); border:1px solid var(--card-border); border-radius:8px; overflow-x:auto; }
     .scorecard-title { font-size:12px; font-weight:700; margin-bottom:8px; }
@@ -123,120 +120,130 @@
     .scorecard .hole-bogey { background:rgba(224,49,49,0.15); color:var(--s-red); font-weight:700; border-radius:4px; }
     .scorecard .hole-double { background:rgba(224,49,49,0.3); color:var(--s-red); font-weight:700; border-radius:4px; }
     .scorecard .hole-par { color:var(--g400); font-weight:700; }
-    .sc-stats { display:flex; gap:16px; margin-top:10px; flex-wrap:wrap; }
-    .sc-stat-label { font-size:9px; color:var(--g700); font-weight:600; letter-spacing:1px; }
-    .sc-stat-value { font-size:16px; font-weight:800; margin-top:2px; }
-    
-    /* CARDS — editorial blog style */
-    .card { background:transparent; border:none; border-bottom:1px solid var(--card-border); padding:16px 0; margin-bottom:0; cursor:pointer; transition:all 0.15s; }
-    .card:hover { background:rgba(255,255,255,0.015); }
-    .card:last-child { border-bottom:none; }
-    .card-header { display:flex; align-items:center; gap:8px; margin-bottom:8px; }
-    .tag { font-size:9px; font-weight:700; padding:3px 8px; border-radius:3px; letter-spacing:1.5px; text-transform:uppercase; }
-    .card-time { font-size:11px; color:var(--g700); }
-    .card-title { font-size:16px; font-weight:700; line-height:1.4; color:var(--text); }
-    .card-title:hover { color:var(--green); }
-    .card-body { margin-top:12px; padding-top:12px; border-top:1px solid var(--card-border); font-size:14px; color:var(--text-dim); line-height:1.8; }
-    .card-body p { margin-bottom:14px; }
-    .card-btn { display:inline-block; margin-top:12px; padding:8px 16px; background:var(--green); border-radius:8px; font-size:12px; font-weight:700; color:#fff; }
-    
+
+    /* ARTICLE CARDS — blog feed style */
+    .article-card { display:flex; gap:14px; padding:16px 0; border-bottom:1px solid var(--card-border); cursor:pointer; transition:all 0.15s; }
+    .article-card:hover { background:rgba(255,255,255,0.015); }
+    .article-card:last-child { border-bottom:none; }
+    .article-card-img { width:120px; height:80px; object-fit:cover; border-radius:8px; flex-shrink:0; background:var(--navy-l); }
+    .article-card-body { flex:1; min-width:0; }
+    .article-card-title { font-size:15px; font-weight:700; line-height:1.35; color:var(--text); display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+    .article-card-title:hover { color:var(--green); }
+    .article-card-excerpt { font-size:12px; color:var(--text-muted); line-height:1.5; margin-top:4px; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+    .article-card-meta { display:flex; align-items:center; gap:8px; margin-top:6px; font-size:10px; color:var(--g700); }
+
+    /* TAGS */
+    .tag { font-size:9px; font-weight:700; padding:3px 8px; border-radius:3px; letter-spacing:1.5px; text-transform:uppercase; display:inline-block; }
+
+    /* ARTICLE DETAIL */
+    .article-detail { padding:4px 0; }
+    .article-detail-img { width:100%; border-radius:12px; margin-bottom:16px; max-height:400px; object-fit:cover; }
+    .article-detail-title { font-size:24px; font-weight:900; line-height:1.25; color:var(--text); margin-bottom:10px; }
+    .article-detail-meta { display:flex; align-items:center; gap:8px; flex-wrap:wrap; font-size:12px; color:var(--text-muted); margin-bottom:20px; padding-bottom:16px; border-bottom:1px solid var(--card-border); }
+    .article-detail-body { line-height:1.85; font-size:15px; color:var(--text-dim); }
+    .article-detail-body p { margin-bottom:16px; }
+    .article-detail-body h2, .article-detail-body h3 { color:var(--text); margin:24px 0 12px; }
+    .article-detail-body strong { color:var(--text); }
+
+    /* SHARE BUTTONS */
+    .share-row { display:flex; gap:8px; margin:20px 0; }
+    .share-btn { background:none; border:1px solid var(--card-border); border-radius:6px; padding:8px 14px; font-size:11px; color:var(--text-muted); cursor:pointer; font-family:inherit; font-weight:600; transition:all 0.15s; }
+    .share-btn:hover { border-color:var(--green); color:var(--green); }
+
+    /* RELATED ARTICLES */
+    .related-section { margin-top:24px; padding-top:20px; border-top:1px solid var(--card-border); }
+    .related-title { font-size:11px; font-weight:700; letter-spacing:2px; color:var(--g700); margin-bottom:12px; }
+
+    /* EMAIL CTA */
+    .email-cta { background:linear-gradient(135deg,var(--green),var(--green-d)); border-radius:12px; padding:24px; margin:24px 0; text-align:center; }
+    .email-cta-title { font-size:18px; font-weight:800; color:#fff; margin-bottom:6px; }
+    .email-cta-sub { font-size:12px; color:rgba(255,255,255,0.8); margin-bottom:14px; }
+    .email-cta-form { display:flex; gap:8px; max-width:360px; margin:0 auto; }
+    .email-cta-form input { flex:1; padding:11px 14px; background:rgba(255,255,255,0.15); border:1px solid rgba(255,255,255,0.25); border-radius:8px; color:#fff; font-size:13px; font-family:inherit; outline:none; }
+    .email-cta-form input::placeholder { color:rgba(255,255,255,0.6); }
+    .email-cta-form button { padding:11px 20px; background:#fff; border:none; border-radius:8px; color:var(--green); font-size:13px; font-weight:700; cursor:pointer; font-family:inherit; white-space:nowrap; }
+
     /* INSIGHTS */
-    .insight-row { background:var(--card-bg); border:1px solid var(--card-border); border-radius:10px; padding:12px 16px; margin-bottom:5px; display:flex; align-items:center; }
-    .insight-info { flex:1; }
-    .insight-name { font-size:14px; font-weight:700; }
-    .insight-meta { display:flex; gap:10px; margin-top:3px; }
-    .insight-meta span { font-size:10px; color:var(--text-muted); }
-    .insight-odds { font-size:18px; font-weight:900; min-width:56px; text-align:right; margin-left:12px; }
-    .pick-box { background:rgba(45,143,111,0.08); border:1px solid rgba(45,143,111,0.25); border-radius:10px; padding:16px 18px; margin-top:12px; border-left:3px solid var(--green); }
-    .pick-label { font-size:10px; color:var(--green); font-weight:700; letter-spacing:2px; margin-bottom:6px; }
-    .pick-title { font-size:16px; font-weight:800; margin-bottom:8px; }
-    .pick-body { font-size:13px; color:var(--text-muted); line-height:1.7; }
-    .pick-badges { display:flex; gap:8px; margin-top:12px; flex-wrap:wrap; }
-    .pick-badge { padding:6px 12px; border-radius:6px; font-size:11px; font-weight:700; }
-    
+    .insight-card { background:var(--card-bg); border:1px solid var(--card-border); border-radius:10px; padding:16px; margin-bottom:12px; }
+    .insight-header { display:flex; align-items:center; margin-bottom:10px; }
+    .insight-label { font-size:10px; font-weight:700; letter-spacing:2px; }
+    .pick-row { padding:10px 12px; border-radius:8px; margin-bottom:6px; display:flex; align-items:center; }
+    .pick-row-info { flex:1; }
+    .pick-row-name { font-size:13px; font-weight:700; color:var(--text); }
+    .pick-row-detail { font-size:10px; color:var(--text-muted); margin-top:2px; }
+    .pick-row-odds { font-size:13px; font-weight:800; margin-left:8px; }
+    .odds-table-row { display:flex; align-items:center; padding:5px 0; border-bottom:1px solid var(--card-border); }
+    .odds-table-row:last-child { border-bottom:none; }
+    .odds-bar { width:50px; margin-right:6px; }
+    .odds-bar-inner { height:5px; background:var(--card-border); border-radius:3px; overflow:hidden; }
+
+    /* FILTER */
+    .filter-bar { display:flex; gap:4px; margin-bottom:14px; flex-wrap:wrap; padding-top:6px; }
+    .filter-btn { padding:6px 14px; border-radius:20px; border:1px solid var(--card-border); font-size:11px; font-weight:600; cursor:pointer; font-family:inherit; background:transparent; color:var(--text-muted); transition:all 0.15s; }
+    .filter-btn:hover { border-color:var(--green); color:var(--green); }
+    .filter-btn.active { background:var(--green); color:#fff; border-color:var(--green); }
+
     /* STANDINGS */
     .standings-row { display:flex; align-items:center; padding:9px 12px; border-radius:6px; margin-bottom:1px; }
     .standings-row.top { background:rgba(45,143,111,0.08); }
-    
+
     /* SCHEDULE */
     .sched-card { background:transparent; border:none; border-bottom:1px solid var(--card-border); padding:16px 0; margin-bottom:0; }
     .sched-card.live { background:rgba(45,143,111,0.04); padding:16px; border-radius:8px; border:none; margin-bottom:4px; }
     .badge { font-size:9px; font-weight:700; padding:2px 7px; border-radius:4px; letter-spacing:1px; }
     .badge-live { color:var(--s-green); background:rgba(45,200,150,0.15); }
     .badge-major { color:var(--gold); background:rgba(212,168,83,0.15); }
-    
-    /* PLAYER PROFILE */
-    .profile-header { background:linear-gradient(135deg,var(--green),var(--navy-l)); border-radius:10px; padding:18px; margin-bottom:12px; }
-    .profile-stats { display:grid; grid-template-columns:repeat(3,1fr); gap:6px; margin-bottom:14px; }
-    .stat-box { background:var(--card-bg); border:1px solid var(--card-border); border-radius:8px; padding:8px 10px; text-align:center; }
-    .stat-label { font-size:8px; color:var(--g700); font-weight:600; letter-spacing:1px; text-transform:uppercase; }
-    .stat-value { font-size:16px; font-weight:800; margin-top:3px; }
-    
-    /* GRID STATS */
-    .stats-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:6px; margin:12px 0; }
-    .stats-grid-item { background:var(--card-bg); border:1px solid var(--card-border); border-radius:8px; padding:10px; text-align:center; }
-    
-    /* TOUR FILTER */
-    .filter-bar { display:flex; gap:4px; margin-bottom:14px; flex-wrap:wrap; padding-top:6px; }
-    .filter-btn { padding:6px 14px; border-radius:20px; border:1px solid var(--card-border); font-size:11px; font-weight:600; cursor:pointer; font-family:inherit; background:transparent; color:var(--text-muted); transition:all 0.15s; }
-    .filter-btn:hover { border-color:var(--green); color:var(--green); }
-    .filter-btn.active { background:var(--green); color:#fff; border-color:var(--green); }
-    
+
+    /* SECTION LABELS */
+    .section-label { font-size:11px; font-weight:700; color:var(--g700); letter-spacing:2px; margin:20px 0 10px 0; text-transform:uppercase; }
+
+    /* LOAD MORE */
+    .load-more { display:block; width:100%; padding:12px; background:var(--card-bg); border:1px solid var(--card-border); border-radius:8px; color:var(--green); font-size:13px; font-weight:700; cursor:pointer; font-family:inherit; text-align:center; margin:16px 0; }
+    .load-more:hover { border-color:var(--green); }
+
     /* EMAIL POPUP */
     .email-popup { position:fixed; bottom:-200px; left:50%; transform:translateX(-50%); width:calc(100% - 32px); max-width:480px; background:var(--navy); border:1px solid rgba(45,143,111,0.3); border-radius:14px; padding:20px; z-index:200; transition:bottom 0.5s cubic-bezier(0.16,1,0.3,1); box-shadow:0 -4px 30px rgba(0,0,0,0.4); }
     .email-popup.show { bottom:16px; }
     .email-popup-close { position:absolute; top:10px; right:14px; background:none; border:none; color:var(--g500); font-size:18px; cursor:pointer; padding:4px; }
-    .email-popup-title { font-size:15px; font-weight:800; margin-bottom:4px; }
-    .email-popup-sub { font-size:12px; color:var(--text-muted); margin-bottom:12px; }
-    .email-popup-form { display:flex; gap:8px; }
-    .email-popup-form input { flex:1; padding:11px 14px; background:rgba(255,255,255,0.04); border:1px solid var(--card-border); border-radius:8px; color:var(--text); font-size:13px; font-family:inherit; outline:none; }
-    .email-popup-form input:focus { border-color:var(--green); }
-    .email-popup-form button { padding:11px 20px; background:var(--green); border:none; border-radius:8px; color:#fff; font-size:13px; font-weight:700; cursor:pointer; font-family:inherit; white-space:nowrap; }
-    .email-popup-note { font-size:10px; color:var(--g700); margin-top:8px; }
-    
-    /* SHARE */
-    .share-btn { background:none; border:1px solid var(--card-border); border-radius:6px; padding:4px 10px; font-size:11px; color:var(--text-muted); cursor:pointer; font-family:inherit; font-weight:600; }
-    .share-btn:hover { border-color:var(--green); color:var(--green); }
-    
+
     /* FOOTER */
     .footer { text-align:center; padding:20px 0 32px; border-top:1px solid var(--card-border); margin-top:14px; }
-    
-    /* SECTION HEADERS */
-    .section-label { font-size:11px; font-weight:700; color:var(--g700); letter-spacing:2px; margin:20px 0 10px 0; text-transform:uppercase; }
-    
+
     /* COUNTDOWN */
     .countdown { background:var(--navy-l); border:1px solid var(--card-border); border-radius:10px; padding:16px; text-align:center; margin:10px 0; }
     .countdown-label { font-size:10px; color:var(--green); font-weight:700; letter-spacing:3px; }
     .countdown-time { font-size:28px; font-weight:900; margin-top:6px; }
     .countdown-sub { font-size:11px; color:var(--text-muted); margin-top:4px; }
-    
+
+    /* DISCLAIMER */
+    .disclaimer { font-size:9px; color:var(--g700); margin-top:10px; text-align:center; line-height:1.5; }
+
     /* RESPONSIVE */
     @media(max-width:600px) {
       .lb-round { display:none; }
       .lb-header .r-col { display:none; }
       .broadcast-name { font-size:15px; }
       .header { padding:8px 10px; }
+      .article-card-img { width:90px; height:64px; }
+      .article-card-title { font-size:14px; }
+      .article-detail-title { font-size:20px; }
+      .email-cta-form { flex-direction:column; }
     }
-    
-    /* DISCLAIMER */
-    .disclaimer { font-size:9px; color:var(--g700); margin-top:10px; text-align:center; line-height:1.5; }
   </style>
-  <script async src="https://platform.twitter.com/widgets.js" charset="utf-8"></script>
 </head>
 <body>
   <!-- HEADER -->
   <div class="header">
-    <div class="logo" onclick="switchTab(0)">
+    <a class="logo" onclick="switchTab(0);return false" href="/">
       <span class="logo-t">TOUR</span><span class="logo-f">FEED</span>
-    </div>
-    <div class="header-right">
-    </div>
+    </a>
+    <div class="header-right"></div>
   </div>
 
   <!-- NAV -->
   <div class="nav" id="nav"></div>
 
-  <!-- WATCH BAR (dynamic) -->
+  <!-- WATCH BAR -->
   <div class="watch-bar" id="watchBar" style="display:none">
     <div class="watch-live"></div>
     <span class="watch-text">Now on</span>
@@ -249,14 +256,14 @@
 
   <!-- EMAIL POPUP -->
   <div class="email-popup" id="emailPopup">
-    <button class="email-popup-close" onclick="closePopup()">✕</button>
-    <div class="email-popup-title">Get TourFeed in your inbox</div>
-    <div class="email-popup-sub">Live scores, recaps, and betting insights delivered free.</div>
-    <div class="email-popup-form">
-      <input type="email" id="emailInput" placeholder="Enter your email">
-      <button onclick="subscribeEmail()">Subscribe</button>
+    <button class="email-popup-close" onclick="closePopup()">&#10005;</button>
+    <div style="font-size:15px;font-weight:800;margin-bottom:4px">Get TourFeed in your inbox</div>
+    <div style="font-size:12px;color:var(--text-muted);margin-bottom:12px">Live scores, recaps, and betting insights delivered free.</div>
+    <div style="display:flex;gap:8px">
+      <input type="email" id="emailInput" placeholder="Enter your email" style="flex:1;padding:11px 14px;background:rgba(255,255,255,0.04);border:1px solid var(--card-border);border-radius:8px;color:var(--text);font-size:13px;font-family:inherit;outline:none">
+      <button onclick="subscribeEmail()" style="padding:11px 20px;background:var(--green);border:none;border-radius:8px;color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap">Subscribe</button>
     </div>
-    <div class="email-popup-note">No spam. Unsubscribe anytime.</div>
+    <div style="font-size:10px;color:var(--g700);margin-top:8px">No spam. Unsubscribe anytime.</div>
   </div>
 
   <!-- FOOTER -->
@@ -265,8 +272,8 @@
       <div class="logo" style="justify-content:center;margin-bottom:8px">
         <span class="logo-t">TOUR</span><span class="logo-f">FEED</span>
       </div>
-      <div style="font-size:10px;color:var(--g700);margin-top:6px">Live scores • Instant recaps • Betting insights</div>
-      <div style="font-size:9px;color:var(--g700);margin-top:4px">© 2026 TourFeed. All rights reserved.</div>
+      <div style="font-size:10px;color:var(--g700);margin-top:6px">Live scores | Instant recaps | Betting insights</div>
+      <div style="font-size:9px;color:var(--g700);margin-top:4px">&copy; 2026 TourFeed. All rights reserved.</div>
       <div style="margin-top:8px;display:flex;justify-content:center;gap:12px">
         <a href="https://x.com/TourFeedGolf" target="_blank" style="color:var(--text-muted);font-size:11px;text-decoration:none">X</a>
         <a href="https://instagram.com/TourFeedGolf" target="_blank" style="color:var(--text-muted);font-size:11px;text-decoration:none">Instagram</a>
@@ -285,21 +292,10 @@ const SB_URL = 'https://yumahmnoltvbiadjefxw.supabase.co';
 const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl1bWFobW5vbHR2YmlhZGplZnh3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUzOTY0NDAsImV4cCI6MjA5MDk3MjQ0MH0.FAXp2t0zaHlm1W7aaut72btMilrYPy33XO3p8MfyYlo';
 const sb = supabase.createClient(SB_URL, SB_KEY);
 
-// Fetch published articles from Supabase
-async function fetchArticles(limit = 20) {
-  try {
-    const { data, error } = await sb.from('articles').select('*').order('published_at', { ascending: false }).limit(limit);
-    if (error) throw error;
-    return data || [];
-  } catch(e) { console.warn('Articles fetch failed:', e); return []; }
-}
-
-
-const TABS = ['Home','Scores','News','Insights','Standings','Schedule'];
+const TABS = ['Home','Scores','News','Insights','Blog','Standings','Schedule'];
 let currentTab = 0;
 let expandedCard = null;
 let lbSearch = '';
-let recapArticle = null;
 
 // ============================================
 // TOUR CONFIG
@@ -321,17 +317,52 @@ let scoresLoading = true;
 let scoresError = null;
 let scorecardCache = {};
 let lastFetchTime = null;
+let scoresView = 'leaderboard';
+
+// ============================================
+// UTILITY FUNCTIONS
+// ============================================
+function esc(str) {
+  if (!str) return '';
+  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/`/g,'&#96;').replace(/\$/g,'&#36;');
+}
+
+function timeAgo(dateStr) {
+  if (!dateStr) return '';
+  const mins = Math.round((Date.now() - new Date(dateStr).getTime()) / 60000);
+  if (isNaN(mins) || mins < 0) return '';
+  if (mins < 60) return mins + 'm ago';
+  if (mins < 1440) return Math.round(mins/60) + 'h ago';
+  const days = Math.round(mins/1440);
+  if (days < 7) return days + 'd ago';
+  return new Date(dateStr).toLocaleDateString('en-US', {month:'short', day:'numeric'});
+}
+
+function readTime(text) {
+  if (!text) return '1 min';
+  const words = text.replace(/<[^>]+>/g, '').split(/\s+/).length;
+  return Math.max(1, Math.ceil(words / 200)) + ' min read';
+}
+
+function tagColor(tag) {
+  const t = (tag || '').toUpperCase();
+  if (t === 'RECAP' || t === 'TOURNAMENT') return 'var(--green)';
+  if (t === 'BETTING' || t === 'ANALYSIS') return 'var(--gold)';
+  if (t === 'PREVIEW') return 'var(--green)';
+  if (t === 'BREAKING' || t === 'INJURY') return 'var(--s-red)';
+  if (t === 'MAJOR') return 'var(--gold)';
+  if (t === 'LIV GOLF') return 'var(--gold)';
+  if (t === 'LPGA') return '#E91E8C';
+  if (t === 'DP WORLD') return '#4A90D9';
+  return 'var(--text-muted)';
+}
 
 // ============================================
 // ESPN LIVE DATA ENGINE
 // ============================================
 const ESPN_SPORTS = {
-  pga: 'golf/pga',
-  lpga: 'golf/lpga',
-  dpw: 'golf/eur',
-  liv: 'golf/liv',
-  kft: 'golf/dev',
-  champ: 'golf/senior',
+  pga: 'golf/pga', lpga: 'golf/lpga', dpw: 'golf/eur',
+  liv: 'golf/liv', kft: 'golf/dev', champ: 'golf/senior',
 };
 
 const COUNTRY_MAP = {
@@ -362,23 +393,23 @@ const COUNTRY_MAP = {
 };
 
 function countryFlag(input) {
-  if (!input) return '<span style="font-size:10px;color:var(--g500)">—</span>';
+  if (!input) return '<span style="font-size:10px;color:var(--g500)">-</span>';
   let code = input.trim();
   if (code.length === 2) {
     code = code.toLowerCase();
   } else {
     code = (COUNTRY_MAP[code.toLowerCase()] || '').toLowerCase();
   }
-  if (!code || code.length !== 2) return '<span style="font-size:10px;color:var(--g500)">—</span>';
-  return `<img src="https://flagcdn.com/20x15/${code}.png" width="20" height="15" style="vertical-align:middle;border-radius:2px" alt="${code.toUpperCase()}" onerror="this.style.display='none'">`;
+  if (!code || code.length !== 2) return '<span style="font-size:10px;color:var(--g500)">-</span>';
+  return '<img src="https://flagcdn.com/20x15/' + code + '.png" width="20" height="15" style="vertical-align:middle;border-radius:2px" alt="' + code.toUpperCase() + '" onerror="this.style.display=\'none\'">';
 }
 
 function formatPurse(purse) {
   const amt = typeof purse === 'number' ? purse : (purse?.amount || 0);
   if (!amt) return '';
-  if (amt >= 1e6) return `$${(amt/1e6).toFixed(amt%1e6===0?0:1)}M`;
-  if (amt >= 1e3) return `$${(amt/1e3).toFixed(0)}K`;
-  return `$${amt}`;
+  if (amt >= 1e6) return '$' + (amt/1e6).toFixed(amt%1e6===0?0:1) + 'M';
+  if (amt >= 1e3) return '$' + (amt/1e3).toFixed(0) + 'K';
+  return '$' + amt;
 }
 
 function scoreClass(s) {
@@ -387,21 +418,14 @@ function scoreClass(s) {
 }
 
 function formatMovement(m) {
-  if (m === undefined || m === null || m === 0) return '—';
-  return m < 0 ? `↑${Math.abs(m)}` : `↓${m}`;
-}
-
-function parseTodayScore(linescores, round, coursePar) {
-  const roundScore = linescores?.[round - 1]?.value;
-  if (!roundScore) return '';
-  return roundScore.toString();
+  if (m === undefined || m === null || m === 0) return '-';
+  return m < 0 ? '\u2191' + Math.abs(m) : '\u2193' + m;
 }
 
 async function fetchESPNScores(tour) {
   const sport = ESPN_SPORTS[tour];
   if (!sport) {
-    TOURNAMENT = null;
-    PLAYERS = [];
+    TOURNAMENT = null; PLAYERS = [];
     scoresError = 'No data source for this tour';
     scoresLoading = false;
     renderApp();
@@ -413,17 +437,16 @@ async function fetchESPNScores(tour) {
   renderApp();
 
   try {
-    const url = `https://site.api.espn.com/apis/site/v2/sports/${sport}/scoreboard`;
+    const url = 'https://site.api.espn.com/apis/site/v2/sports/' + sport + '/scoreboard';
     const res = await fetch(url);
-    if (!res.ok) throw new Error(`ESPN ${res.status}`);
+    if (!res.ok) throw new Error('ESPN ' + res.status);
     const data = await res.json();
 
     const event = data.events?.[0];
     if (!event) {
       scoresError = 'No active tournament';
       scoresLoading = false;
-      TOURNAMENT = null;
-      PLAYERS = [];
+      TOURNAMENT = null; PLAYERS = [];
       renderApp();
       return;
     }
@@ -434,70 +457,55 @@ async function fetchESPNScores(tour) {
     const st = comp.status || {};
     const period = st.period || 1;
     const coursePar = 72;
-
-    // Check for major
     const name = event.name || event.shortName || '';
     const isMajor = /masters|pga championship|u\.?s\.? open|open championship|the open/i.test(name);
 
     TOURNAMENT = {
       name: event.shortName || event.name || 'Tournament',
-      course: comp.venue?.fullName || comp.venue?.shortName || comp.venue?.address?.summary || '',
+      course: comp.venue?.fullName || comp.venue?.shortName || '',
       dates: '',
       purse: formatPurse(comp.purse),
       status: st.type?.description || st.type?.shortDetail || 'In Progress',
       round: period,
       par: coursePar,
-      broadcast: comp.broadcast?.names?.join(' / ') || comp.geoBroadcasts?.map(g=>g.media?.shortName).filter(Boolean).join(' / ') || '',
-      tour: TOURS.find(t => t.id === tour)?.name || '',
+      broadcast: comp.broadcast?.names?.join(' / ') || comp.geoBroadcasts?.map(function(g){return g.media?.shortName}).filter(Boolean).join(' / ') || '',
+      tour: TOURS.find(function(t){return t.id === tour})?.name || '',
       is_major: isMajor,
       eventId: event.id,
       stateName: (st.type?.name || '').toUpperCase(),
       state: st.type?.state || '',
     };
 
-    // Parse dates
     try {
       const d = new Date(event.date);
       const mo = d.toLocaleString('en-US',{month:'short'});
       const day = d.getDate();
       const end = new Date(d); end.setDate(day + 3);
-      TOURNAMENT.dates = `${mo} ${day}-${end.getDate()}, ${d.getFullYear()}`;
+      TOURNAMENT.dates = mo + ' ' + day + '-' + end.getDate() + ', ' + d.getFullYear();
     } catch(e) {}
 
-    // Parse competitors
     const competitors = comp.competitors || [];
-    PLAYERS = competitors.map((c) => {
+    PLAYERS = competitors.map(function(c) {
       const ath = c.athlete || {};
       const ls = c.linescores || [];
 
-      // Score — ESPN returns as string ("-15"), number, or object
       let scoreDisp = '';
-      if (typeof c.score === 'string') {
-        scoreDisp = c.score;
-      } else if (typeof c.score === 'number') {
-        scoreDisp = c.score === 0 ? 'E' : (c.score > 0 ? `+${c.score}` : `${c.score}`);
-      } else if (c.score?.displayValue) {
-        scoreDisp = c.score.displayValue;
-      }
+      if (typeof c.score === 'string') scoreDisp = c.score;
+      else if (typeof c.score === 'number') scoreDisp = c.score === 0 ? 'E' : (c.score > 0 ? '+' + c.score : '' + c.score);
+      else if (c.score?.displayValue) scoreDisp = c.score.displayValue;
       if (scoreDisp === '0' || scoreDisp === '+0') scoreDisp = 'E';
 
-      // Country flag
       const flagAlt = ath.flag?.alt || '';
       const citizenship = ath.citizenship || '';
       const flag = countryFlag(citizenship || flagAlt);
 
-      // Determine thru from current round's hole-by-hole data
       const curRoundLS = ls[period - 1];
       const holesPlayed = curRoundLS?.linescores?.length || 0;
       let thruDisp = '';
-      if (holesPlayed === 0) {
-        thruDisp = '—'; // hasn't started current round
-      } else if (holesPlayed >= 18) {
-        thruDisp = 'F';
-      } else {
-        thruDisp = holesPlayed.toString();
-      }
-      // Fallback to status fields if available
+      if (holesPlayed === 0) thruDisp = '-';
+      else if (holesPlayed >= 18) thruDisp = 'F';
+      else thruDisp = holesPlayed.toString();
+
       if (c.status?.thru != null) {
         thruDisp = c.status.thru >= 18 ? 'F' : c.status.thru.toString();
       } else if (c.status?.displayValue) {
@@ -509,23 +517,20 @@ async function fetchESPNScores(tour) {
         else if (/final|complete/i.test(sd)) thruDisp = 'F';
       }
 
-      // Today — current round score relative to par
       let todayDisp = '';
       if (curRoundLS) {
         const dv = curRoundLS.displayValue;
         if (dv && dv !== '-') todayDisp = dv;
       }
 
-      // Round gross scores — only for completed rounds (18 holes)
-      const roundVal = (idx) => {
+      const roundVal = function(idx) {
         const r = ls[idx];
         if (!r) return null;
         const holes = r.linescores?.length || 0;
-        if (holes >= 18) return r.value || null; // completed: gross strokes
-        return null; // in-progress or not started: don't show
+        if (holes >= 18) return r.value || null;
+        return null;
       };
 
-      // Detect cut/wd/dq from score or status
       const statusName = (c.status?.type?.name || '').toUpperCase();
       const statusDesc = (c.status?.type?.description || '').toLowerCase();
       const isCut = statusName.includes('CUT') || statusDesc.includes('cut') || scoreDisp === 'CUT';
@@ -533,45 +538,30 @@ async function fetchESPNScores(tour) {
       const isDQ = statusName.includes('DQ') || statusDesc.includes('disqualif') || scoreDisp === 'DQ';
 
       return {
-        pos: '',
-        name: ath.displayName || 'Unknown',
-        c: flag,
+        pos: '', name: ath.displayName || 'Unknown', c: flag,
         score: isCut ? 'MC' : isWD ? 'WD' : isDQ ? 'DQ' : scoreDisp,
-        today: isCut || isWD || isDQ ? '—' : todayDisp,
+        today: isCut || isWD || isDQ ? '-' : todayDisp,
         thru: thruDisp,
-        r1: roundVal(0),
-        r2: roundVal(1),
-        r3: roundVal(2),
-        r4: roundVal(3),
-        sg: '',
-        ch: '',
+        r1: roundVal(0), r2: roundVal(1), r3: roundVal(2), r4: roundVal(3),
+        sg: '', ch: '',
         status: isCut ? 'cut' : isWD ? 'wd' : isDQ ? 'dq' : 'active',
-        holes: [],
-        athleteId: ath.id || c.id,
-        sortOrder: c.order || c.sortOrder || 999,
+        holes: [], athleteId: ath.id || c.id, sortOrder: c.order || c.sortOrder || 999,
       };
     });
 
-    // Sort by ESPN's order
-    PLAYERS.sort((a,b) => a.sortOrder - b.sortOrder);
+    PLAYERS.sort(function(a,b) { return a.sortOrder - b.sortOrder; });
 
-    // Assign positions with tie handling
-    const activePlayers = PLAYERS.filter(p => p.status === 'active');
-    activePlayers.forEach((p, i) => {
-      if (i > 0 && activePlayers[i-1].score === p.score) {
-        p.pos = activePlayers[i-1].pos; // tied
-      } else {
-        p.pos = `T${i + 1}`;
-      }
+    const activePlayers = PLAYERS.filter(function(p) { return p.status === 'active'; });
+    activePlayers.forEach(function(p, i) {
+      if (i > 0 && activePlayers[i-1].score === p.score) p.pos = activePlayers[i-1].pos;
+      else p.pos = 'T' + (i + 1);
     });
-    // Remove T prefix for non-ties
-    activePlayers.forEach((p, i) => {
+    activePlayers.forEach(function(p, i) {
       const isTied = (i > 0 && activePlayers[i-1].score === p.score) ||
                      (i < activePlayers.length - 1 && activePlayers[i+1].score === p.score);
       if (!isTied) p.pos = p.pos.replace('T', '');
     });
-    // Set cut/wd/dq positions
-    PLAYERS.forEach(p => {
+    PLAYERS.forEach(function(p) {
       if (p.status === 'cut') p.pos = 'MC';
       else if (p.status === 'wd') p.pos = 'WD';
       else if (p.status === 'dq') p.pos = 'DQ';
@@ -582,78 +572,57 @@ async function fetchESPNScores(tour) {
     scoresError = null;
     renderApp();
 
-    // Enrich with detailed status (tee times, precise positions, thru)
-    // Only fetch when tournament is in progress (not final/scheduled)
+    // Enrich with status data
     const stState = comp.status?.type?.state || '';
-    if (stState !== 'in' && stState !== 'pre') {
-      // Tournament is final — no need for status enrichment
-      renderApp();
-      return;
-    }
+    if (stState !== 'in' && stState !== 'pre') { renderApp(); return; }
 
     const league = sport.replace('golf/', '') || 'pga';
     const eventId = event.id;
     const compId = comp.id || eventId;
     try {
-      // Batch in groups of 20 to avoid overwhelming the browser
       const allStatuses = [];
       for (let i = 0; i < PLAYERS.length; i += 20) {
-        const batch = PLAYERS.slice(i, i + 20).map(p =>
-          fetch(`https://sports.core.api.espn.com/v2/sports/golf/leagues/${league}/events/${eventId}/competitions/${compId}/competitors/${p.athleteId}/status`)
-            .then(r => r.ok ? r.json() : null)
-            .catch(() => null)
-        );
+        const batch = PLAYERS.slice(i, i + 20).map(function(p) {
+          return fetch('https://sports.core.api.espn.com/v2/sports/golf/leagues/' + league + '/events/' + eventId + '/competitions/' + compId + '/competitors/' + p.athleteId + '/status')
+            .then(function(r) { return r.ok ? r.json() : null; }).catch(function() { return null; });
+        });
         const results = await Promise.all(batch);
-        allStatuses.push(...results);
+        allStatuses.push.apply(allStatuses, results);
       }
-      const statuses = allStatuses;
-      statuses.forEach((st, i) => {
+      allStatuses.forEach(function(st, i) {
         if (!st || !PLAYERS[i]) return;
         const p = PLAYERS[i];
-        // Position
         if (st.position?.displayName) p.pos = st.position.displayName;
-        // Thru
         if (st.thru != null) {
           if (st.type?.state === 'pre' || st.thru === 0) {
-            // Not started — show tee time
             if (st.teeTime) {
               const t = new Date(st.teeTime);
               p.thru = t.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
-            } else {
-              p.thru = '—';
-            }
-          } else if (st.thru >= 18) {
-            p.thru = 'F';
-          } else {
-            p.thru = st.thru.toString();
-          }
+            } else p.thru = '-';
+          } else if (st.thru >= 18) p.thru = 'F';
+          else p.thru = st.thru.toString();
         }
-        // Status type (cut, wd, etc)
         const stName = (st.type?.name || '').toUpperCase();
         if (stName.includes('CUT')) { p.status = 'cut'; p.pos = 'MC'; }
         else if (stName.includes('WD') || stName.includes('WITHDRAW')) { p.status = 'wd'; p.pos = 'WD'; }
         else if (stName.includes('DQ')) { p.status = 'dq'; p.pos = 'DQ'; }
       });
       renderApp();
-    } catch(e) {
-      console.error('Status enrichment error:', e);
-    }
+    } catch(e) { console.error('Status enrichment error:', e); }
     return;
   } catch(err) {
     console.error('ESPN fetch error:', err);
-    scoresError = 'Unable to load scores — check connection';
+    scoresError = 'Unable to load scores';
     scoresLoading = false;
   }
-
   renderApp();
 }
 
-// Scorecard fetch (on-demand when player row is expanded)
 async function fetchScorecard(playerIdx) {
   const p = PLAYERS[playerIdx];
   if (!p || !p.athleteId || !TOURNAMENT?.eventId) return;
   const round = TOURNAMENT.round;
-  const cacheKey = `${p.athleteId}-${round}`;
+  const cacheKey = p.athleteId + '-' + round;
   if (scorecardCache[cacheKey]) {
     PLAYERS[playerIdx].holes = scorecardCache[cacheKey].holes;
     PAR = scorecardCache[cacheKey].par.length ? scorecardCache[cacheKey].par : PAR;
@@ -662,231 +631,96 @@ async function fetchScorecard(playerIdx) {
   }
   try {
     const sport = ESPN_SPORTS[currentScoresTour];
-    const res = await fetch(`https://site.api.espn.com/apis/site/v2/sports/${sport}/scoreboard/${TOURNAMENT.eventId}/competitors/${p.athleteId}/scorecard`);
+    const res = await fetch('https://site.api.espn.com/apis/site/v2/sports/' + sport + '/scoreboard/' + TOURNAMENT.eventId + '/competitors/' + p.athleteId + '/scorecard');
     if (!res.ok) return;
     const data = await res.json();
-    // Try to parse rounds → holes
     const rounds = data.rounds || data.scorecard?.rounds || [];
-    const target = rounds.find(r => r.period === round || r.roundNumber === round) || rounds[rounds.length-1];
+    const target = rounds.find(function(r) { return r.period === round || r.roundNumber === round; }) || rounds[rounds.length-1];
     if (target) {
       const holeData = target.holes || target.linescores || [];
-      const holes = holeData.map(h => h.score ?? h.value);
-      const par = holeData.map(h => h.par ?? h.parValue ?? 4);
-      if (holes.length === 18 && holes.every(h => typeof h === 'number')) {
+      const holes = holeData.map(function(h) { return h.score ?? h.value; });
+      const par = holeData.map(function(h) { return h.par ?? h.parValue ?? 4; });
+      if (holes.length === 18 && holes.every(function(h) { return typeof h === 'number'; })) {
         PLAYERS[playerIdx].holes = holes;
         PAR = par;
-        scorecardCache[cacheKey] = { holes, par };
+        scorecardCache[cacheKey] = { holes: holes, par: par };
         renderApp();
       }
     }
-  } catch(e) {
-    // Scorecard not available via ESPN API
-  }
+  } catch(e) {}
 }
 
-// Auto-refresh (30s when on Scores tab, 60s otherwise)
+// Auto-refresh
 let refreshInterval = null;
 function startAutoRefresh() {
   if (refreshInterval) clearInterval(refreshInterval);
-  refreshInterval = setInterval(() => {
-    if (currentTab === 1 && !scoresLoading) {
-      fetchESPNScores(currentScoresTour);
-    }
+  refreshInterval = setInterval(function() {
+    if (currentTab === 1 && !scoresLoading) fetchESPNScores(currentScoresTour);
   }, 30000);
 }
 
 // ============================================
-// NEWS (MULTI-SOURCE AGGREGATOR)
+// SUPABASE DATA — Articles
 // ============================================
-let newsData = [];
-let newsLoading = false;
-let newsError = null;
-let newsFetched = false;
-let articleCache = {}; // Cache generated articles by index
+let newsArticles = [];
+let blogArticles = [];
+let bettingArticles = [];
+let articlesLoaded = false;
+let newsShowCount = 10;
+let blogShowCount = 10;
+let currentArticle = null; // Full article detail view
 
-function categorizeArticle(title, summary) {
-  const text = `${title} ${summary}`.toLowerCase();
-  if (/injur|withdraw|wd|pull out|sidelined|surgery|wrist|back|knee/i.test(text))
-    return { tag: 'INJURY', color: 'var(--s-red)' };
-  if (/masters|u\.?s\.?\s*open|pga championship|open championship|the open|major/i.test(text))
-    return { tag: 'MAJOR', color: 'var(--gold)' };
-  if (/liv golf|liv\b/i.test(text))
-    return { tag: 'LIV GOLF', color: '#D4A853' };
-  if (/lpga|women|nelly|lexi|ko jin/i.test(text))
-    return { tag: 'LPGA', color: '#E91E8C' };
-  if (/dp world|european tour|race to dubai|rolex/i.test(text))
-    return { tag: 'DP WORLD', color: '#4A90D9' };
-  if (/ryder cup|presidents cup|solheim/i.test(text))
-    return { tag: 'TEAM EVENT', color: 'var(--gold)' };
-  if (/sign|deal|contract|sponsor|endorse|equipment|switch|titleist|callaway|taylormade/i.test(text))
-    return { tag: 'EQUIPMENT', color: 'var(--text-muted)' };
-  if (/rank|world ranking|fedex|playoff|standings/i.test(text))
-    return { tag: 'RANKINGS', color: '#4A90D9' };
-  if (/trade|transfer|defect|join|move|leave/i.test(text))
-    return { tag: 'TRANSFER', color: 'var(--gold)' };
-  if (/rule|usga|r&a|penalty|disqualif/i.test(text))
-    return { tag: 'RULES', color: 'var(--s-red)' };
-  if (/preview|tee time|field|course|bet|odds|pick|wager/i.test(text))
-    return { tag: 'PREVIEW', color: 'var(--green)' };
-  if (/recap|result|win|champion|victory|leader|shot|round|birdie|eagle|bogey|score|leaderboard/i.test(text))
-    return { tag: 'TOURNAMENT', color: 'var(--green)' };
-  return { tag: 'TOUR NEWS', color: 'var(--text-muted)' };
-}
-
-function timeAgo(dateStr) {
-  if (!dateStr) return '';
-  const mins = Math.round((Date.now() - new Date(dateStr).getTime()) / 60000);
-  if (isNaN(mins) || mins < 0) return '';
-  if (mins < 60) return `${mins}m`;
-  if (mins < 1440) return `${Math.round(mins/60)}h`;
-  return `${Math.round(mins/1440)}d`;
-}
-
-async function fetchNews() {
-  if (newsFetched && newsData.length > 0) return;
-  newsLoading = true;
-  newsError = null;
-  renderApp();
+async function fetchAllArticles() {
+  if (articlesLoaded) return;
   try {
-    // Try multi-source aggregator first
-    let articles = null;
-    try {
-      const res = await fetch('/.netlify/functions/fetch-news');
-      if (res.ok) {
-        const text = await res.text();
-        if (text.startsWith('{')) {
-          const data = JSON.parse(text);
-          articles = data.articles;
-        }
-      }
-    } catch(e) { console.warn('Aggregator unavailable, falling back to ESPN:', e); }
+    const { data, error } = await sb.from('articles')
+      .select('*')
+      .order('published_at', { ascending: false })
+      .limit(50);
+    if (error) throw error;
+    const articles = data || [];
 
-    // Fallback to ESPN direct
-    if (!articles) {
-      const res = await fetch('https://site.api.espn.com/apis/site/v2/sports/golf/pga/news?limit=20');
-      if (!res.ok) throw new Error(`ESPN ${res.status}`);
-      const data = await res.json();
-      articles = (data.articles || []).map(a => ({
-        title: a.headline || '',
-        summary: a.description || '',
-        image: a.images?.[0]?.url || '',
-        published: a.published || '',
-        source: 'ESPN',
-      }));
-    }
-
-    // Also fetch our own published articles from Supabase
-    let sbArticles = [];
-    try {
-      sbArticles = await fetchArticles(10);
-    } catch(e) {}
-
-    // Merge: Supabase articles first (our original content), then RSS
-    const allItems = [];
-    sbArticles.forEach(a => {
-      allItems.push({
-        title: a.title || '',
-        summary: a.summary || a.body?.replace(/<[^>]+>/g, '').slice(0, 200) || '',
-        image: a.header_image || '',
-        source: 'TourFeed',
-        time: timeAgo(a.published_at),
-        tag: a.tag || 'NEWS',
-        tc: a.tag === 'RECAP' ? 'var(--green)' : a.tag === 'BETTING' ? 'var(--gold)' : a.tag === 'PREVIEW' ? 'var(--green)' : 'var(--text-muted)',
-        slug: a.slug,
-        body: a.body, // Already have the full article
-        isOriginal: true,
-      });
+    newsArticles = articles.filter(function(a) {
+      const t = (a.tag || a.type || '').toUpperCase();
+      return t === 'NEWS' || t === 'RECAP' || t === 'BREAKING' || t === 'TOURNAMENT' ||
+             t === 'ARTICLE_NEWS' || t === 'ARTICLE_RECAP' || t === 'INJURY' || t === 'TRANSFER' ||
+             t === 'TOUR NEWS' || t === 'MAJOR';
     });
-    articles.forEach(a => {
-      const cat = categorizeArticle(a.title || '', a.summary || '');
-      allItems.push({
-        title: a.title || '',
-        summary: a.summary || '',
-        image: a.image || '',
-        source: a.source || '',
-        time: timeAgo(a.published),
-        tag: cat.tag,
-        tc: cat.color,
-      });
+    blogArticles = articles.filter(function(a) {
+      const t = (a.tag || a.type || '').toUpperCase();
+      return t === 'PREVIEW' || t === 'ANALYSIS' || t === 'RANKINGS' || t === 'DFS' ||
+             t === 'ARTICLE_PREVIEW' || t === 'ARTICLE_ANALYSIS' || t === 'POWER RANKINGS';
+    });
+    bettingArticles = articles.filter(function(a) {
+      const t = (a.tag || a.type || '').toUpperCase();
+      return t === 'BETTING' || t === 'ARTICLE_BETTING';
     });
 
-    newsData = allItems;
-    newsFetched = true;
-    newsLoading = false;
-    renderApp();
-
-    // Fetch latest recap to show at top of news
-    if (!recapArticle) {
-      fetch('/.netlify/functions/get-recap').then(r => r.ok ? r.json() : null).then(d => {
-        if (d?.recap) { recapArticle = d.recap; renderApp(); }
-      }).catch(() => {});
-    }
-
-    // Pre-generate articles only when News tab is active (saves API costs)
-    if (currentTab === 2) {
-      (async () => {
-        const limit = Math.min(3, newsData.length);
-        for (let i = 0; i < limit; i += 3) {
-          await Promise.allSettled([
-            generateArticle(i),
-            i + 1 < limit ? generateArticle(i + 1) : null,
-            i + 2 < limit ? generateArticle(i + 2) : null,
-          ].filter(Boolean));
-        }
-      })();
-    }
-  } catch(e) {
-    console.error('News fetch error:', e);
-    newsError = 'Unable to load news';
-    newsLoading = false;
-  }
-  renderApp();
-}
-
-async function generateArticle(idx) {
-  const n = newsData[idx];
-  if (!n) return;
-  const cacheKey = `article_${idx}`;
-  if (articleCache[cacheKey]) return; // already cached
-
-  // Only show loading skeleton if article is currently expanded
-  articleCache[cacheKey] = { loading: true };
-  if (expandedCard === 100 + idx) renderApp();
-
-  try {
-    const res = await fetch('/.netlify/functions/generate-article', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ headline: n.title, summary: n.summary }),
-    });
-    if (!res.ok) throw new Error(`${res.status}`);
-    const data = await res.json();
-    articleCache[cacheKey] = { title: data.title, body: data.body };
-    renderApp();
-
-    // Fetch related tweet video in background
-    if (data.tweetSearch) {
+    // If no Supabase articles yet, also fetch ESPN news as fallback
+    if (newsArticles.length === 0) {
       try {
-        const tRes = await fetch('/.netlify/functions/fetch-tweet', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ keywords: data.tweetSearch }),
-        });
-        if (tRes.ok) {
-          const tData = await tRes.json();
-          if (tData.tweet?.html) {
-            articleCache[cacheKey].tweetHtml = tData.tweet.html;
-            renderApp();
-            // Re-render Twitter embeds
-            if (window.twttr?.widgets) window.twttr.widgets.load();
-          }
+        const espnRes = await fetch('https://site.api.espn.com/apis/site/v2/sports/golf/pga/news?limit=15');
+        if (espnRes.ok) {
+          const espnData = await espnRes.json();
+          (espnData.articles || []).forEach(function(a) {
+            newsArticles.push({
+              title: a.headline || '',
+              summary: a.description || '',
+              body: '<p>' + (a.description || '') + '</p>',
+              header_image: a.images?.[0]?.url || '',
+              tag: 'TOUR NEWS',
+              published_at: a.published || new Date().toISOString(),
+              slug: null,
+              _espn: true,
+            });
+          });
         }
-      } catch(te) { console.warn('Tweet fetch failed:', te); }
+      } catch(e) {}
     }
-    return;
+
+    articlesLoaded = true;
   } catch(e) {
-    console.error('Article generation failed:', e);
-    articleCache[cacheKey] = { body: `<p>${n.summary}</p>`, fallback: true };
+    console.warn('Articles fetch failed:', e);
   }
   renderApp();
 }
@@ -898,48 +732,38 @@ let standingsLive = {};
 let standingsLoading = false;
 let standingsError = null;
 let standingsFetched = {};
+let standingsFilter = 'pga';
 
 async function fetchESPNStandings(tour) {
   if (standingsFetched[tour]) return;
   const sport = ESPN_SPORTS[tour];
-  if (!sport) {
-    standingsError = 'Standings not available for this tour';
-    renderApp();
-    return;
-  }
+  if (!sport) { standingsError = 'Standings not available'; renderApp(); return; }
   standingsLoading = true;
   standingsError = null;
   renderApp();
   try {
-    // Try standings endpoint
-    const res = await fetch(`https://site.api.espn.com/apis/site/v2/sports/${sport}/standings`);
-    if (!res.ok) throw new Error(`ESPN ${res.status}`);
+    const res = await fetch('https://site.api.espn.com/apis/site/v2/sports/' + sport + '/standings');
+    if (!res.ok) throw new Error('ESPN ' + res.status);
     const data = await res.json();
-    
-    // Parse standings - structure varies by sport
     const children = data.children || data.standings || [];
     const standing = children[0] || data;
     const entries = standing.entries || standing.standings?.[0]?.entries || [];
-    
-    standingsLive[tour] = entries.map((e, i) => {
+    standingsLive[tour] = entries.map(function(e, i) {
       const stats = {};
-      (e.stats || []).forEach(s => { stats[s.name || s.abbreviation] = s.displayValue || s.value; });
+      (e.stats || []).forEach(function(s) { stats[s.name || s.abbreviation] = s.displayValue || s.value; });
       return {
         pos: i + 1,
         p: e.athlete?.displayName || e.team?.displayName || 'Unknown',
-        pts: stats.points || stats.cupPoints || stats.totalPoints || '—',
+        pts: stats.points || stats.cupPoints || stats.totalPoints || '-',
         w: parseInt(stats.wins || stats.gamesWon || '0') || 0,
         t10: parseInt(stats.top10 || stats.top10Finishes || '0') || 0,
-        earn: stats.earnings || stats.totalEarnings || stats.money || '—',
+        earn: stats.earnings || stats.totalEarnings || stats.money || '-',
       };
     });
-    
     standingsFetched[tour] = true;
     standingsLoading = false;
   } catch(e) {
-    console.error('Standings fetch error:', e);
-    // Fallback: try parsing from the scoreboard event standings
-    standingsError = 'Standings unavailable — check back during an active event';
+    standingsError = 'Standings unavailable';
     standingsLoading = false;
   }
   renderApp();
@@ -959,61 +783,47 @@ async function fetchESPNSchedule() {
   scheduleError = null;
   renderApp();
   try {
-    // Fetch current season events from multiple tours
     const tours = [
       { id: 'pga', sport: 'golf/pga' },
       { id: 'lpga', sport: 'golf/lpga' },
       { id: 'dpw', sport: 'golf/eur' },
-      { id: 'liv', sport: null },
     ];
-    
     const allEvents = [];
-    
     for (const tour of tours) {
-      if (!tour.sport) continue;
       try {
-        const res = await fetch(`https://site.api.espn.com/apis/site/v2/sports/${tour.sport}/scoreboard?dates=${new Date().getFullYear()}`);
+        const res = await fetch('https://site.api.espn.com/apis/site/v2/sports/' + tour.sport + '/scoreboard?dates=' + new Date().getFullYear());
         if (!res.ok) continue;
         const data = await res.json();
-        (data.events || []).forEach(ev => {
+        (data.events || []).forEach(function(ev) {
           const comp = ev.competitions?.[0];
           const st = comp?.status?.type;
           const isLive = st?.name === 'STATUS_IN_PROGRESS';
           const isMajor = /masters|pga championship|u\.?s\.? open|open championship|the open/i.test(ev.name || '');
-          
-          // Parse dates
           let dateStr = '';
           try {
             const d = new Date(ev.date);
             const mo = d.toLocaleString('en-US',{month:'short'});
             const day = d.getDate();
             const end = new Date(d); end.setDate(day+3);
-            dateStr = `${mo} ${day}-${end.getDate()}`;
+            dateStr = mo + ' ' + day + '-' + end.getDate();
           } catch(e) {}
-          
           allEvents.push({
             event: ev.shortName || ev.name || '',
             course: comp?.venue?.fullName || '',
             dates: dateStr,
             purse: formatPurse(comp?.purse),
             tour: tour.id,
-            tv: comp?.broadcast?.names?.join(' / ') || comp?.geoBroadcasts?.map(g=>g.media?.shortName).filter(Boolean).join(' / ') || '',
-            def: '',
-            live: isLive,
-            major: isMajor,
-            startDate: ev.date,
+            tv: comp?.broadcast?.names?.join(' / ') || comp?.geoBroadcasts?.map(function(g){return g.media?.shortName}).filter(Boolean).join(' / ') || '',
+            live: isLive, major: isMajor, startDate: ev.date,
           });
         });
       } catch(e) { continue; }
     }
-    
-    // Sort by date
-    allEvents.sort((a,b) => new Date(a.startDate) - new Date(b.startDate));
+    allEvents.sort(function(a,b) { return new Date(a.startDate) - new Date(b.startDate); });
     scheduleData = allEvents;
     scheduleFetched = true;
     scheduleLoading = false;
   } catch(e) {
-    console.error('Schedule fetch error:', e);
     scheduleError = 'Unable to load schedule';
     scheduleLoading = false;
   }
@@ -1021,62 +831,33 @@ async function fetchESPNSchedule() {
 }
 
 // ============================================
-// ESPN PLAYER DATA
-// ============================================
-let playerProfiles = [];
-
-
-function buildPlayerProfiles() {
-  // Build player profiles from current leaderboard data
-  if (!PLAYERS || PLAYERS.length === 0) return;
-  playerProfiles = PLAYERS
-    .filter(p => p.status === 'active')
-    .slice(0, 30) // Top 30 players
-    .map(p => ({
-      name: p.name,
-      c: p.c,
-      score: p.score,
-      pos: p.pos,
-      r1: p.r1, r2: p.r2, r3: p.r3, r4: p.r4,
-      thru: p.thru,
-      athleteId: p.athleteId,
-    }));
-}
-
-// Initial fetches — scores + news + schedule in parallel for fast Home load
-fetchESPNScores(currentScoresTour);
-fetchNews();
-fetchESPNSchedule();
-startAutoRefresh();
-
-// ... rest of data and rendering in app.js section below
-
-// ============================================
 // NAV
 // ============================================
 function renderNav() {
   const nav = document.getElementById('nav');
-  nav.innerHTML = TABS.map((t,i) => 
-    `<button class="nav-btn ${i===currentTab?'active':''}" onclick="switchTab(${i})">${t}</button>`
-  ).join('');
+  nav.innerHTML = TABS.map(function(t,i) {
+    return '<button class="nav-btn ' + (i===currentTab?'active':'') + '" onclick="switchTab(' + i + ')">' + t + '</button>';
+  }).join('');
 }
 
 function switchTab(i) {
   currentTab = i;
   expandedCard = null;
+  currentArticle = null;
+  newsShowCount = 10;
+  blogShowCount = 10;
   renderNav();
-  // Trigger data fetches on tab switch
-  if (i === 0 && !newsFetched) fetchNews(); // Home needs news
-  if (i === 0 && !scheduleFetched) fetchESPNSchedule(); // Home needs schedule
-  if (i === 2 && !newsFetched) fetchNews();
-  if (i === 3 && !scheduleFetched) fetchESPNSchedule(); // Insights needs schedule
-  if (i === 4 && !standingsFetched[standingsFilter]) fetchESPNStandings(standingsFilter);
-  if (i === 5 && !scheduleFetched) fetchESPNSchedule();
+  if (i === 2 || i === 3 || i === 4 || i === 0) fetchAllArticles();
+  if (i === 5 && !standingsFetched[standingsFilter]) fetchESPNStandings(standingsFilter);
+  if (i === 6 || i === 0) { if (!scheduleFetched) fetchESPNSchedule(); }
   renderApp();
+  // Update URL
+  if (i === 0) history.pushState(null, '', '/');
+  window.scrollTo(0, 0);
 }
 
 // ============================================
-// EMAIL POPUP
+// EMAIL
 // ============================================
 let popupClosed = false;
 
@@ -1084,257 +865,167 @@ function showPopup() {
   if (popupClosed || localStorage.getItem('tf-subscribed') || localStorage.getItem('tf-popup-closed')) return;
   document.getElementById('emailPopup').classList.add('show');
 }
-
 function closePopup() {
   document.getElementById('emailPopup').classList.remove('show');
   popupClosed = true;
   localStorage.setItem('tf-popup-closed', '1');
 }
-
 function subscribeEmail() {
   const input = document.getElementById('emailInput');
   const email = input.value;
   if (!email || !email.includes('@')) return;
-  // Store email subscription
   localStorage.setItem('tf-subscribed', '1');
   const popup = document.getElementById('emailPopup');
-  popup.innerHTML = '<div style="text-align:center;padding:12px 0"><div style="font-size:20px;margin-bottom:6px">✓</div><div style="font-size:15px;font-weight:700">You\'re in!</div><div style="font-size:12px;color:var(--text-muted);margin-top:4px">We\'ll send you the good stuff.</div></div>';
-  setTimeout(() => popup.classList.remove('show'), 2500);
+  popup.innerHTML = '<div style="text-align:center;padding:12px 0"><div style="font-size:20px;margin-bottom:6px">&#10003;</div><div style="font-size:15px;font-weight:700">You\'re in.</div><div style="font-size:12px;color:var(--text-muted);margin-top:4px">We\'ll send you the good stuff.</div></div>';
+  setTimeout(function() { popup.classList.remove('show'); }, 2500);
 }
-
-// Show popup after 10 seconds
-setTimeout(showPopup, 10000);
-
-// Also show on scroll past 50% of page
-let scrollTriggered = false;
-window.addEventListener('scroll', () => {
-  if (scrollTriggered) return;
-  const scrollPct = window.scrollY / (document.body.scrollHeight - window.innerHeight);
-  if (scrollPct > 0.5) {
-    scrollTriggered = true;
-    showPopup();
-  }
-});
+function subscribeInline(inputId) {
+  const input = document.getElementById(inputId);
+  if (!input) return;
+  const email = input.value;
+  if (!email || !email.includes('@')) return;
+  localStorage.setItem('tf-subscribed', '1');
+  input.parentElement.innerHTML = '<div style="font-size:14px;font-weight:700;color:#fff;padding:8px 0">You\'re in. Welcome to TourFeed.</div>';
+}
+setTimeout(showPopup, 12000);
 
 // ============================================
 // SHARE
 // ============================================
-function shareContent(title) {
+function shareArticle(title, slug) {
+  const url = slug ? 'https://tourfeed.co/article/' + slug : 'https://tourfeed.co';
   if (navigator.share) {
-    navigator.share({ title: 'TourFeed — ' + title, url: 'https://tourfeed.co' });
+    navigator.share({ title: title, url: url });
   } else {
-    navigator.clipboard.writeText('https://tourfeed.co');
+    navigator.clipboard.writeText(url);
     alert('Link copied!');
   }
+}
+
+function shareTwitter(title, slug) {
+  const url = slug ? 'https://tourfeed.co/article/' + slug : 'https://tourfeed.co';
+  window.open('https://twitter.com/intent/tweet?text=' + encodeURIComponent(title) + '&url=' + encodeURIComponent(url), '_blank');
+}
+
+// ============================================
+// ARTICLE DETAIL VIEW
+// ============================================
+function openArticleDetail(article) {
+  currentArticle = article;
+  if (article.slug) history.pushState(null, '', '/article/' + article.slug);
+  renderApp();
+  window.scrollTo(0, 0);
+}
+
+function closeArticleDetail() {
+  currentArticle = null;
+  history.pushState(null, '', '/');
+  renderApp();
+  window.scrollTo(0, 0);
+}
+
+function renderArticleDetail(a) {
+  const tc = tagColor(a.tag);
+  const rt = readTime(a.body);
+  const dateStr = a.published_at ? new Date(a.published_at).toLocaleDateString('en-US', {month:'long', day:'numeric', year:'numeric'}) : '';
+  const backLabel = currentTab === 2 ? 'News' : currentTab === 3 ? 'Insights' : currentTab === 4 ? 'Blog' : 'Back';
+
+  let html = '<div class="article-detail">';
+  html += '<button onclick="closeArticleDetail()" style="background:none;border:none;color:var(--green);font-size:13px;font-weight:700;cursor:pointer;padding:8px 0;font-family:inherit">&larr; ' + backLabel + '</button>';
+
+  if (a.header_image) {
+    html += '<img src="' + esc(a.header_image) + '" class="article-detail-img" alt="" onerror="this.style.display=\'none\'">';
+  }
+
+  html += '<div class="article-detail-title">' + esc(a.title) + '</div>';
+  html += '<div class="article-detail-meta">';
+  html += '<span class="tag" style="color:' + tc + ';background:' + tc + '15">' + esc(a.tag || 'NEWS') + '</span>';
+  html += '<span style="font-weight:600">By TourFeed Staff</span>';
+  if (dateStr) html += '<span>' + dateStr + '</span>';
+  html += '<span>' + rt + '</span>';
+  html += '</div>';
+
+  html += '<div class="article-detail-body">' + (a.body || '<p>' + esc(a.summary || '') + '</p>') + '</div>';
+
+  // Share buttons
+  html += '<div class="share-row">';
+  html += '<button class="share-btn" onclick="shareTwitter(\'' + esc(a.title).replace(/'/g,"\\'") + '\',\'' + esc(a.slug || '') + '\')">Share on X</button>';
+  html += '<button class="share-btn" onclick="shareArticle(\'' + esc(a.title).replace(/'/g,"\\'") + '\',\'' + esc(a.slug || '') + '\')">Copy Link</button>';
+  html += '</div>';
+
+  // Email CTA
+  if (!localStorage.getItem('tf-subscribed')) {
+    html += '<div class="email-cta">';
+    html += '<div class="email-cta-title">Get TourFeed in your inbox</div>';
+    html += '<div class="email-cta-sub">Scores, recaps, and betting insights. Free, no spam.</div>';
+    html += '<div class="email-cta-form">';
+    html += '<input type="email" id="inlineEmail" placeholder="Your email">';
+    html += '<button onclick="subscribeInline(\'inlineEmail\')">Subscribe</button>';
+    html += '</div></div>';
+  }
+
+  // Related articles
+  const allArticles = (currentTab === 4 ? blogArticles : currentTab === 3 ? bettingArticles : newsArticles);
+  const related = allArticles.filter(function(r) { return r.id !== a.id && r.title !== a.title; }).slice(0, 3);
+  if (related.length > 0) {
+    html += '<div class="related-section">';
+    html += '<div class="related-title">MORE FROM TOURFEED</div>';
+    related.forEach(function(r) {
+      html += renderArticleCard(r);
+    });
+    html += '</div>';
+  }
+
+  html += '</div>';
+  return html;
+}
+
+// ============================================
+// ARTICLE CARD RENDERER
+// ============================================
+function renderArticleCard(a) {
+  const tc = tagColor(a.tag);
+  const summary = (a.summary || (a.body ? a.body.replace(/<[^>]+>/g, '').slice(0, 120) : '')).slice(0, 120);
+  const time = timeAgo(a.published_at);
+  const imgSrc = a.header_image || '';
+
+  let html = '<div class="article-card" onclick="openArticleDetail(this._article)" style="cursor:pointer">';
+  html += '<div class="article-card-body">';
+  html += '<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">';
+  html += '<span class="tag" style="color:' + tc + ';background:' + tc + '15">' + esc(a.tag || 'NEWS') + '</span>';
+  if (time) html += '<span style="font-size:10px;color:var(--g700)">' + time + '</span>';
+  html += '</div>';
+  html += '<div class="article-card-title">' + esc(a.title) + '</div>';
+  if (summary) html += '<div class="article-card-excerpt">' + esc(summary) + '</div>';
+  html += '<div class="article-card-meta"><span>By TourFeed Staff</span><span>' + readTime(a.body) + '</span></div>';
+  html += '</div>';
+  if (imgSrc) {
+    html += '<img src="' + esc(imgSrc) + '" class="article-card-img" alt="" onerror="this.style.display=\'none\'">';
+  }
+  html += '</div>';
+  return html;
 }
 
 // ============================================
 // SCORECARD RENDERER
 // ============================================
-// ============================================
-// RENDER HOME TAB
-// ============================================
-function renderHome() {
-  try {
-  let html = '';
-
-  // Live tournament hero card
-  if (TOURNAMENT && PLAYERS.length > 0) {
-    const active = PLAYERS.filter(p => p.status === 'active');
-    const leader = active[0];
-    const top3 = active.slice(0, 3);
-    const tied = leader ? active.filter(p => p.score === leader.score) : [];
-
-    html += '<div style="background:linear-gradient(135deg,var(--green),var(--green-d));border-radius:12px;padding:18px;margin-bottom:12px">';
-    html += '<div style="display:flex;justify-content:space-between;align-items:flex-start">';
-    html += '<div>';
-    html += '<div style="font-size:10px;font-weight:700;letter-spacing:2px;color:rgba(255,255,255,0.7)">LIVE</div>';
-    html += '<div style="font-size:18px;font-weight:800;color:#fff;margin-top:4px">' + esc(TOURNAMENT.name) + '</div>';
-    html += '<div style="font-size:11px;color:rgba(255,255,255,0.7);margin-top:2px">' + esc(TOURNAMENT.course) + ' · ' + esc(TOURNAMENT.status) + '</div>';
-    html += '</div>';
-    if (TOURNAMENT.broadcast) {
-      html += '<div style="background:rgba(0,0,0,0.2);padding:4px 10px;border-radius:6px;font-size:10px;font-weight:700;color:#fff">' + esc(TOURNAMENT.broadcast) + '</div>';
-    }
-    html += '</div>';
-
-    if (leader) {
-      html += '<div style="margin-top:14px;padding:12px;background:rgba(0,0,0,0.15);border-radius:8px">';
-      if (tied.length > 1) {
-        html += '<div style="font-size:11px;color:rgba(255,255,255,0.7);margin-bottom:6px">' + tied.length + '-WAY TIE AT ' + esc(leader.score) + '</div>';
-        tied.slice(0, 3).forEach(p => {
-          html += '<div style="font-size:15px;font-weight:700;color:#fff;padding:2px 0">' + p.c + ' ' + esc(p.name) + (p.today ? ' <span style="font-size:12px;color:rgba(255,255,255,0.7)">' + esc(p.today) + ' today</span>' : '') + '</div>';
-        });
-      } else {
-        html += '<div style="font-size:11px;color:rgba(255,255,255,0.7);margin-bottom:4px">LEADER</div>';
-        html += '<div style="display:flex;align-items:center;gap:10px">';
-        html += '<div style="font-size:28px;font-weight:900;color:#fff">' + esc(leader.score) + '</div>';
-        html += '<div><div style="font-size:16px;font-weight:700;color:#fff">' + leader.c + ' ' + esc(leader.name) + '</div>';
-        html += (leader.today ? '<div style="font-size:12px;color:rgba(255,255,255,0.7)">' + esc(leader.today) + ' today · thru ' + esc(leader.thru) + '</div>' : '') + '</div>';
-        html += '</div>';
-      }
-      html += '</div>';
-    }
-
-    html += '<button onclick="switchTab(1)" style="background:rgba(255,255,255,0.15);border:none;color:#fff;font-size:12px;font-weight:700;padding:8px 16px;border-radius:6px;margin-top:10px;cursor:pointer;font-family:inherit">Full Leaderboard →</button>';
-    html += '</div>';
-  } else {
-    // No active tournament — show next event
-    html += '<div style="background:linear-gradient(135deg,var(--navy-l),var(--navy));border:1px solid var(--card-border);border-radius:12px;padding:18px;margin-bottom:12px;text-align:center">';
-    html += '<div style="font-size:10px;font-weight:700;letter-spacing:2px;color:var(--gold);margin-bottom:8px">COMING UP</div>';
-    if (scheduleData.length > 0) {
-      const now = Date.now();
-      const next = scheduleData.find(e => e.startDate && new Date(e.startDate).getTime() > now);
-      if (next) {
-        const d = new Date(next.startDate);
-        const daysUntil = Math.ceil((d.getTime() - now) / 86400000);
-        html += '<div style="font-size:18px;font-weight:800;color:var(--text)">' + esc(next.event) + '</div>';
-        html += '<div style="font-size:12px;color:var(--text-muted);margin-top:4px">' + esc(next.course) + '</div>';
-        html += '<div style="font-size:24px;font-weight:900;color:var(--gold);margin-top:10px">' + daysUntil + ' DAY' + (daysUntil !== 1 ? 'S' : '') + '</div>';
-      }
-    } else {
-      html += '<div style="font-size:14px;color:var(--text-muted)">Loading schedule...</div>';
-    }
-    html += '</div>';
-  }
-
-  // TourFeed Picks (quick snapshot)
-  if (TOURNAMENT && PLAYERS.length > 0) {
-    const active = PLAYERS.filter(p => p.status === 'active');
-    const parseScore = (s) => { if (!s || s === 'E') return 0; return parseInt(s) || 0; };
-    const leaderNum = parseScore(active[0]?.score);
-    const calcProb = (back) => Math.max(0.5, Math.exp(-0.55 * back) * 30);
-    const toOdds = (pct) => pct >= 50 ? '-' + Math.round(pct / (100 - pct) * 100) : '+' + Math.round((100 - pct) / pct * 100);
-
-    const bestBet = active.slice(1, 10).map(p => {
-      const back = Math.abs(parseScore(p.score) - leaderNum);
-      return { ...p, back };
-    }).filter(p => p.back >= 1 && p.back <= 3).sort((a, b) => {
-      const at = a.today === 'E' ? 0 : (parseInt(a.today) || 0);
-      const bt = b.today === 'E' ? 0 : (parseInt(b.today) || 0);
-      return (a.back + at * 0.5) - (b.back + bt * 0.5);
-    })[0];
-
-    if (bestBet) {
-      const totalRaw = active.slice(0, 20).reduce((s, p) => s + calcProb(Math.abs(parseScore(p.score) - leaderNum)), 0) + 10;
-      const pct = (calcProb(bestBet.back) / totalRaw) * 100;
-      html += '<div style="padding:14px;background:var(--card-bg);border:1px solid var(--card-border);border-radius:10px;margin-bottom:12px">';
-      html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">';
-      html += '<div style="font-size:10px;font-weight:700;letter-spacing:2px;color:var(--gold)">TOURFEED PICK</div>';
-      html += '<button onclick="switchTab(3)" style="background:none;border:none;color:var(--green);font-size:11px;font-weight:700;cursor:pointer;font-family:inherit">All Picks →</button>';
-      html += '</div>';
-      html += '<div style="padding:10px;background:rgba(45,143,111,0.08);border-radius:8px;display:flex;align-items:center">';
-      html += '<div style="flex:1"><div style="font-size:15px;font-weight:800;color:var(--text)">' + bestBet.c + ' ' + esc(bestBet.name) + '</div>';
-      html += '<div style="font-size:11px;color:var(--text-muted);margin-top:2px">' + esc(bestBet.score) + ' overall' + (bestBet.today ? ' · ' + esc(bestBet.today) + ' today' : '') + ' · ' + bestBet.back + ' back</div></div>';
-      html += '<div style="font-size:18px;font-weight:800;color:var(--green)">' + toOdds(pct) + '</div>';
-      html += '</div></div>';
-    }
-  }
-
-  // Top Headlines
-  html += '<div style="padding:14px;background:var(--card-bg);border:1px solid var(--card-border);border-radius:10px;margin-bottom:12px">';
-  html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">';
-  html += '<div style="font-size:10px;font-weight:700;letter-spacing:2px;color:var(--green)">TOP STORIES</div>';
-  html += '<button onclick="switchTab(2)" style="background:none;border:none;color:var(--green);font-size:11px;font-weight:700;cursor:pointer;font-family:inherit">All News →</button>';
-  html += '</div>';
-
-  if (newsData.length > 0) {
-    newsData.slice(0, 5).forEach((n, i) => {
-      html += '<div onclick="switchTab(2);setTimeout(function(){openArticle(' + i + ')},100)" style="padding:8px 0;cursor:pointer;' + (i < 4 ? 'border-bottom:1px solid var(--card-border)' : '') + '">';
-      html += '<div style="display:flex;align-items:flex-start;gap:10px">';
-      html += '<div style="flex:1">';
-      html += '<span class="tag" style="color:' + n.tc + ';background:' + n.tc + '15;font-size:9px;margin-bottom:4px;display:inline-block">' + n.tag + '</span>';
-      html += '<div style="font-size:13px;font-weight:700;color:var(--text);line-height:1.3;margin-top:3px">' + esc(n.title) + '</div>';
-      html += '<div style="font-size:10px;color:var(--text-muted);margin-top:3px">' + (n.time || '') + '</div>';
-      html += '</div>';
-      if (n.image) {
-        html += '<img src="' + esc(n.image) + '" style="width:60px;height:42px;object-fit:cover;border-radius:4px;flex-shrink:0" alt="" onerror="this.style.display=\'none\'">';
-      }
-      html += '</div></div>';
-    });
-  } else {
-    html += '<div style="font-size:13px;color:var(--text-muted);padding:10px 0">Loading headlines...</div>';
-  }
-  html += '</div>';
-
-  // Recap card if available
-  if (recapArticle) {
-    html += '<div onclick="switchTab(2);expandedCard=\'recap\';renderApp();window.scrollTo(0,0)" style="padding:14px;background:var(--card-bg);border:1px solid var(--card-border);border-left:3px solid var(--green);border-radius:10px;margin-bottom:12px;cursor:pointer">';
-    html += '<span class="tag" style="color:var(--green);background:rgba(45,143,111,0.12)">RECAP</span>';
-    html += '<div style="font-size:15px;font-weight:800;color:var(--text);margin-top:6px;line-height:1.3">' + esc(recapArticle.title) + '</div>';
-    html += '<div style="font-size:11px;color:var(--text-muted);margin-top:4px">By TourFeed Staff · ' + esc(recapArticle.tournament) + '</div>';
-    html += '</div>';
-  }
-
-  // Upcoming Events
-  if (scheduleData.length > 0) {
-    const now = Date.now();
-    const upcoming = scheduleData.filter(e => e.startDate && new Date(e.startDate).getTime() > now).slice(0, 3);
-    if (upcoming.length > 0) {
-      html += '<div style="padding:14px;background:var(--card-bg);border:1px solid var(--card-border);border-radius:10px;margin-bottom:12px">';
-      html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">';
-      html += '<div style="font-size:10px;font-weight:700;letter-spacing:2px;color:var(--gold)">UPCOMING</div>';
-      html += '<button onclick="switchTab(5)" style="background:none;border:none;color:var(--green);font-size:11px;font-weight:700;cursor:pointer;font-family:inherit">Full Schedule →</button>';
-      html += '</div>';
-      upcoming.forEach((e, i) => {
-        const d = new Date(e.startDate);
-        const dateStr = d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
-        const daysUntil = Math.ceil((d.getTime() - now) / 86400000);
-        const isMajor = /masters|pga championship|u\.?s\.?\s*open|open championship/i.test(e.event);
-        html += '<div style="display:flex;align-items:center;padding:8px 0;' + (i < upcoming.length - 1 ? 'border-bottom:1px solid var(--card-border)' : '') + '">';
-        html += '<div style="flex:1">';
-        html += '<div style="font-size:13px;font-weight:700;color:var(--text)">' + esc(e.event) + (isMajor ? ' <span class="tag" style="color:var(--gold);background:rgba(212,168,83,0.12);font-size:8px;margin-left:4px">MAJOR</span>' : '') + '</div>';
-        html += '<div style="font-size:11px;color:var(--text-muted)">' + esc(e.course) + '</div>';
-        html += '</div>';
-        html += '<div style="text-align:right;flex-shrink:0">';
-        html += '<div style="font-size:12px;font-weight:700;color:var(--green)">' + dateStr + '</div>';
-        html += '<div style="font-size:10px;color:var(--text-muted)">' + (daysUntil === 0 ? 'TODAY' : daysUntil === 1 ? 'TOMORROW' : daysUntil + ' days') + '</div>';
-        html += '</div></div>';
-      });
-      html += '</div>';
-    }
-  }
-
-  // Quick links footer
-  html += '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px">';
-  ['Scores', 'Insights', 'Schedule'].forEach((label, i) => {
-    const tabIdx = [1, 3, 5][i];
-    const icons = ['Leaderboard', 'Picks & Odds', 'Full Calendar'];
-    html += '<div onclick="switchTab(' + tabIdx + ')" style="padding:14px;background:var(--card-bg);border:1px solid var(--card-border);border-radius:10px;text-align:center;cursor:pointer">';
-    html += '<div style="font-size:13px;font-weight:800;color:var(--text)">' + label + '</div>';
-    html += '<div style="font-size:10px;color:var(--text-muted);margin-top:2px">' + icons[i] + '</div>';
-    html += '</div>';
-  });
-  html += '</div>';
-
-  return html;
-  } catch(e) { console.error('renderHome error:', e); return '<div style="padding:40px;text-align:center;color:var(--text-muted)">Loading...</div>'; }
-}
-
 function renderScorecard(p) {
-  // If no hole-by-hole data, show round summary card
   if (!p.holes || p.holes.length === 0) {
-    const rounds = [p.r1, p.r2, p.r3, p.r4].filter(r => r !== null && r !== undefined);
+    const rounds = [p.r1, p.r2, p.r3, p.r4].filter(function(r) { return r !== null && r !== undefined; });
     const coursePar = TOURNAMENT?.par || 72;
-    return `<div class="scorecard">
-      <div class="scorecard-title">Round Scores — ${p.name}</div>
-      <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:8px">
-        ${rounds.map((r,i) => {
-          const diff = r - coursePar;
-          const diffStr = diff === 0 ? 'E' : (diff > 0 ? `+${diff}` : diff);
-          const color = diff < 0 ? 'var(--s-green)' : diff > 0 ? 'var(--s-red)' : 'var(--g400)';
-          return `<div style="text-align:center;min-width:56px">
-            <div style="font-size:9px;color:var(--g700);font-weight:600;letter-spacing:1px">R${i+1}</div>
-            <div style="font-size:22px;font-weight:800;margin-top:2px">${r}</div>
-            <div style="font-size:11px;font-weight:700;color:${color};margin-top:1px">${diffStr}</div>
-          </div>`;
-        }).join('')}
-        ${rounds.length > 0 ? `<div style="text-align:center;min-width:56px;border-left:1px solid var(--card-border);padding-left:12px">
-          <div style="font-size:9px;color:var(--g700);font-weight:600;letter-spacing:1px">TOTAL</div>
-          <div style="font-size:22px;font-weight:800;margin-top:2px">${rounds.reduce((a,b)=>a+b,0)}</div>
-          <div style="font-size:11px;font-weight:700;color:${p.score.startsWith('+')?'var(--s-red)':p.score==='E'?'var(--g400)':'var(--s-green)'};margin-top:1px">${p.score}</div>
-        </div>` : ''}
-      </div>
-    </div>`;
+    let html = '<div class="scorecard"><div class="scorecard-title">Round Scores - ' + p.name + '</div>';
+    html += '<div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:8px">';
+    rounds.forEach(function(r, i) {
+      const diff = r - coursePar;
+      const diffStr = diff === 0 ? 'E' : (diff > 0 ? '+' + diff : '' + diff);
+      const color = diff < 0 ? 'var(--s-green)' : diff > 0 ? 'var(--s-red)' : 'var(--g400)';
+      html += '<div style="text-align:center;min-width:56px"><div style="font-size:9px;color:var(--g700);font-weight:600;letter-spacing:1px">R' + (i+1) + '</div><div style="font-size:22px;font-weight:800;margin-top:2px">' + r + '</div><div style="font-size:11px;font-weight:700;color:' + color + ';margin-top:1px">' + diffStr + '</div></div>';
+    });
+    if (rounds.length > 0) {
+      html += '<div style="text-align:center;min-width:56px;border-left:1px solid var(--card-border);padding-left:12px"><div style="font-size:9px;color:var(--g700);font-weight:600;letter-spacing:1px">TOTAL</div><div style="font-size:22px;font-weight:800;margin-top:2px">' + rounds.reduce(function(a,b){return a+b;},0) + '</div><div style="font-size:11px;font-weight:700;color:' + (p.score.startsWith('+')?'var(--s-red)':p.score==='E'?'var(--g400)':'var(--s-green)') + ';margin-top:1px">' + p.score + '</div></div>';
+    }
+    html += '</div></div>';
+    return html;
   }
 
   const front = p.holes.slice(0,9);
@@ -1352,37 +1043,141 @@ function renderScorecard(p) {
   }
 
   const rd = TOURNAMENT?.round || '';
-  return `<div class="scorecard">
-    <div class="scorecard-title">${rd ? `Round ${rd} ` : ''}Scorecard — ${p.name}
-      <button class="share-btn" style="float:right" onclick="event.stopPropagation();shareContent(PLAYERS[${PLAYERS.indexOf(p)}]?.name+' Scorecard')">Share</button>
-    </div>
-    <table>
-      <tr style="color:var(--g700);font-weight:600">
-        <td style="text-align:left;padding-left:6px">Hole</td>
-        ${[1,2,3,4,5,6,7,8,9].map(h=>`<td>${h}</td>`).join('')}
-        <td style="font-weight:800">OUT</td>
-        ${[10,11,12,13,14,15,16,17,18].map(h=>`<td>${h}</td>`).join('')}
-        <td style="font-weight:800">IN</td>
-        <td style="font-weight:800">TOT</td>
-      </tr>
-      <tr style="color:var(--text-muted)">
-        <td style="text-align:left;padding-left:6px;font-weight:600">Par</td>
-        ${frontPar.map(v=>`<td>${v}</td>`).join('')}
-        <td style="font-weight:700">${frontPar.reduce((a,b)=>a+b,0)}</td>
-        ${backPar.map(v=>`<td>${v}</td>`).join('')}
-        <td style="font-weight:700">${backPar.reduce((a,b)=>a+b,0)}</td>
-        <td style="font-weight:700">${[...frontPar,...backPar].reduce((a,b)=>a+b,0)}</td>
-      </tr>
-      <tr>
-        <td style="text-align:left;padding-left:6px;font-weight:600">Score</td>
-        ${front.map((v,i)=>`<td class="${holeClass(v,frontPar[i])}">${v}</td>`).join('')}
-        <td style="font-weight:800">${front.reduce((a,b)=>a+b,0)}</td>
-        ${back.map((v,i)=>`<td class="${holeClass(v,backPar[i])}">${v}</td>`).join('')}
-        <td style="font-weight:800">${back.reduce((a,b)=>a+b,0)}</td>
-        <td style="font-weight:800;color:var(--s-green)">${p.holes.reduce((a,b)=>a+b,0)}</td>
-      </tr>
-    </table>
-  </div>`;
+  let html = '<div class="scorecard"><div class="scorecard-title">' + (rd ? 'Round ' + rd + ' ' : '') + 'Scorecard - ' + p.name + '</div>';
+  html += '<table><tr style="color:var(--g700);font-weight:600"><td style="text-align:left;padding-left:6px">Hole</td>';
+  for (let h = 1; h <= 9; h++) html += '<td>' + h + '</td>';
+  html += '<td style="font-weight:800">OUT</td>';
+  for (let h = 10; h <= 18; h++) html += '<td>' + h + '</td>';
+  html += '<td style="font-weight:800">IN</td><td style="font-weight:800">TOT</td></tr>';
+  html += '<tr style="color:var(--text-muted)"><td style="text-align:left;padding-left:6px;font-weight:600">Par</td>';
+  frontPar.forEach(function(v) { html += '<td>' + v + '</td>'; });
+  html += '<td style="font-weight:700">' + frontPar.reduce(function(a,b){return a+b;},0) + '</td>';
+  backPar.forEach(function(v) { html += '<td>' + v + '</td>'; });
+  html += '<td style="font-weight:700">' + backPar.reduce(function(a,b){return a+b;},0) + '</td>';
+  html += '<td style="font-weight:700">' + frontPar.concat(backPar).reduce(function(a,b){return a+b;},0) + '</td></tr>';
+  html += '<tr><td style="text-align:left;padding-left:6px;font-weight:600">Score</td>';
+  front.forEach(function(v,i) { html += '<td class="' + holeClass(v,frontPar[i]) + '">' + v + '</td>'; });
+  html += '<td style="font-weight:800">' + front.reduce(function(a,b){return a+b;},0) + '</td>';
+  back.forEach(function(v,i) { html += '<td class="' + holeClass(v,backPar[i]) + '">' + v + '</td>'; });
+  html += '<td style="font-weight:800">' + back.reduce(function(a,b){return a+b;},0) + '</td>';
+  html += '<td style="font-weight:800;color:var(--s-green)">' + p.holes.reduce(function(a,b){return a+b;},0) + '</td></tr></table></div>';
+  return html;
+}
+
+// ============================================
+// RENDER HOME TAB
+// ============================================
+function renderHome() {
+  try {
+  let html = '';
+
+  // Live tournament hero
+  if (TOURNAMENT && PLAYERS.length > 0) {
+    const active = PLAYERS.filter(function(p) { return p.status === 'active'; });
+    const leader = active[0];
+    const tied = leader ? active.filter(function(p) { return p.score === leader.score; }) : [];
+
+    html += '<div style="background:linear-gradient(135deg,var(--green),var(--green-d));border-radius:12px;padding:18px;margin-bottom:12px">';
+    html += '<div style="display:flex;justify-content:space-between;align-items:flex-start">';
+    html += '<div><div style="font-size:10px;font-weight:700;letter-spacing:2px;color:rgba(255,255,255,0.7)">LIVE</div>';
+    html += '<div style="font-size:18px;font-weight:800;color:#fff;margin-top:4px">' + esc(TOURNAMENT.name) + '</div>';
+    html += '<div style="font-size:11px;color:rgba(255,255,255,0.7);margin-top:2px">' + esc(TOURNAMENT.course) + ' &middot; ' + esc(TOURNAMENT.status) + '</div></div>';
+    if (TOURNAMENT.broadcast) html += '<div style="background:rgba(0,0,0,0.2);padding:4px 10px;border-radius:6px;font-size:10px;font-weight:700;color:#fff">' + esc(TOURNAMENT.broadcast) + '</div>';
+    html += '</div>';
+
+    if (leader) {
+      html += '<div style="margin-top:14px;padding:12px;background:rgba(0,0,0,0.15);border-radius:8px">';
+      if (tied.length > 1) {
+        html += '<div style="font-size:11px;color:rgba(255,255,255,0.7);margin-bottom:6px">' + tied.length + '-WAY TIE AT ' + esc(leader.score) + '</div>';
+        tied.slice(0, 3).forEach(function(p) {
+          html += '<div style="font-size:15px;font-weight:700;color:#fff;padding:2px 0">' + p.c + ' ' + esc(p.name) + '</div>';
+        });
+      } else {
+        html += '<div style="font-size:11px;color:rgba(255,255,255,0.7);margin-bottom:4px">LEADER</div>';
+        html += '<div style="display:flex;align-items:center;gap:10px">';
+        html += '<div style="font-size:28px;font-weight:900;color:#fff">' + esc(leader.score) + '</div>';
+        html += '<div><div style="font-size:16px;font-weight:700;color:#fff">' + leader.c + ' ' + esc(leader.name) + '</div>';
+        html += (leader.today ? '<div style="font-size:12px;color:rgba(255,255,255,0.7)">' + esc(leader.today) + ' today &middot; thru ' + esc(leader.thru) + '</div>' : '') + '</div></div>';
+      }
+      html += '</div>';
+    }
+    html += '<button onclick="switchTab(1)" style="background:rgba(255,255,255,0.15);border:none;color:#fff;font-size:12px;font-weight:700;padding:8px 16px;border-radius:6px;margin-top:10px;cursor:pointer;font-family:inherit">Full Leaderboard &rarr;</button>';
+    html += '</div>';
+  } else {
+    // Coming up
+    html += '<div style="background:linear-gradient(135deg,var(--navy-l),var(--navy));border:1px solid var(--card-border);border-radius:12px;padding:18px;margin-bottom:12px;text-align:center">';
+    html += '<div style="font-size:10px;font-weight:700;letter-spacing:2px;color:var(--gold);margin-bottom:8px">COMING UP</div>';
+    if (scheduleData.length > 0) {
+      const now = Date.now();
+      const next = scheduleData.find(function(e) { return e.startDate && new Date(e.startDate).getTime() > now; });
+      if (next) {
+        const d = new Date(next.startDate);
+        const daysUntil = Math.ceil((d.getTime() - now) / 86400000);
+        html += '<div style="font-size:18px;font-weight:800;color:var(--text)">' + esc(next.event) + '</div>';
+        html += '<div style="font-size:12px;color:var(--text-muted);margin-top:4px">' + esc(next.course) + '</div>';
+        html += '<div style="font-size:24px;font-weight:900;color:var(--gold);margin-top:10px">' + daysUntil + ' DAY' + (daysUntil !== 1 ? 'S' : '') + '</div>';
+      }
+    }
+    html += '</div>';
+  }
+
+  // Top Stories
+  html += '<div style="padding:14px;background:var(--card-bg);border:1px solid var(--card-border);border-radius:10px;margin-bottom:12px">';
+  html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">';
+  html += '<div style="font-size:10px;font-weight:700;letter-spacing:2px;color:var(--green)">LATEST</div>';
+  html += '<button onclick="switchTab(2)" style="background:none;border:none;color:var(--green);font-size:11px;font-weight:700;cursor:pointer;font-family:inherit">All News &rarr;</button>';
+  html += '</div>';
+
+  if (newsArticles.length > 0) {
+    newsArticles.slice(0, 5).forEach(function(n, i) {
+      const tc = tagColor(n.tag);
+      html += '<div onclick="openArticleDetail(this._article)" style="padding:8px 0;cursor:pointer;' + (i < 4 ? 'border-bottom:1px solid var(--card-border)' : '') + '">';
+      html += '<div style="display:flex;align-items:flex-start;gap:10px"><div style="flex:1">';
+      html += '<span class="tag" style="color:' + tc + ';background:' + tc + '15;font-size:9px;margin-bottom:4px;display:inline-block">' + esc(n.tag || 'NEWS') + '</span>';
+      html += '<div style="font-size:13px;font-weight:700;color:var(--text);line-height:1.3;margin-top:3px">' + esc(n.title) + '</div>';
+      html += '<div style="font-size:10px;color:var(--text-muted);margin-top:3px">' + timeAgo(n.published_at) + '</div>';
+      html += '</div>';
+      if (n.header_image) html += '<img src="' + esc(n.header_image) + '" style="width:60px;height:42px;object-fit:cover;border-radius:4px;flex-shrink:0" alt="" onerror="this.style.display=\'none\'">';
+      html += '</div></div>';
+    });
+  } else {
+    html += '<div style="font-size:13px;color:var(--text-muted);padding:10px 0">Loading headlines...</div>';
+  }
+  html += '</div>';
+
+  // Quick links
+  html += '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px">';
+  [['Scores',1,'Leaderboard'],['Insights',3,'Picks & Odds'],['Schedule',6,'Full Calendar']].forEach(function(item) {
+    html += '<div onclick="switchTab(' + item[1] + ')" style="padding:14px;background:var(--card-bg);border:1px solid var(--card-border);border-radius:10px;text-align:center;cursor:pointer">';
+    html += '<div style="font-size:13px;font-weight:800;color:var(--text)">' + item[0] + '</div>';
+    html += '<div style="font-size:10px;color:var(--text-muted);margin-top:2px">' + item[2] + '</div>';
+    html += '</div>';
+  });
+  html += '</div>';
+
+  // Upcoming events
+  if (scheduleData.length > 0) {
+    const now = Date.now();
+    const upcoming = scheduleData.filter(function(e) { return e.startDate && new Date(e.startDate).getTime() > now; }).slice(0, 3);
+    if (upcoming.length > 0) {
+      html += '<div style="padding:14px;background:var(--card-bg);border:1px solid var(--card-border);border-radius:10px;margin-bottom:12px">';
+      html += '<div style="font-size:10px;font-weight:700;letter-spacing:2px;color:var(--gold);margin-bottom:10px">UPCOMING</div>';
+      upcoming.forEach(function(e, i) {
+        const d = new Date(e.startDate);
+        const dateStr = d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+        const daysUntil = Math.ceil((d.getTime() - now) / 86400000);
+        html += '<div style="display:flex;align-items:center;padding:8px 0;' + (i < upcoming.length - 1 ? 'border-bottom:1px solid var(--card-border)' : '') + '">';
+        html += '<div style="flex:1"><div style="font-size:13px;font-weight:700;color:var(--text)">' + esc(e.event) + (e.major ? ' <span class="tag" style="color:var(--gold);background:rgba(212,168,83,0.12);font-size:8px;margin-left:4px">MAJOR</span>' : '') + '</div>';
+        html += '<div style="font-size:11px;color:var(--text-muted)">' + esc(e.course) + '</div></div>';
+        html += '<div style="text-align:right;flex-shrink:0"><div style="font-size:12px;font-weight:700;color:var(--green)">' + dateStr + '</div>';
+        html += '<div style="font-size:10px;color:var(--text-muted)">' + (daysUntil === 0 ? 'TODAY' : daysUntil === 1 ? 'TOMORROW' : daysUntil + ' days') + '</div></div></div>';
+      });
+      html += '</div>';
+    }
+  }
+
+  return html;
+  } catch(e) { console.error('renderHome error:', e); return '<div style="padding:40px;text-align:center;color:var(--text-muted)">Loading...</div>'; }
 }
 
 // ============================================
@@ -1399,490 +1194,156 @@ function switchScoresTour(tour) {
 }
 
 function expandPlayer(idx) {
-  if (expandedCard === idx) {
-    expandedCard = null;
-  } else {
-    expandedCard = idx;
-    // Try to fetch scorecard data
-    fetchScorecard(idx);
-  }
+  if (expandedCard === idx) expandedCard = null;
+  else { expandedCard = idx; fetchScorecard(idx); }
   renderApp();
 }
 
-let scoresView = 'leaderboard'; // 'leaderboard' or 'teetimes'
-
 function isTeetime(thru) {
   if (!thru) return false;
-  return /\d{1,2}:\d{2}\s*(AM|PM|am|pm)/i.test(thru) || /^[A-Z][a-z]{2}\s/i.test(thru);
+  return /\d{1,2}:\d{2}\s*(AM|PM|am|pm)/i.test(thru);
 }
 
 function renderTeeTimes() {
-  // Group players by tee time
-  const withTimes = PLAYERS.filter(p => p.status === 'active' && isTeetime(p.thru));
-
+  const withTimes = PLAYERS.filter(function(p) { return p.status === 'active' && isTeetime(p.thru); });
   if (withTimes.length === 0) {
-    return `
-      <div style="text-align:center;padding:40px 20px">
-        <div style="font-size:20px;margin-bottom:10px">🕐</div>
-        <div style="font-size:14px;font-weight:700;color:var(--text-dim)">No tee times available</div>
-        <div style="font-size:11px;color:var(--g700);margin-top:6px">${TOURNAMENT?.status?.toLowerCase().includes('progress') ? 'All players are on the course or have finished' : 'Tee times will appear when the next round is posted'}</div>
-      </div>`;
+    return '<div style="text-align:center;padding:40px 20px"><div style="font-size:14px;font-weight:700;color:var(--text-dim)">No tee times available</div></div>';
   }
-
-  // Group by time string
   const groups = {};
-  withTimes.forEach(p => {
-    const time = p.thru.trim();
-    if (!groups[time]) groups[time] = [];
-    groups[time].push(p);
-  });
-
-  // Sort times chronologically
-  const sortedTimes = Object.keys(groups).sort((a, b) => {
-    const toMin = (t) => {
-      const m = t.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
-      if (!m) return 0;
-      let h = parseInt(m[1]);
-      const min = parseInt(m[2]);
-      const pm = m[3].toUpperCase() === 'PM';
-      if (pm && h !== 12) h += 12;
-      if (!pm && h === 12) h = 0;
-      return h * 60 + min;
-    };
+  withTimes.forEach(function(p) { const t = p.thru.trim(); if (!groups[t]) groups[t] = []; groups[t].push(p); });
+  const sortedTimes = Object.keys(groups).sort(function(a, b) {
+    const toMin = function(t) { const m = t.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i); if (!m) return 0; let h = parseInt(m[1]); const min = parseInt(m[2]); const pm = m[3].toUpperCase() === 'PM'; if (pm && h !== 12) h += 12; if (!pm && h === 12) h = 0; return h * 60 + min; };
     return toMin(a) - toMin(b);
   });
-
-
-  let html = `<div class="search"><input placeholder="Search ${withTimes.length} players..." oninput="lbSearch=this.value;renderApp()" value="${lbSearch}"></div>`;
-
+  let html = '<div class="search"><input placeholder="Search players..." oninput="lbSearch=this.value;renderApp()" value="' + lbSearch + '"></div>';
   const searchFilter = lbSearch.toLowerCase();
-
-  sortedTimes.forEach(time => {
+  sortedTimes.forEach(function(time) {
     let players = groups[time];
-    if (searchFilter) {
-      players = players.filter(p => p.name.toLowerCase().includes(searchFilter));
-      if (players.length === 0) return;
-    }
-
-    html += `
-      <div style="margin-top:14px;margin-bottom:6px;display:flex;align-items:center;gap:10px">
-        <div style="font-size:15px;font-weight:800;color:var(--text)">${time}</div>
-        <div style="flex:1;height:1px;background:var(--card-border)"></div>
-      </div>`;
-
-    players.forEach(p => {
-      html += `
-        <div style="display:flex;align-items:center;padding:10px 12px;background:var(--card-bg);border:1px solid var(--card-border);border-radius:8px;margin-bottom:4px">
-          <span style="font-size:14px;margin-right:8px">${p.c}</span>
-          <div style="flex:1">
-            <div style="font-size:14px;font-weight:700;color:var(--text)">${p.name}</div>
-            <div style="font-size:11px;color:var(--text-muted);margin-top:2px">${p.pos !== '' ? '#' + p.pos : ''} ${p.score && p.score !== '' ? '• ' + p.score : ''}</div>
-          </div>
-          <div class="lb-total ${scoreClass(p.score)}" style="font-size:16px">${p.score || '—'}</div>
-        </div>`;
+    if (searchFilter) { players = players.filter(function(p) { return p.name.toLowerCase().includes(searchFilter); }); if (players.length === 0) return; }
+    html += '<div style="margin-top:14px;margin-bottom:6px;display:flex;align-items:center;gap:10px"><div style="font-size:15px;font-weight:800;color:var(--text)">' + time + '</div><div style="flex:1;height:1px;background:var(--card-border)"></div></div>';
+    players.forEach(function(p) {
+      html += '<div style="display:flex;align-items:center;padding:10px 12px;background:var(--card-bg);border:1px solid var(--card-border);border-radius:8px;margin-bottom:4px"><span style="font-size:14px;margin-right:8px">' + p.c + '</span><div style="flex:1"><div style="font-size:14px;font-weight:700;color:var(--text)">' + p.name + '</div></div><div class="lb-total ' + scoreClass(p.score) + '" style="font-size:16px">' + (p.score || '-') + '</div></div>';
     });
   });
-
-  html += `<div style="text-align:center;padding:16px 0;font-size:11px;color:var(--g700)">${withTimes.length} players with tee times</div>`;
   return html;
 }
 
 function renderScores() {
-  // Tour filter bar
-  let html = `
-    <div class="filter-bar" style="padding-top:6px">
-      ${['pga','liv','dpw','lpga','kft','champ'].map(t =>
-        `<button class="filter-btn ${currentScoresTour===t?'active':''}" onclick="switchScoresTour('${t}')">${TOURS.find(x=>x.id===t)?.short||t}</button>`
-      ).join('')}
-    </div>`;
+  let html = '<div class="filter-bar" style="padding-top:6px">';
+  ['pga','liv','dpw','lpga','kft','champ'].forEach(function(t) {
+    html += '<button class="filter-btn ' + (currentScoresTour===t?'active':'') + '" onclick="switchScoresTour(\'' + t + '\')">' + (TOURS.find(function(x){return x.id===t})?.short||t) + '</button>';
+  });
+  html += '</div>';
 
-  // Loading state
-  if (scoresLoading) {
-    return html + `
-      <div style="text-align:center;padding:60px 20px">
-        <div style="font-size:24px;margin-bottom:12px">⛳</div>
-        <div style="font-size:14px;font-weight:700;color:var(--text-dim)">Loading scores...</div>
-        <div style="font-size:11px;color:var(--g700);margin-top:6px">${TOURS.find(t=>t.id===currentScoresTour)?.name||''}</div>
-      </div>`;
-  }
+  if (scoresLoading) return html + '<div style="text-align:center;padding:60px 20px"><div style="font-size:14px;font-weight:700;color:var(--text-dim)">Loading scores...</div></div>';
+  if (scoresError) return html + '<div style="text-align:center;padding:40px 20px"><div style="font-size:13px;color:var(--text-muted)">' + scoresError + '</div><button class="filter-btn" style="margin-top:14px;color:var(--green);border:1px solid var(--green)" onclick="fetchESPNScores(currentScoresTour)">Retry</button></div>';
+  if (!TOURNAMENT || PLAYERS.length === 0) return html + '<div style="text-align:center;padding:40px 20px"><div style="font-size:14px;font-weight:700;color:var(--text-dim)">No active event</div><div style="font-size:11px;color:var(--g700);margin-top:6px">Check the Schedule tab for upcoming events</div></div>';
 
-  // Error state
-  if (scoresError) {
-    return html + `
-      <div style="text-align:center;padding:40px 20px">
-        <div style="font-size:20px;margin-bottom:10px">⚠️</div>
-        <div style="font-size:13px;color:var(--text-muted)">${scoresError}</div>
-        <button class="filter-btn" style="margin-top:14px;color:var(--green);border:1px solid var(--green)" onclick="fetchESPNScores(currentScoresTour)">Retry</button>
-      </div>`;
-  }
+  const hasTeetimes = PLAYERS.some(function(p) { return p.status === 'active' && isTeetime(p.thru); });
+  const allTeetimes = PLAYERS.filter(function(p) { return p.status === 'active'; }).every(function(p) { return isTeetime(p.thru); });
+  if (allTeetimes && hasTeetimes && scoresView === 'leaderboard') scoresView = 'teetimes';
 
-  // No tournament
-  if (!TOURNAMENT || PLAYERS.length === 0) {
-    return html + `
-      <div style="text-align:center;padding:40px 20px">
-        <div style="font-size:20px;margin-bottom:10px">🏌️</div>
-        <div style="font-size:14px;font-weight:700;color:var(--text-dim)">No active event</div>
-        <div style="font-size:11px;color:var(--g700);margin-top:6px">Check the Schedule tab for upcoming events</div>
-      </div>`;
-  }
+  html += '<div class="broadcast"><div><div class="broadcast-name">' + TOURNAMENT.name + '</div><div class="broadcast-sub">' + TOURNAMENT.course + ' &middot; ' + TOURNAMENT.status + '</div></div><div style="text-align:right">' + (TOURNAMENT.purse ? '<div class="broadcast-label">PURSE</div><div class="broadcast-value">' + TOURNAMENT.purse + '</div>' : '') + '</div></div>';
 
-  // Check if tee times exist
-  const hasTeetimes = PLAYERS.some(p => p.status === 'active' && isTeetime(p.thru));
-  const allTeetimes = PLAYERS.filter(p => p.status === 'active').every(p => isTeetime(p.thru));
-  
-  // Auto-default to tee times view when nobody has teed off
-  if (allTeetimes && hasTeetimes && scoresView === 'leaderboard') {
-    scoresView = 'teetimes';
-  }
-
-  // Broadcast bar + view toggle
-  html += `
-    <div class="broadcast">
-      <div class="broadcast-left">
-        <div class="broadcast-name">${TOURNAMENT.name}</div>
-        <div class="broadcast-sub">${TOURNAMENT.course} • ${TOURNAMENT.status}</div>
-      </div>
-      <div class="broadcast-right">
-        ${TOURNAMENT.purse ? `<div class="broadcast-label">PURSE</div><div class="broadcast-value">${TOURNAMENT.purse}</div>` : ''}
-      </div>
-    </div>`;
-
-  // Leaderboard / Tee Times toggle (only show if tee times exist)
   if (hasTeetimes) {
-    html += `
-      <div style="display:flex;gap:4px;margin:8px 0;background:var(--card-bg);border-radius:8px;padding:3px;border:1px solid var(--card-border)">
-        <button class="filter-btn" style="flex:1;text-align:center;${scoresView==='leaderboard'?'background:var(--green);color:#fff':''}" onclick="scoresView='leaderboard';renderApp()">Leaderboard</button>
-        <button class="filter-btn" style="flex:1;text-align:center;${scoresView==='teetimes'?'background:var(--green);color:#fff':''}" onclick="scoresView='teetimes';renderApp()">Tee Times</button>
-      </div>`;
+    html += '<div style="display:flex;gap:4px;margin:8px 0;background:var(--card-bg);border-radius:8px;padding:3px;border:1px solid var(--card-border)">';
+    html += '<button class="filter-btn" style="flex:1;text-align:center;' + (scoresView==='leaderboard'?'background:var(--green);color:#fff':'') + '" onclick="scoresView=\'leaderboard\';renderApp()">Leaderboard</button>';
+    html += '<button class="filter-btn" style="flex:1;text-align:center;' + (scoresView==='teetimes'?'background:var(--green);color:#fff':'') + '" onclick="scoresView=\'teetimes\';renderApp()">Tee Times</button></div>';
   }
 
-  // Last updated
   const updatedStr = lastFetchTime ? lastFetchTime.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}) : '';
-  if (updatedStr) {
-    html += `<div style="display:flex;justify-content:space-between;align-items:center;padding:4px 12px;font-size:10px;color:var(--g700)"><span>Updated ${updatedStr}</span><span style="cursor:pointer;color:var(--green);font-weight:600" onclick="fetchESPNScores(currentScoresTour)">↻ Refresh</span></div>`;
-  }
+  if (updatedStr) html += '<div style="display:flex;justify-content:space-between;align-items:center;padding:4px 12px;font-size:10px;color:var(--g700)"><span>Updated ' + updatedStr + '</span><span style="cursor:pointer;color:var(--green);font-weight:600" onclick="fetchESPNScores(currentScoresTour)">Refresh</span></div>';
 
-  // Route to tee times view
-  if (scoresView === 'teetimes' && hasTeetimes) {
-    return html + renderTeeTimes();
-  }
+  if (scoresView === 'teetimes' && hasTeetimes) return html + renderTeeTimes();
 
-  const filtered = PLAYERS.filter(p => 
-    lbSearch === '' || p.name.toLowerCase().includes(lbSearch.toLowerCase())
-  );
-  const active = filtered.filter(p => p.status === 'active');
-  const cut = filtered.filter(p => p.status === 'cut');
-  const wd = filtered.filter(p => p.status === 'wd' || p.status === 'dq');
-
-  const showCutLine = (i, arr) => {
-    if (!TOURNAMENT || TOURNAMENT.round > 2) return false;
-    if (i === 0) return false;
-    const prev = arr[i-1];
-    const curr = arr[i];
-    if (!curr.score || !prev.score) return false;
-    return curr.score.startsWith('+') && !prev.score.startsWith('+');
-  };
-
-
-  // Show completed round columns (not the current in-progress round)
+  const filtered = PLAYERS.filter(function(p) { return lbSearch === '' || p.name.toLowerCase().includes(lbSearch.toLowerCase()); });
+  const active = filtered.filter(function(p) { return p.status === 'active'; });
+  const cut = filtered.filter(function(p) { return p.status === 'cut'; });
+  const wd = filtered.filter(function(p) { return p.status === 'wd' || p.status === 'dq'; });
   const rd = TOURNAMENT.round || 1;
   const roundCols = [];
-  for (let r = 1; r < Math.min(rd, 5); r++) roundCols.push(r); // only completed rounds
+  for (let r = 1; r < Math.min(rd, 5); r++) roundCols.push(r);
 
-  html += `
-    <div class="search"><input placeholder="Search ${PLAYERS.length} players..." oninput="lbSearch=this.value;renderApp()" value="${lbSearch}"></div>
-    <div class="lb-header">
-      <div style="width:28px">POS</div><div style="flex:1">PLAYER</div>
-      ${roundCols.map(r => `<div class="r-col" style="width:30px;text-align:center">R${r}</div>`).join('')}
-      <div style="width:36px;text-align:center">TODAY</div>
-      <div style="width:56px;text-align:center">THRU</div>
-      <div style="width:46px;text-align:right">TOTAL</div>
-    </div>`;
+  html += '<div class="search"><input placeholder="Search ' + PLAYERS.length + ' players..." oninput="lbSearch=this.value;renderApp()" value="' + lbSearch + '"></div>';
+  html += '<div class="lb-header"><div style="width:28px">POS</div><div style="flex:1">PLAYER</div>';
+  roundCols.forEach(function(r) { html += '<div class="r-col" style="width:30px;text-align:center">R' + r + '</div>'; });
+  html += '<div style="width:36px;text-align:center">TODAY</div><div style="width:56px;text-align:center">THRU</div><div style="width:46px;text-align:right">TOTAL</div></div>';
 
-  active.forEach((p,i) => {
-    if (showCutLine(i, active)) {
-      html += `<div class="cut-line"><div class="cut-line-bar"></div><span class="cut-line-text">PROJECTED CUT</span><div class="cut-line-bar"></div></div>`;
+  active.forEach(function(p,i) {
+    // Cut line
+    if (i > 0 && TOURNAMENT.round <= 2 && p.score && active[i-1].score) {
+      if (p.score.startsWith('+') && !active[i-1].score.startsWith('+')) {
+        html += '<div class="cut-line"><div class="cut-line-bar"></div><span class="cut-line-text">PROJECTED CUT</span><div class="cut-line-bar"></div></div>';
+      }
     }
     const idx = PLAYERS.indexOf(p);
     const rounds = [p.r1, p.r2, p.r3, p.r4];
     const todayClass = !p.today ? '' : p.today.startsWith('+') ? 'score-over' : p.today === 'E' ? 'score-even' : 'score-under';
-    html += `
-      <div class="lb-row ${i===0?'leader':''}" onclick="expandPlayer(${idx})">
-        <div class="lb-pos" style="color:${i===0?'var(--gold)':'var(--g500)'}">${p.pos}</div>
-        <div class="lb-player">
-          <span class="lb-flag">${p.c}</span>
-          <span class="lb-name ${i===0?'top':''}">${p.name}</span>
-          ${p.ch&&p.ch!=='—'?`<span class="lb-move" style="color:${p.ch.includes('↑')?'var(--s-green)':'var(--s-red)'}">${p.ch}</span>`:''}
-        </div>
-        ${roundCols.map(r => `<div class="lb-round r-col">${rounds[r-1]||''}</div>`).join('')}
-        <div class="lb-round r-col ${todayClass}" style="width:36px">${p.today||''}</div>
-        <div class="lb-today" style="color:var(--text-muted);font-size:11px">${p.thru||''}</div>
-        <div class="lb-total ${scoreClass(p.score)}">${p.score}</div>
-      </div>
-      ${expandedCard===idx ? renderScorecard(p) : ''}`;
+    html += '<div class="lb-row ' + (i===0?'leader':'') + '" onclick="expandPlayer(' + idx + ')"><div class="lb-pos" style="color:' + (i===0?'var(--gold)':'var(--g500)') + '">' + p.pos + '</div><div class="lb-player"><span class="lb-flag">' + p.c + '</span><span class="lb-name ' + (i===0?'top':'') + '">' + p.name + '</span></div>';
+    roundCols.forEach(function(r) { html += '<div class="lb-round r-col">' + (rounds[r-1]||'') + '</div>'; });
+    html += '<div class="lb-round r-col ' + todayClass + '" style="width:36px">' + (p.today||'') + '</div><div class="lb-today" style="color:var(--text-muted);font-size:11px">' + (p.thru||'') + '</div><div class="lb-total ' + scoreClass(p.score) + '">' + p.score + '</div></div>';
+    if (expandedCard === idx) html += renderScorecard(p);
   });
 
-  // Missed cut
   if (cut.length > 0) {
-    html += `<div class="section-label" style="margin-top:16px">MISSED CUT</div>`;
-    cut.forEach(p => {
-      const rounds = [p.r1, p.r2, p.r3, p.r4];
-      html += `
-        <div class="lb-row" style="opacity:0.5">
-          <div class="lb-pos" style="color:var(--s-red)">${p.pos}</div>
-          <div class="lb-player">
-            <span class="lb-flag">${p.c}</span>
-            <span class="lb-name">${p.name}</span>
-          </div>
-          ${roundCols.map(r => `<div class="lb-round r-col">${rounds[r-1]||'—'}</div>`).join('')}
-          <div class="lb-round r-col" style="width:36px">—</div>
-          <div class="lb-today">—</div>
-          <div class="lb-total score-over">${p.score}</div>
-        </div>`;
+    html += '<div class="section-label" style="margin-top:16px">MISSED CUT</div>';
+    cut.forEach(function(p) {
+      html += '<div class="lb-row" style="opacity:0.5"><div class="lb-pos" style="color:var(--s-red)">' + p.pos + '</div><div class="lb-player"><span class="lb-flag">' + p.c + '</span><span class="lb-name">' + p.name + '</span></div>';
+      roundCols.forEach(function(r) { html += '<div class="lb-round r-col">' + ([p.r1,p.r2,p.r3,p.r4][r-1]||'-') + '</div>'; });
+      html += '<div class="lb-round r-col" style="width:36px">-</div><div class="lb-today">-</div><div class="lb-total score-over">' + p.score + '</div></div>';
     });
   }
 
-  // Withdrawn / DQ
   if (wd.length > 0) {
-    html += `<div class="section-label" style="margin-top:16px">WITHDRAWN / DQ</div>`;
-    wd.forEach(p => {
-      const rounds = [p.r1, p.r2, p.r3, p.r4];
-      html += `
-        <div class="lb-row" style="opacity:0.4">
-          <div class="lb-pos" style="color:var(--text-muted)">${p.pos}</div>
-          <div class="lb-player">
-            <span class="lb-flag">${p.c}</span>
-            <span class="lb-name">${p.name}</span>
-          </div>
-          ${roundCols.map(r => `<div class="lb-round r-col">${rounds[r-1]||'—'}</div>`).join('')}
-          <div class="lb-round r-col" style="width:36px">—</div>
-          <div class="lb-today">—</div>
-          <div class="lb-total score-over">${p.score||'—'}</div>
-        </div>`;
+    html += '<div class="section-label" style="margin-top:16px">WITHDRAWN / DQ</div>';
+    wd.forEach(function(p) {
+      html += '<div class="lb-row" style="opacity:0.4"><div class="lb-pos" style="color:var(--text-muted)">' + p.pos + '</div><div class="lb-player"><span class="lb-flag">' + p.c + '</span><span class="lb-name">' + p.name + '</span></div>';
+      roundCols.forEach(function(r) { html += '<div class="lb-round r-col">' + ([p.r1,p.r2,p.r3,p.r4][r-1]||'-') + '</div>'; });
+      html += '<div class="lb-round r-col" style="width:36px">-</div><div class="lb-today">-</div><div class="lb-total score-over">' + (p.score||'-') + '</div></div>';
     });
   }
 
-  // Player count
-  html += `<div style="text-align:center;padding:16px 0;font-size:11px;color:var(--g700)">${PLAYERS.length} players • Auto-refreshing every 30s</div>`;
+  html += '<div style="text-align:center;padding:16px 0;font-size:11px;color:var(--g700)">' + PLAYERS.length + ' players &middot; Auto-refreshing every 30s</div>';
+  return html;
+}
+
+// ============================================
+// RENDER NEWS TAB — Blog-style feed from Supabase
+// ============================================
+function renderNews() {
+  if (currentArticle) return renderArticleDetail(currentArticle);
+
+  if (!articlesLoaded) {
+    fetchAllArticles();
+    return '<div style="text-align:center;padding:60px 20px"><div style="font-size:14px;font-weight:700;color:var(--text-dim)">Loading news...</div></div>';
+  }
+
+  if (newsArticles.length === 0) {
+    return '<div style="text-align:center;padding:40px 20px"><div style="font-size:14px;font-weight:700;color:var(--text-dim)">No news yet</div><div style="font-size:12px;color:var(--text-muted);margin-top:6px">Articles will appear here once published</div></div>';
+  }
+
+  let html = '<div class="section-label">NEWS & RECAPS</div>';
+  const visible = newsArticles.slice(0, newsShowCount);
+  visible.forEach(function(a) { html += renderArticleCard(a); });
+  if (newsShowCount < newsArticles.length) {
+    html += '<button class="load-more" onclick="newsShowCount+=10;renderApp()">Load More</button>';
+  }
+
+  // Email CTA
+  if (!localStorage.getItem('tf-subscribed')) {
+    html += '<div class="email-cta"><div class="email-cta-title">Never miss a story</div><div class="email-cta-sub">Scores, recaps, and betting picks delivered to your inbox.</div><div class="email-cta-form"><input type="email" id="newsEmail" placeholder="Your email"><button onclick="subscribeInline(\'newsEmail\')">Subscribe</button></div></div>';
+  }
 
   return html;
 }
 
 // ============================================
-// RENDER NEWS TAB
+// RENDER INSIGHTS TAB — Betting content
 // ============================================
-function openArticle(idx) {
-  expandedCard = 100 + idx;
-  const n = newsData[idx];
-  // If it's an original Supabase article, cache the body directly
-  if (n?.isOriginal && n?.body) {
-    articleCache['article_' + idx] = { title: n.title, body: n.body };
-  } else if (!articleCache['article_' + idx]) {
-    generateArticle(idx);
-  }
-  // Update URL for sharing
-  if (n?.slug) {
-    history.pushState(null, '', '/article/' + n.slug);
-  }
-  renderApp();
-  window.scrollTo(0, 0);
-}
-
-function esc(str) {
-  if (!str) return '';
-  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/`/g,'&#96;').replace(/\$/g,'&#36;');
-}
-
-function renderNews() {
-  if (newsLoading) {
-    return `<div style="text-align:center;padding:60px 20px">
-      <div style="font-size:14px;font-weight:700;color:var(--text-dim)">Loading news...</div>
-    </div>`;
-  }
-  if (newsError || newsData.length === 0) {
-    if (!newsFetched) fetchNews();
-    return `<div style="text-align:center;padding:40px 20px">
-      <div style="font-size:13px;color:var(--text-muted)">${newsError || 'Loading news...'}</div>
-      <button class="filter-btn" style="margin-top:14px;color:var(--green);border:1px solid var(--green)" onclick="newsFetched=false;fetchNews()">Refresh</button>
-    </div>`;
-  }
-  // Full-page recap view (from ?recap= deep link)
-  if (expandedCard === 'recap') {
-    if (!recapArticle) {
-      return '<div style="text-align:center;padding:60px 20px"><div style="font-size:14px;color:var(--text-dim)">Loading recap...</div></div>';
-    }
-    const wordCount = recapArticle.body.replace(/<[^>]+>/g, '').split(/\\s+/).length;
-    const readTime = Math.max(1, Math.ceil(wordCount / 200));
-    return '<div style="padding:4px 0">' +
-      '<button onclick="expandedCard=null;renderApp();window.scrollTo(0,0)" style="background:none;border:none;color:var(--green);font-size:13px;font-weight:700;cursor:pointer;padding:8px 0;font-family:inherit">← Back to News</button>' +
-      '<div style="background:var(--card-bg);border:1px solid var(--card-border);border-radius:12px;padding:20px;margin-top:4px">' +
-        '<span class="tag" style="color:var(--green);background:rgba(45,143,111,0.12)">RECAP</span>' +
-        '<div style="font-size:22px;font-weight:800;color:var(--text);margin:10px 0 8px;line-height:1.3">' + esc(recapArticle.title) + '</div>' +
-        '<div style="font-size:12px;color:var(--text-muted);margin-bottom:16px;display:flex;align-items:center;gap:8px">' +
-          '<span style="font-weight:600">By TourFeed Staff</span>' +
-          '<span>·</span><span>' + readTime + ' min read</span>' +
-        '</div>' +
-        '<div style="line-height:1.8;font-size:15px;color:var(--text)">' + recapArticle.body + '</div>' +
-      '</div>' +
-      '<button onclick="expandedCard=null;renderApp();window.scrollTo(0,0)" style="background:none;border:none;color:var(--green);font-size:13px;font-weight:700;cursor:pointer;padding:12px 0;font-family:inherit">← Back to News</button>' +
-    '</div>';
-  }
-
-  // Full-page article view
-  if (expandedCard !== null && expandedCard >= 100) {
-    const idx = expandedCard - 100;
-    const n = newsData[idx];
-    if (!n) { expandedCard = null; return renderNews(); }
-    const cached = articleCache[`article_${idx}`];
-    const imgHtml = n.image ? `<div style="margin-bottom:12px">
-        <img src="${n.image}" style="width:100%;border-radius:10px" alt="" onerror="this.parentElement.style.display='none'">
-        ${n.source ? `<div style="font-size:9px;color:var(--g700);margin-top:4px;text-align:right">Photo: ${n.source}</div>` : ''}
-      </div>` : '';
-
-    let articleBody = '';
-    if (cached?.body) {
-      const wordCount = cached.body.replace(/<[^>]+>/g, '').split(/\s+/).length;
-      const readTime = Math.max(1, Math.ceil(wordCount / 200));
-      articleBody = `
-        ${imgHtml}
-        <div style="font-size:22px;font-weight:800;color:var(--text);margin-bottom:10px;line-height:1.3">${cached.title || n.title}</div>
-        <div style="font-size:12px;color:var(--text-muted);margin-bottom:20px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-          <span style="font-weight:600">By TourFeed Staff</span>
-          ${n.time ? `<span>·</span><span>${n.time} ago</span>` : ''}
-          <span>·</span><span>${readTime} min read</span>
-          <span class="tag" style="color:${n.tc};background:${n.tc}15;margin-left:4px">${n.tag}</span>
-        </div>
-        <div style="line-height:1.8;font-size:15px;color:var(--text)">${cached.body}</div>
-        ${cached.tweetHtml ? `<div style="margin-top:20px">${cached.tweetHtml}</div>` : ''}`;
-    } else {
-      articleBody = `
-        ${imgHtml}
-        <div style="font-size:22px;font-weight:800;color:var(--text);margin-bottom:10px;line-height:1.3">${n.title}</div>
-        <div style="font-size:12px;color:var(--text-muted);margin-bottom:20px;display:flex;align-items:center;gap:8px">
-          <span style="font-weight:600">By TourFeed Staff</span>
-          ${n.time ? `<span>·</span><span>${n.time} ago</span>` : ''}
-          <span class="tag" style="color:${n.tc};background:${n.tc}15;margin-left:4px">${n.tag}</span>
-        </div>
-        <div style="line-height:1.8;font-size:15px;color:var(--text)"><p>${n.summary}</p></div>`;
-    }
-
-    return `
-      <div style="padding:4px 0">
-        <button onclick="expandedCard=null;renderApp();window.scrollTo(0,0)" style="background:none;border:none;color:var(--green);font-size:13px;font-weight:700;cursor:pointer;padding:8px 0;font-family:inherit;display:flex;align-items:center;gap:4px">
-          ← Back to News
-        </button>
-        <div style="background:var(--card-bg);border:1px solid var(--card-border);border-radius:12px;padding:20px;margin-top:4px">
-          ${articleBody}
-        </div>
-        <button onclick="expandedCard=null;renderApp();window.scrollTo(0,0)" style="background:none;border:none;color:var(--green);font-size:13px;font-weight:700;cursor:pointer;padding:12px 0;font-family:inherit">
-          ← Back to News
-        </button>
-      </div>`;
-  }
-
-  // Show recap card at top if available
-  let recapCard = '';
-  if (recapArticle) {
-    recapCard = '<div class="card" onclick="expandedCard=\'recap\';renderApp();window.scrollTo(0,0)" style="border-left:3px solid var(--green)">' +
-      '<div class="card-header">' +
-        '<span class="tag" style="color:var(--green);background:rgba(45,143,111,0.12)">RECAP</span>' +
-        '<span class="card-time">Just now</span>' +
-      '</div>' +
-      '<div class="card-title">' + esc(recapArticle.title) + '</div>' +
-      '<div style="font-size:12px;color:var(--text-muted);margin-top:4px">' + esc(recapArticle.tournament) + ' · By TourFeed Staff</div>' +
-    '</div>';
-  }
-
-  // News feed list
-  return recapCard + newsData.map((n,i) => {
-    const title = esc(n.title);
-    const summary = esc(n.summary ? n.summary.slice(0, 100) + (n.summary.length > 100 ? '...' : '') : '');
-    const thumb = n.image ? '<img src="' + esc(n.image) + '" style="width:80px;height:56px;object-fit:cover;border-radius:6px;margin-left:12px;flex-shrink:0" alt="" onerror="this.style.display=\'none\'">' : '';
-    return '<div class="card" onclick="openArticle(' + i + ')">' +
-      '<div class="card-header">' +
-        '<span class="tag" style="color:' + n.tc + ';background:' + n.tc + '15">' + n.tag + '</span>' +
-        '<span class="card-time">' + (n.time || '') + '</span>' +
-        '<button class="share-btn" style="margin-left:auto" onclick="event.stopPropagation();shareContent(newsData[' + i + '].title)">Share</button>' +
-      '</div>' +
-      '<div style="display:flex;align-items:flex-start">' +
-        '<div style="flex:1">' +
-          '<div class="card-title">' + title + '</div>' +
-          '<div style="font-size:12px;color:var(--text-muted);margin-top:4px;line-height:1.5">' + summary + '</div>' +
-        '</div>' +
-        thumb +
-      '</div>' +
-    '</div>';
-  }).join('');
-}
-
-// ============================================
-// RENDER INSIGHTS TAB
-// ============================================
-// Preview picks for upcoming events
-function getPreviewPicks(eventName, isMajor) {
-  const e = (eventName || '').toLowerCase();
-
-  // Masters
-  if (/masters/i.test(e)) return [
-    { type: 'FAVORITE', name: 'Scottie Scheffler', odds: '+400', reason: 'Two-time champion, world #1, owns this course' },
-    { type: 'FAVORITE', name: 'Rory McIlroy', odds: '+900', reason: 'Defending champion, career Grand Slam holder, back-to-back bid' },
-    { type: 'VALUE', name: 'Ludvig Åberg', odds: '+1600', reason: 'Elite power game suits Augusta, consistent major contender' },
-    { type: 'LONGSHOT', name: 'Robert MacIntyre', odds: '+4000', reason: 'Trending up, recent winner, fits Augusta profile' },
-  ];
-
-  // US Open
-  if (/u\.?s\.?\s*open/i.test(e)) return [
-    { type: 'FAVORITE', name: 'Scottie Scheffler', odds: '+500', reason: 'World #1, consistent in major setups' },
-    { type: 'VALUE', name: 'Xander Schauffele', odds: '+1200', reason: 'Defending champion, thrives in tough conditions' },
-    { type: 'LONGSHOT', name: 'Tommy Fleetwood', odds: '+4000', reason: 'US Open runner-up pedigree, precise iron play' },
-  ];
-
-  // PGA Championship
-  if (/pga championship/i.test(e)) return [
-    { type: 'FAVORITE', name: 'Scottie Scheffler', odds: '+450', reason: 'Dominant form, elite in strong fields' },
-    { type: 'VALUE', name: 'Collin Morikawa', odds: '+1800', reason: 'Past PGA champion, elite approach play' },
-    { type: 'LONGSHOT', name: 'Hideki Matsuyama', odds: '+3500', reason: 'Major pedigree, consistent contender' },
-  ];
-
-  // The Open
-  if (/open championship|the open/i.test(e)) return [
-    { type: 'FAVORITE', name: 'Rory McIlroy', odds: '+700', reason: 'Career Grand Slam holder, two-time Claret Jug winner, links specialist' },
-    { type: 'VALUE', name: 'Tommy Fleetwood', odds: '+2000', reason: 'British player, elite links game' },
-    { type: 'LONGSHOT', name: 'Robert MacIntyre', odds: '+3500', reason: 'Scottish links upbringing, rising form' },
-  ];
-
-  // RBC Heritage
-  if (/heritage/i.test(e)) return [
-    { type: 'FAVORITE', name: 'Scottie Scheffler', odds: '+600', reason: 'World #1, Harbour Town suits precision players' },
-    { type: 'VALUE', name: 'Matt Fitzpatrick', odds: '+2500', reason: 'Short tight course rewards accuracy over power' },
-    { type: 'LONGSHOT', name: 'J.J. Spaun', odds: '+5000', reason: 'Riding momentum, good approach stats recently' },
-  ];
-
-  // Generic picks for any other event
-  if (isMajor) return [
-    { type: 'FAVORITE', name: 'Scottie Scheffler', odds: '+500', reason: 'World #1, major championship pedigree' },
-    { type: 'VALUE', name: 'Rory McIlroy', odds: '+1000', reason: 'Five-time major champion, career Grand Slam holder' },
-    { type: 'LONGSHOT', name: 'Ludvig Åberg', odds: '+2500', reason: 'Young talent with elite power metrics' },
-  ];
-
-  // Use current leaderboard leaders as picks for generic events
-  const topPlayers = PLAYERS.filter(p => p.status === 'active').slice(0, 10);
-  if (topPlayers.length >= 3) {
-    return [
-      { type: 'FAVORITE', name: topPlayers[0].name, odds: '+600', reason: 'Current form leader, riding momentum into next week' },
-      { type: 'VALUE', name: topPlayers[2].name, odds: '+2000', reason: 'Strong recent play, good value at this price' },
-      { type: 'LONGSHOT', name: topPlayers[6]?.name || topPlayers[4]?.name || topPlayers[2].name, odds: '+5000', reason: 'Under the radar but trending in right direction' },
-    ];
-  }
-
-  return null;
-}
-
-// Insights helper — fetch and render picks for a single tour
 let insightsCache = {};
 
 async function fetchTourInsights(tourId, sport) {
-  if (insightsCache[tourId] !== undefined) return insightsCache[tourId]; // includes cached nulls (failed)
+  if (insightsCache[tourId] !== undefined) return insightsCache[tourId];
   try {
     const res = await fetch('https://site.api.espn.com/apis/site/v2/sports/' + sport + '/scoreboard');
     if (!res.ok) { insightsCache[tourId] = null; return null; }
@@ -1894,324 +1355,172 @@ async function fetchTourInsights(tourId, sport) {
     const players = (comp.competitors || []).slice(0, 20);
     if (players.length === 0) { insightsCache[tourId] = null; return null; }
     const status = comp.status || {};
-    const result = {
+    insightsCache[tourId] = {
       name: evt.shortName || evt.name || '',
       course: comp.venue?.fullName || '',
       round: status.period || 1,
       state: status.type?.state || '',
       stateName: (status.type?.name || '').toUpperCase(),
       statusText: status.type?.description || '',
-      players: players.map(p => ({
-        name: p.athlete?.shortName || p.athlete?.displayName || '?',
-        fullName: p.athlete?.displayName || '?',
-        score: typeof p.score === 'string' ? p.score : (typeof p.score === 'number' ? (p.score === 0 ? 'E' : p.score > 0 ? '+' + p.score : '' + p.score) : '?'),
-        today: p.linescores?.[(status.period || 1) - 1]?.displayValue || '',
-        order: p.order || 99,
-      })),
+      players: players.map(function(p) {
+        return {
+          name: p.athlete?.shortName || p.athlete?.displayName || '?',
+          fullName: p.athlete?.displayName || '?',
+          score: typeof p.score === 'string' ? p.score : (typeof p.score === 'number' ? (p.score === 0 ? 'E' : p.score > 0 ? '+' + p.score : '' + p.score) : '?'),
+          today: p.linescores?.[(status.period || 1) - 1]?.displayValue || '',
+          order: p.order || 99,
+        };
+      }),
     };
-    insightsCache[tourId] = result;
-    return result;
+    return insightsCache[tourId];
   } catch(e) { insightsCache[tourId] = null; return null; }
 }
 
-// Fetch betting articles from Supabase
-let bettingArticles = null;
-async function fetchBettingArticles() {
-  if (bettingArticles) return bettingArticles;
-  try {
-    const { data } = await sb.from('articles').select('*').in('tag', ['BETTING', 'ANALYSIS', 'PREVIEW']).order('published_at', { ascending: false }).limit(5);
-    bettingArticles = data || [];
-  } catch(e) { bettingArticles = []; }
-  return bettingArticles;
-}
-
 function renderInsights() {
-  const parseScore = (s) => { if (!s || s === 'E') return 0; return parseInt(s) || 0; };
-  const toOdds = (pct) => pct >= 50 ? '-' + Math.round(pct / (100 - pct) * 100) : '+' + Math.round((100 - pct) / pct * 100);
-  const calcWinProb = (back, rd) => {
+  if (currentArticle) return renderArticleDetail(currentArticle);
+
+  const parseScore = function(s) { if (!s || s === 'E') return 0; return parseInt(s) || 0; };
+  const toOdds = function(pct) { return pct >= 50 ? '-' + Math.round(pct / (100 - pct) * 100) : '+' + Math.round((100 - pct) / pct * 100); };
+  const calcWinProb = function(back, rd) {
     const mult = rd === 4 ? 1.0 : rd === 3 ? 0.6 : rd === 2 ? 0.35 : 0.2;
     return Math.max(0.5, Math.exp(-0.55 * back) * 30 * mult);
   };
 
-  // Fetch betting articles in background
-  if (!bettingArticles) { fetchBettingArticles().then(() => renderApp()); }
-
-  // Render picks card for one tournament
   function renderTourPicks(t, tourLabel, color) {
     if (!t || !t.players || t.players.length === 0) return '';
     const isCompleted = t.stateName === 'STATUS_FINAL' || t.state === 'post';
-    const isActive = t.state === 'in' || isCompleted;
     const leader = t.players[0];
     const leaderNum = parseScore(leader.score);
-    const tied = t.players.filter(p => p.score === leader.score);
+    const tied = t.players.filter(function(p) { return p.score === leader.score; });
 
-    let html = '<div style="padding:14px;background:var(--card-bg);border:1px solid var(--card-border);border-radius:10px;margin-bottom:12px">';
-    html += '<div style="display:flex;align-items:center;margin-bottom:10px">';
-    html += '<div style="font-size:10px;font-weight:700;letter-spacing:2px;color:' + color + '">' + tourLabel + '</div>';
-    html += '<span style="font-size:10px;color:var(--text-muted);margin-left:auto">' + (isActive ? 'R' + t.round + ' · ' + t.statusText : t.statusText) + '</span>';
-    html += '</div>';
-    html += '<div style="font-size:15px;font-weight:800;color:var(--text);margin-bottom:4px">' + t.name + '</div>';
+    let html = '<div class="insight-card">';
+    html += '<div class="insight-header"><div class="insight-label" style="color:' + color + '">' + tourLabel + '</div>';
+    html += '<span style="font-size:10px;color:var(--text-muted);margin-left:auto">' + (t.state === 'in' || isCompleted ? 'R' + t.round + ' &middot; ' : '') + t.statusText + '</span></div>';
+    html += '<div style="font-size:16px;font-weight:800;color:var(--text);margin-bottom:4px">' + t.name + '</div>';
     if (t.course) html += '<div style="font-size:11px;color:var(--text-muted);margin-bottom:12px">' + t.course + '</div>';
 
-    // If tournament is completed, show summary instead of live picks/odds
     if (isCompleted) {
       html += '<div style="padding:10px 12px;background:rgba(45,212,160,0.08);border-radius:8px;margin-bottom:10px">';
       html += '<div style="font-size:10px;font-weight:700;letter-spacing:1.5px;color:var(--s-green);margin-bottom:6px">TOURNAMENT COMPLETE</div>';
-      if (tied.length > 1) {
-        html += '<div style="font-size:13px;color:var(--text)">Tied at ' + leader.score + ': ' + tied.map(p => '<span style="font-weight:700">' + p.fullName + '</span>').join(', ') + '</div>';
-      } else {
-        html += '<div style="font-size:13px;color:var(--text)">Winner: <span style="font-weight:700">' + leader.fullName + '</span> (' + leader.score + ')</div>';
-      }
-      html += '</div>';
-
-      // Final top 5 leaderboard
-      html += '<div style="font-size:10px;font-weight:700;letter-spacing:1px;color:var(--g700);margin-bottom:6px">FINAL LEADERBOARD</div>';
-      t.players.slice(0, 5).forEach((p, i) => {
-        html += '<div style="display:flex;align-items:center;padding:6px 0;' + (i < 4 ? 'border-bottom:1px solid var(--card-border)' : '') + '">';
-        html += '<div style="width:24px;font-size:12px;font-weight:700;color:var(--text-muted)">' + (i + 1) + '</div>';
-        html += '<div style="flex:1;font-size:13px;font-weight:600;color:var(--text)">' + p.fullName + '</div>';
-        html += '<div style="font-size:12px;font-weight:700;color:var(--text)">' + p.score + '</div>';
-        html += '</div>';
+      html += '<div style="font-size:13px;color:var(--text)">Winner: <span style="font-weight:700">' + leader.fullName + '</span> (' + leader.score + ')</div></div>';
+      html += '<div style="font-size:10px;font-weight:700;letter-spacing:1px;color:var(--g700);margin-bottom:6px">FINAL TOP 5</div>';
+      t.players.slice(0, 5).forEach(function(p, i) {
+        html += '<div style="display:flex;align-items:center;padding:6px 0;' + (i<4?'border-bottom:1px solid var(--card-border)':'') + '"><div style="width:24px;font-size:12px;font-weight:700;color:var(--text-muted)">' + (i+1) + '</div><div style="flex:1;font-size:13px;font-weight:600;color:var(--text)">' + p.fullName + '</div><div style="font-size:12px;font-weight:700;color:var(--text)">' + p.score + '</div></div>';
       });
-
       html += '</div>';
       return html;
     }
 
-    // Calculate win probabilities
-    const withProb = t.players.map(p => {
-      const back = Math.abs(parseScore(p.score) - leaderNum);
-      const raw = calcWinProb(back, t.round);
-      return { ...p, back, raw };
-    });
-    const totalRaw = withProb.reduce((s, p) => s + p.raw, 0) + 10;
-    const odds = withProb.map(p => ({ ...p, pct: (p.raw / totalRaw) * 100 }));
+    // Live picks
+    const withProb = t.players.map(function(p) { const back = Math.abs(parseScore(p.score) - leaderNum); return Object.assign({}, p, {back: back, raw: calcWinProb(back, t.round)}); });
+    const totalRaw = withProb.reduce(function(s, p) { return s + p.raw; }, 0) + 10;
+    const odds = withProb.map(function(p) { return Object.assign({}, p, {pct: (p.raw / totalRaw) * 100}); });
 
-    // Pick logic
-    const bestVal = odds.filter(p => p.back >= 1 && p.back <= 3)
-      .sort((a,b) => (a.back + (parseScore(a.today) || 0) * 0.5) - (b.back + (parseScore(b.today) || 0) * 0.5))[0];
-    const longshot = odds.filter(p => p.back >= 4 && p.back <= 7)
-      .sort((a,b) => (parseScore(a.today) || 0) - (parseScore(b.today) || 0))[0];
-    const hotToday = odds.filter(p => p.today && p.today !== '-' && parseScore(p.today) <= -3)
-      .sort((a,b) => parseScore(a.today) - parseScore(b.today))[0];
+    const bestVal = odds.filter(function(p) { return p.back >= 1 && p.back <= 3; }).sort(function(a,b) { return (a.back + (parseScore(a.today)||0)*0.5) - (b.back + (parseScore(b.today)||0)*0.5); })[0];
+    const longshot = odds.filter(function(p) { return p.back >= 4 && p.back <= 7; }).sort(function(a,b) { return (parseScore(a.today)||0) - (parseScore(b.today)||0); })[0];
 
-    // Leader
     html += '<div style="font-size:12px;color:var(--text-muted);margin-bottom:8px">';
-    if (tied.length > 1) {
-      html += 'Tied at ' + leader.score + ': ' + tied.map(p => p.name).join(', ');
-    } else {
-      html += 'Leader: <span style="color:var(--text);font-weight:700">' + leader.fullName + '</span> (' + leader.score + ')';
-    }
+    if (tied.length > 1) html += 'Tied at ' + leader.score + ': ' + tied.map(function(p) { return p.name; }).join(', ');
+    else html += 'Leader: <span style="color:var(--text);font-weight:700">' + leader.fullName + '</span> (' + leader.score + ')';
     html += '</div>';
 
-    // Picks
     if (bestVal) {
-      html += '<div style="padding:8px 10px;background:rgba(45,143,111,0.08);border-radius:8px;margin-bottom:6px;display:flex;align-items:center">';
-      html += '<span class="tag" style="color:var(--green);background:rgba(45,143,111,0.15);font-size:9px;margin-right:8px">BEST BET</span>';
-      html += '<span style="font-size:13px;font-weight:700;color:var(--text);flex:1">' + bestVal.fullName + '</span>';
-      html += '<span style="font-size:11px;color:var(--text-muted)">' + bestVal.score + '</span>';
-      html += '<span style="font-size:11px;font-weight:700;color:var(--green);margin-left:8px">' + toOdds(bestVal.pct) + '</span>';
-      html += '</div>';
+      html += '<div class="pick-row" style="background:rgba(45,143,111,0.08)"><span class="tag" style="color:var(--green);background:rgba(45,143,111,0.15);font-size:9px;margin-right:8px">BEST BET</span><div class="pick-row-info"><div class="pick-row-name">' + bestVal.fullName + '</div><div class="pick-row-detail">' + bestVal.score + ' overall' + (bestVal.today ? ' &middot; ' + bestVal.today + ' today' : '') + '</div></div><div class="pick-row-odds" style="color:var(--green)">' + toOdds(bestVal.pct) + '</div></div>';
     }
     if (longshot) {
-      html += '<div style="padding:8px 10px;background:rgba(212,168,83,0.08);border-radius:8px;margin-bottom:6px;display:flex;align-items:center">';
-      html += '<span class="tag" style="color:var(--gold);background:rgba(212,168,83,0.15);font-size:9px;margin-right:8px">LONGSHOT</span>';
-      html += '<span style="font-size:13px;font-weight:700;color:var(--text);flex:1">' + longshot.fullName + '</span>';
-      html += '<span style="font-size:11px;color:var(--text-muted)">' + longshot.score + '</span>';
-      html += '<span style="font-size:11px;font-weight:700;color:var(--gold);margin-left:8px">' + toOdds(longshot.pct) + '</span>';
-      html += '</div>';
-    }
-    if (hotToday) {
-      html += '<div style="padding:8px 10px;background:rgba(255,107,107,0.06);border-radius:8px;margin-bottom:6px;display:flex;align-items:center">';
-      html += '<span class="tag" style="color:var(--s-green);background:rgba(45,212,160,0.12);font-size:9px;margin-right:8px">HOT TODAY</span>';
-      html += '<span style="font-size:13px;font-weight:700;color:var(--text);flex:1">' + hotToday.fullName + '</span>';
-      html += '<span style="font-size:11px;font-weight:700;color:var(--s-green)">' + hotToday.today + ' today</span>';
-      html += '</div>';
+      html += '<div class="pick-row" style="background:rgba(212,168,83,0.08)"><span class="tag" style="color:var(--gold);background:rgba(212,168,83,0.15);font-size:9px;margin-right:8px">LONGSHOT</span><div class="pick-row-info"><div class="pick-row-name">' + longshot.fullName + '</div><div class="pick-row-detail">' + longshot.score + ' overall</div></div><div class="pick-row-odds" style="color:var(--gold)">' + toOdds(longshot.pct) + '</div></div>';
     }
 
-    // Top 5 / Top 10 finish picks
-    const top5Pick = odds.filter(p => p.back >= 0 && p.back <= 2)
-      .sort((a,b) => (parseScore(a.today) || 0) - (parseScore(b.today) || 0))[0];
-    const top10Pick = odds.filter(p => p.back >= 2 && p.back <= 5)
-      .sort((a,b) => (parseScore(a.today) || 0) - (parseScore(b.today) || 0))[0];
-
-    if (top5Pick || top10Pick) {
-      html += '<div style="margin-top:8px;font-size:10px;font-weight:700;letter-spacing:1px;color:var(--g700);margin-bottom:6px">PLACEMENT PICKS</div>';
-      if (top5Pick) {
-        html += '<div style="padding:8px 10px;background:rgba(45,143,111,0.06);border-radius:8px;margin-bottom:4px;display:flex;align-items:center">';
-        html += '<span class="tag" style="color:var(--green);background:rgba(45,143,111,0.12);font-size:9px;margin-right:8px">TOP 5</span>';
-        html += '<span style="font-size:12px;font-weight:700;color:var(--text);flex:1">' + top5Pick.fullName + '</span>';
-        html += '<span style="font-size:11px;color:var(--text-muted)">' + top5Pick.score + '</span>';
-        html += '</div>';
-      }
-      if (top10Pick && top10Pick.fullName !== top5Pick?.fullName) {
-        html += '<div style="padding:8px 10px;background:rgba(74,144,217,0.06);border-radius:8px;margin-bottom:4px;display:flex;align-items:center">';
-        html += '<span class="tag" style="color:#4A90D9;background:rgba(74,144,217,0.12);font-size:9px;margin-right:8px">TOP 10</span>';
-        html += '<span style="font-size:12px;font-weight:700;color:var(--text);flex:1">' + top10Pick.fullName + '</span>';
-        html += '<span style="font-size:11px;color:var(--text-muted)">' + top10Pick.score + '</span>';
-        html += '</div>';
-      }
-    }
-
-    // Top 5 odds table
+    // Outright odds table
     html += '<div style="margin-top:10px;font-size:10px;font-weight:700;letter-spacing:1px;color:var(--g700);margin-bottom:6px">OUTRIGHT ODDS</div>';
-    odds.slice(0, 8).forEach((p, i) => {
+    odds.slice(0, 8).forEach(function(p, i) {
       const barW = Math.max(4, Math.min(100, p.pct * 3));
-      html += '<div style="display:flex;align-items:center;padding:4px 0;' + (i < 7 ? 'border-bottom:1px solid var(--card-border)' : '') + '">';
-      html += '<div style="flex:1;font-size:12px;font-weight:600;color:var(--text)">' + p.name + '</div>';
-      html += '<div style="width:50px;margin-right:6px"><div style="height:5px;background:var(--card-border);border-radius:3px;overflow:hidden"><div style="height:100%;width:' + barW + '%;background:' + color + ';border-radius:3px"></div></div></div>';
-      html += '<div style="width:32px;text-align:right;font-size:10px;font-weight:700;color:var(--text)">' + p.pct.toFixed(1) + '%</div>';
-      html += '<div style="width:42px;text-align:right;font-size:10px;font-weight:700;color:var(--text-muted)">' + toOdds(p.pct) + '</div>';
-      html += '</div>';
+      html += '<div class="odds-table-row"><div style="flex:1;font-size:12px;font-weight:600;color:var(--text)">' + p.name + '</div><div class="odds-bar"><div class="odds-bar-inner"><div style="height:100%;width:' + barW + '%;background:' + color + ';border-radius:3px"></div></div></div><div style="width:32px;text-align:right;font-size:10px;font-weight:700;color:var(--text)">' + p.pct.toFixed(1) + '%</div><div style="width:42px;text-align:right;font-size:10px;font-weight:700;color:var(--text-muted)">' + toOdds(p.pct) + '</div></div>';
     });
-
     html += '</div>';
     return html;
   }
 
   let html = '';
 
-  // Current PGA event (already loaded)
+  // Published betting articles from Supabase
+  if (bettingArticles && bettingArticles.length > 0) {
+    html += '<div class="section-label">BETTING ANALYSIS</div>';
+    bettingArticles.forEach(function(a) {
+      html += renderArticleCard(a);
+    });
+    html += '<div style="height:16px"></div>';
+  }
+
+  // Live tournament picks
   if (TOURNAMENT && PLAYERS.length > 0) {
-    const active = PLAYERS.filter(p => p.status === 'active');
+    const active = PLAYERS.filter(function(p) { return p.status === 'active'; });
     if (active.length > 0) {
       const pgaData = {
-        name: TOURNAMENT.name,
-        course: TOURNAMENT.course,
-        round: TOURNAMENT.round,
-        state: TOURNAMENT.state || 'in',
-        stateName: TOURNAMENT.stateName || '',
-        statusText: TOURNAMENT.status,
-        players: active.slice(0, 20).map(p => ({
-          name: p.name.split(' ').map((w,i,a) => i < a.length-1 ? w[0]+'.' : w).join(' '),
-          fullName: p.name,
-          score: p.score,
-          today: p.today || '',
-          order: 0,
-        })),
+        name: TOURNAMENT.name, course: TOURNAMENT.course, round: TOURNAMENT.round,
+        state: TOURNAMENT.state || 'in', stateName: TOURNAMENT.stateName || '', statusText: TOURNAMENT.status,
+        players: active.slice(0, 20).map(function(p) {
+          return { name: p.name.split(' ').map(function(w,i,a) { return i < a.length-1 ? w[0]+'.' : w; }).join(' '), fullName: p.name, score: p.score, today: p.today || '', order: 0 };
+        }),
       };
       html += renderTourPicks(pgaData, 'PGA TOUR', 'var(--green)');
     }
   }
 
-  // Fetch other tours in background and render when ready
+  // Other tours
   const otherTours = [
     { id: 'lpga', sport: 'golf/lpga', label: 'LPGA', color: '#E91E8C' },
-    { id: 'liv', sport: 'golf/liv', label: 'LIV GOLF', color: '#D4A853' },
     { id: 'dpw', sport: 'golf/eur', label: 'DP WORLD TOUR', color: '#4A90D9' },
   ];
-
-  // Render cached tours immediately
-  otherTours.forEach(t => {
-    if (insightsCache[t.id]) {
-      html += renderTourPicks(insightsCache[t.id], t.label, t.color);
-    }
+  otherTours.forEach(function(t) {
+    if (insightsCache[t.id]) html += renderTourPicks(insightsCache[t.id], t.label, t.color);
   });
-
-  // Fetch uncached tours in background
-  const uncached = otherTours.filter(t => !insightsCache[t.id]);
+  const uncached = otherTours.filter(function(t) { return !insightsCache[t.id]; });
   if (uncached.length > 0) {
-    if (!html) html += '<div style="text-align:center;padding:30px"><div style="font-size:13px;color:var(--text-muted)">Loading picks across tours...</div></div>';
-    (async () => {
-      for (const t of uncached) {
-        await fetchTourInsights(t.id, t.sport);
-      }
-      renderApp();
-    })();
+    (async function() { for (const t of uncached) await fetchTourInsights(t.id, t.sport); renderApp(); })();
   }
 
-  if (!html) {
-    html = '<div style="text-align:center;padding:50px 20px"><div style="font-size:14px;font-weight:700;color:var(--text-dim)">No active tournaments</div><div style="font-size:12px;color:var(--text-muted);margin-top:8px">Check back during tournament play for picks and odds</div></div>';
-  }
+  if (!html) html = '<div style="text-align:center;padding:50px 20px"><div style="font-size:14px;font-weight:700;color:var(--text-dim)">No active tournaments</div><div style="font-size:12px;color:var(--text-muted);margin-top:8px">Check back during tournament play for picks and odds</div></div>';
 
-  // Upcoming events with preview picks
-  if (scheduleData.length > 0) {
-    const now = Date.now();
-    const upcoming = scheduleData.filter(e => e.startDate && new Date(e.startDate).getTime() > now).slice(0, 3);
-    if (upcoming.length > 0) {
-      upcoming.forEach(e => {
-        const d = new Date(e.startDate);
-        const dateStr = d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
-        const daysUntil = Math.ceil((d.getTime() - now) / 86400000);
-        const daysLabel = daysUntil === 0 ? 'TODAY' : daysUntil === 1 ? 'TOMORROW' : daysUntil + ' DAYS';
-        const isMajor = /masters|pga championship|u\.?s\.?\s*open|open championship|the open/i.test(e.event);
-
-        html += '<div style="padding:14px;background:var(--card-bg);border:1px solid var(--card-border);border-radius:10px;margin-bottom:12px">';
-        html += '<div style="display:flex;align-items:center;margin-bottom:10px">';
-        html += '<div style="font-size:10px;font-weight:700;letter-spacing:2px;color:' + (isMajor ? 'var(--gold)' : 'var(--green)') + '">PREVIEW' + (isMajor ? ' · MAJOR' : '') + '</div>';
-        html += '<span style="font-size:10px;font-weight:700;color:var(--text-muted);margin-left:auto;background:var(--card-border);padding:2px 8px;border-radius:4px">' + daysLabel + '</span>';
-        html += '</div>';
-        html += '<div style="font-size:16px;font-weight:800;color:var(--text);margin-bottom:4px">' + (e.event || '') + '</div>';
-        html += '<div style="font-size:11px;color:var(--text-muted);margin-bottom:4px">' + (e.course || '') + '</div>';
-        html += '<div style="font-size:11px;color:var(--text-muted);margin-bottom:12px">' + dateStr + (e.purse ? ' · ' + e.purse : '') + (e.tv ? ' · ' + e.tv : '') + '</div>';
-
-        // Pre-tournament picks based on known top players and course history
-        // Use top FedEx Cup / world ranking players as favorites
-        const previewPicks = getPreviewPicks(e.event, isMajor);
-        if (previewPicks) {
-          previewPicks.forEach(pick => {
-            const bgColor = pick.type === 'FAVORITE' ? 'rgba(45,143,111,0.08)' :
-                           pick.type === 'VALUE' ? 'rgba(212,168,83,0.08)' :
-                           'rgba(74,144,217,0.08)';
-            const tagColor = pick.type === 'FAVORITE' ? 'var(--green)' :
-                            pick.type === 'VALUE' ? 'var(--gold)' :
-                            '#4A90D9';
-            const tagBg = pick.type === 'FAVORITE' ? 'rgba(45,143,111,0.15)' :
-                         pick.type === 'VALUE' ? 'rgba(212,168,83,0.15)' :
-                         'rgba(74,144,217,0.15)';
-            html += '<div style="padding:8px 10px;background:' + bgColor + ';border-radius:8px;margin-bottom:6px">';
-            html += '<div style="display:flex;align-items:center">';
-            html += '<span class="tag" style="color:' + tagColor + ';background:' + tagBg + ';font-size:9px;margin-right:8px">' + pick.type + '</span>';
-            html += '<span style="font-size:13px;font-weight:700;color:var(--text);flex:1">' + pick.name + '</span>';
-            html += '<span style="font-size:11px;font-weight:700;color:var(--text-muted)">' + pick.odds + '</span>';
-            html += '</div>';
-            html += '<div style="font-size:10px;color:var(--text-muted);margin-top:3px">' + pick.reason + '</div>';
-            html += '</div>';
-          });
-        }
-
-        if (e.def) html += '<div style="font-size:10px;color:var(--text-muted);margin-top:8px">Defending: ' + e.def + '</div>';
-        html += '</div>';
-      });
-    }
-  }
-
-  // Published betting articles from Supabase
-  if (bettingArticles && bettingArticles.length > 0) {
-    html += '<div style="margin-top:16px;margin-bottom:12px">';
-    html += '<div style="font-size:10px;font-weight:700;letter-spacing:2px;color:var(--gold);margin-bottom:10px">BETTING ANALYSIS</div>';
-    bettingArticles.forEach(a => {
-      const slug = a.slug || '';
-      html += '<div onclick="' + (slug ? "window.location.href='/article/" + slug + "'" : '') + '" style="padding:12px;background:var(--card-bg);border-bottom:1px solid var(--card-border);cursor:pointer">';
-      html += '<span class="tag" style="color:var(--gold);background:rgba(212,168,83,0.12);font-size:9px">' + (a.tag || 'BETTING') + '</span>';
-      html += '<div style="font-size:14px;font-weight:700;color:var(--text);margin-top:6px">' + esc(a.title || '') + '</div>';
-      html += '<div style="font-size:11px;color:var(--text-muted);margin-top:4px">' + esc((a.summary || '').slice(0, 120)) + '</div>';
-      html += '</div>';
-    });
-    html += '</div>';
-  }
-
-  // Season betting record (placeholder — will populate from Supabase)
-  html += '<div style="padding:14px;background:var(--card-bg);border:1px solid var(--card-border);border-radius:10px;margin-bottom:12px">';
-  html += '<div style="font-size:10px;font-weight:700;letter-spacing:2px;color:var(--green);margin-bottom:8px">SEASON RECORD</div>';
+  // Season record
+  html += '<div class="insight-card"><div class="insight-label" style="color:var(--green);margin-bottom:8px">SEASON RECORD</div>';
   html += '<div style="display:flex;gap:16px;justify-content:center">';
-  html += '<div style="text-align:center"><div style="font-size:20px;font-weight:800;color:var(--text)">--</div><div style="font-size:9px;color:var(--text-muted)">WINS</div></div>';
-  html += '<div style="text-align:center"><div style="font-size:20px;font-weight:800;color:var(--text)">--</div><div style="font-size:9px;color:var(--text-muted)">LOSSES</div></div>';
-  html += '<div style="text-align:center"><div style="font-size:20px;font-weight:800;color:var(--text)">--</div><div style="font-size:9px;color:var(--text-muted)">ROI</div></div>';
-  html += '</div>';
-  html += '<div style="font-size:10px;color:var(--text-muted);text-align:center;margin-top:8px">Record tracking begins with Masters 2026</div>';
-  html += '</div>';
+  html += '<div style="text-align:center"><div style="font-size:20px;font-weight:800">--</div><div style="font-size:9px;color:var(--text-muted)">WINS</div></div>';
+  html += '<div style="text-align:center"><div style="font-size:20px;font-weight:800">--</div><div style="font-size:9px;color:var(--text-muted)">LOSSES</div></div>';
+  html += '<div style="text-align:center"><div style="font-size:20px;font-weight:800">--</div><div style="font-size:9px;color:var(--text-muted)">ROI</div></div></div>';
+  html += '<div style="font-size:10px;color:var(--text-muted);text-align:center;margin-top:8px">Record tracking begins with Masters 2026</div></div>';
 
-  html += '<div class="disclaimer" style="margin-top:16px">All picks are model-generated for entertainment only. Please gamble responsibly. If you or someone you know has a gambling problem, call 1-800-GAMBLER.</div>';
-
+  html += '<div class="disclaimer">All picks are model-generated for entertainment only. Please gamble responsibly. If you or someone you know has a gambling problem, call 1-800-GAMBLER.</div>';
   return html;
 }
 
 // ============================================
-// RENDER STANDINGS TAB
+// RENDER BLOG TAB
 // ============================================
-let standingsFilter = 'pga';
+function renderBlog() {
+  if (currentArticle) return renderArticleDetail(currentArticle);
 
+  if (!articlesLoaded) {
+    fetchAllArticles();
+    return '<div style="text-align:center;padding:60px 20px"><div style="font-size:14px;font-weight:700;color:var(--text-dim)">Loading articles...</div></div>';
+  }
+
+  if (blogArticles.length === 0) {
+    return '<div style="text-align:center;padding:40px 20px"><div style="font-size:14px;font-weight:700;color:var(--text-dim)">No blog posts yet</div><div style="font-size:12px;color:var(--text-muted);margin-top:6px">Previews, analysis, and power rankings will appear here</div></div>';
+  }
+
+  let html = '<div class="section-label">ANALYSIS & PREVIEWS</div>';
+  const visible = blogArticles.slice(0, blogShowCount);
+  visible.forEach(function(a) { html += renderArticleCard(a); });
+  if (blogShowCount < blogArticles.length) {
+    html += '<button class="load-more" onclick="blogShowCount+=10;renderApp()">Load More</button>';
+  }
+  return html;
+}
+
+// ============================================
+// RENDER STANDINGS
+// ============================================
 function switchStandingsTour(tour) {
   standingsFilter = tour;
   if (!standingsFetched[tour]) fetchESPNStandings(tour);
@@ -2219,179 +1528,51 @@ function switchStandingsTour(tour) {
 }
 
 function renderStandings() {
-  const tourBar = `
-    <div class="filter-bar">
-      ${['pga','dpw','liv','lpga','kft','champ'].map(t => 
-        `<button class="filter-btn ${standingsFilter===t?'active':''}" onclick="switchStandingsTour('${t}')">${TOURS.find(x=>x.id===t)?.short||t}</button>`
-      ).join('')}
-    </div>`;
+  let html = '<div class="filter-bar">';
+  ['pga','dpw','lpga','kft','champ'].forEach(function(t) {
+    html += '<button class="filter-btn ' + (standingsFilter===t?'active':'') + '" onclick="switchStandingsTour(\'' + t + '\')">' + (TOURS.find(function(x){return x.id===t})?.short||t) + '</button>';
+  });
+  html += '</div>';
 
-  if (standingsLoading) {
-    return tourBar + `<div style="text-align:center;padding:40px 20px">
-      <div style="font-size:14px;font-weight:700;color:var(--text-dim)">Loading standings...</div>
-    </div>`;
-  }
+  if (standingsLoading) return html + '<div style="text-align:center;padding:40px 20px"><div style="font-size:14px;font-weight:700;color:var(--text-dim)">Loading standings...</div></div>';
 
   const data = standingsLive[standingsFilter];
-  if (!data || data.length === 0) {
-    return tourBar + `<div style="text-align:center;padding:40px 20px">
-      <div style="font-size:20px;margin-bottom:10px">🏆</div>
-      <div style="font-size:13px;color:var(--text-muted)">${standingsError || 'Standings will populate once ESPN data is available'}</div>
-      <button class="filter-btn" style="margin-top:14px;color:var(--green);border:1px solid var(--green)" onclick="standingsFetched['${standingsFilter}']=false;fetchESPNStandings('${standingsFilter}')">Retry</button>
-    </div>`;
-  }
+  if (!data || data.length === 0) return html + '<div style="text-align:center;padding:40px 20px"><div style="font-size:13px;color:var(--text-muted)">' + (standingsError || 'Standings will populate once ESPN data is available') + '</div><button class="filter-btn" style="margin-top:14px;color:var(--green);border:1px solid var(--green)" onclick="standingsFetched[\'' + standingsFilter + '\']=false;fetchESPNStandings(\'' + standingsFilter + '\')">Retry</button></div>';
 
-  const tourNames = {pga:'FedExCup',dpw:'Race to Dubai',liv:'LIV Individual',lpga:'Race to CME Globe',kft:'Korn Ferry Points',champ:'Charles Schwab Cup'};
-  return tourBar + `
-    <div style="font-size:16px;font-weight:800;margin-bottom:10px">${tourNames[standingsFilter] || 'Standings'}</div>
-    <div class="lb-header">
-      <div style="width:28px">POS</div><div style="flex:1">PLAYER</div>
-      <div style="width:56px;text-align:center">PTS</div>
-      <div style="width:36px;text-align:center">WINS</div>
-      <div style="width:40px;text-align:center">TOP 10</div>
-      <div style="width:64px;text-align:right">EARNINGS</div>
-    </div>
-    ${data.map((r,i) => `
-      <div class="standings-row ${i===0?'top':''}" style="${i%2===0?'background:rgba(255,255,255,0.01)':''}">
-        <div style="width:28px;font-size:12px;font-weight:700;color:${i===0?'var(--gold)':'var(--g500)'}">${r.pos}</div>
-        <div style="flex:1;font-size:13px;font-weight:${i===0?800:600};color:${i===0?'var(--text)':'var(--text-dim)'}">${r.p}</div>
-        <div style="width:56px;text-align:center;font-size:13px;font-weight:700">${r.pts}</div>
-        <div style="width:36px;text-align:center;font-size:12px;color:${r.w>0?'var(--s-green)':'var(--g500)'};font-weight:700">${r.w}</div>
-        <div style="width:40px;text-align:center;font-size:12px;color:var(--text-muted)">${r.t10}</div>
-        <div style="width:64px;text-align:right;font-size:12px;color:var(--gold);font-weight:600">${r.earn}</div>
-      </div>
-    `).join('')}
-  `;
+  const tourNames = {pga:'FedExCup',dpw:'Race to Dubai',lpga:'Race to CME Globe',kft:'Korn Ferry Points',champ:'Charles Schwab Cup'};
+  html += '<div style="font-size:16px;font-weight:800;margin-bottom:10px">' + (tourNames[standingsFilter] || 'Standings') + '</div>';
+  html += '<div class="lb-header"><div style="width:28px">POS</div><div style="flex:1">PLAYER</div><div style="width:56px;text-align:center">PTS</div><div style="width:36px;text-align:center">WINS</div><div style="width:40px;text-align:center">TOP 10</div><div style="width:64px;text-align:right">EARNINGS</div></div>';
+  data.forEach(function(r, i) {
+    html += '<div class="standings-row ' + (i===0?'top':'') + '" style="' + (i%2===0?'background:rgba(255,255,255,0.01)':'') + '"><div style="width:28px;font-size:12px;font-weight:700;color:' + (i===0?'var(--gold)':'var(--g500)') + '">' + r.pos + '</div><div style="flex:1;font-size:13px;font-weight:' + (i===0?800:600) + ';color:' + (i===0?'var(--text)':'var(--text-dim)') + '">' + r.p + '</div><div style="width:56px;text-align:center;font-size:13px;font-weight:700">' + r.pts + '</div><div style="width:36px;text-align:center;font-size:12px;color:' + (r.w>0?'var(--s-green)':'var(--g500)') + ';font-weight:700">' + r.w + '</div><div style="width:40px;text-align:center;font-size:12px;color:var(--text-muted)">' + r.t10 + '</div><div style="width:64px;text-align:right;font-size:12px;color:var(--gold);font-weight:600">' + r.earn + '</div></div>';
+  });
+  return html;
 }
 
 // ============================================
-// RENDER SCHEDULE TAB
+// RENDER SCHEDULE
 // ============================================
 let schedFilter = 'all';
 
 function renderSchedule() {
-  const tourBar = `
-    <div class="filter-bar">
-      ${['all','pga','liv','dpw','lpga'].map(t => 
-        `<button class="filter-btn ${schedFilter===t?'active':''}" onclick="schedFilter='${t}';renderApp()">${t==='all'?'All':TOURS.find(x=>x.id===t)?.short||t}</button>`
-      ).join('')}
-    </div>`;
+  let html = '<div class="filter-bar">';
+  ['all','pga','dpw','lpga'].forEach(function(t) {
+    html += '<button class="filter-btn ' + (schedFilter===t?'active':'') + '" onclick="schedFilter=\'' + t + '\';renderApp()">' + (t==='all'?'All':TOURS.find(function(x){return x.id===t})?.short||t) + '</button>';
+  });
+  html += '</div>';
 
-  if (scheduleLoading) {
-    return tourBar + `<div style="text-align:center;padding:40px 20px">
-      <div style="font-size:14px;font-weight:700;color:var(--text-dim)">Loading schedule...</div>
-    </div>`;
-  }
-
+  if (scheduleLoading) return html + '<div style="text-align:center;padding:40px 20px"><div style="font-size:14px;font-weight:700;color:var(--text-dim)">Loading schedule...</div></div>';
   if (scheduleError || scheduleData.length === 0) {
     if (!scheduleFetched) fetchESPNSchedule();
-    return tourBar + `<div style="text-align:center;padding:40px 20px">
-      <div style="font-size:20px;margin-bottom:10px">📅</div>
-      <div style="font-size:13px;color:var(--text-muted)">${scheduleError || 'Loading schedule...'}</div>
-      <button class="filter-btn" style="margin-top:14px;color:var(--green);border:1px solid var(--green)" onclick="scheduleFetched=false;fetchESPNSchedule()">Refresh</button>
-    </div>`;
+    return html + '<div style="text-align:center;padding:40px 20px"><div style="font-size:13px;color:var(--text-muted)">' + (scheduleError || 'Loading schedule...') + '</div></div>';
   }
 
-  const filtered = schedFilter === 'all' ? scheduleData : scheduleData.filter(s => s.tour === schedFilter);
-  
-  if (filtered.length === 0) {
-    return tourBar + `<div style="text-align:center;padding:40px 20px;font-size:13px;color:var(--text-muted)">No events found for this tour</div>`;
-  }
+  const filtered = schedFilter === 'all' ? scheduleData : scheduleData.filter(function(s) { return s.tour === schedFilter; });
+  if (filtered.length === 0) return html + '<div style="text-align:center;padding:40px 20px;font-size:13px;color:var(--text-muted)">No events found</div>';
 
-  return tourBar + filtered.map(s => `
-    <div class="sched-card ${s.live?'live':''}">
-      <div style="display:flex;justify-content:space-between;align-items:flex-start">
-        <div>
-          <div style="display:flex;align-items:center;gap:8px">
-            <span style="font-size:16px;font-weight:800">${s.event}</span>
-            ${s.live?'<span class="badge badge-live">LIVE</span>':''}
-            ${s.major?'<span class="badge badge-major">MAJOR</span>':''}
-          </div>
-          <div style="font-size:12px;color:var(--text-muted);margin-top:3px">${s.course}</div>
-          <div style="font-size:11px;color:var(--g700);margin-top:2px">${s.dates} • ${TOURS.find(x=>x.id===s.tour)?.name||''}</div>
-        </div>
-        <div style="text-align:right">
-          ${s.purse ? `<div style="font-size:13px;font-weight:700">${s.purse}</div>` : ''}
-          ${s.tv ? `<div style="font-size:10px;color:var(--text-muted);margin-top:3px">${s.tv}</div>` : ''}
-        </div>
-      </div>
-    </div>
-  `).join('');
-}
-
-// ============================================
-// RENDER PLAYERS TAB
-// ============================================
-let selectedPlayerIdx = null;
-
-function renderPlayers() {
-  // Build from leaderboard if we have data
-  if (playerProfiles.length === 0) buildPlayerProfiles();
-  
-  const players = playerProfiles.length > 0 ? playerProfiles : [];
-  
-  if (players.length === 0) {
-    return `<div style="text-align:center;padding:40px 20px">
-      <div style="font-size:20px;margin-bottom:10px">🏌️</div>
-      <div style="font-size:14px;font-weight:700;color:var(--text-dim)">Player profiles</div>
-      <div style="font-size:12px;color:var(--text-muted);margin-top:6px">Player cards populate from the current tournament leaderboard</div>
-    </div>`;
-  }
-
-  if (selectedPlayerIdx !== null && selectedPlayerIdx < players.length) {
-    const p = players[selectedPlayerIdx];
-    const rounds = [p.r1, p.r2, p.r3, p.r4].filter(r => r !== null && r !== undefined);
-    return `
-      <button class="filter-btn" style="margin:10px 0;color:var(--green)" onclick="selectedPlayerIdx=null;renderApp()">← All Players</button>
-      <div class="profile-header">
-        <div style="font-size:24px;margin-bottom:4px">${p.c}</div>
-        <div style="font-size:22px;font-weight:900;color:#fff">${p.name}</div>
-        <div style="font-size:12px;color:rgba(255,255,255,0.7);margin-top:4px">${TOURNAMENT?.name || 'Current Event'} • Position: ${p.pos}</div>
-      </div>
-      ${rounds.length > 0 ? `
-        <div style="font-size:12px;font-weight:700;margin-bottom:8px">Round Scores</div>
-        <div style="display:flex;gap:12px;margin-bottom:14px">
-          ${rounds.map((r,i) => `
-            <div class="stat-box" style="flex:1;text-align:center">
-              <div class="stat-label">R${i+1}</div>
-              <div class="stat-value">${r}</div>
-            </div>
-          `).join('')}
-          <div class="stat-box" style="flex:1;text-align:center;border-color:var(--green)">
-            <div class="stat-label">TOTAL</div>
-            <div class="stat-value ${scoreClass(p.score)}">${p.score}</div>
-          </div>
-        </div>
-      ` : `
-        <div style="padding:16px;background:var(--card-bg);border:1px solid var(--card-border);border-radius:10px;margin-bottom:14px;text-align:center">
-          <div style="font-size:13px;color:var(--text-muted)">Tee time: ${p.thru || 'TBD'}</div>
-        </div>
-      `}
-    `;
-  }
-
-  return `
-    <div class="section-label">${TOURNAMENT?.name ? `${TOURNAMENT.name} — FIELD` : 'PLAYERS'}</div>
-    ${players.map((p,i) => {
-      let scoreClass = '';
-      if (p.score?.startsWith?.('+')) scoreClass = 'score-over';
-      else if (p.score === 'E') scoreClass = 'score-even';
-      else if (p.score) scoreClass = 'score-under';
-      return `
-      <div class="card" onclick="selectedPlayerIdx=${i};renderApp()">
-        <div style="display:flex;align-items:center;justify-content:space-between">
-          <div style="display:flex;align-items:center;gap:10px">
-            <span style="font-size:20px">${p.c}</span>
-            <div>
-              <div style="font-size:15px;font-weight:700">${p.name}</div>
-              <div style="font-size:11px;color:var(--text-muted);margin-top:2px">${p.pos ? '#' + p.pos : ''} ${p.thru ? '• ' + p.thru : ''}</div>
-            </div>
-          </div>
-          <div class="lb-total ${scoreClass}" style="font-size:16px">${p.score || '—'}</div>
-        </div>
-      </div>`;
-    }).join('')}
-  `;
+  filtered.forEach(function(s) {
+    html += '<div class="sched-card ' + (s.live?'live':'') + '"><div style="display:flex;justify-content:space-between;align-items:flex-start"><div><div style="display:flex;align-items:center;gap:8px"><span style="font-size:16px;font-weight:800">' + s.event + '</span>' + (s.live?'<span class="badge badge-live">LIVE</span>':'') + (s.major?'<span class="badge badge-major">MAJOR</span>':'') + '</div><div style="font-size:12px;color:var(--text-muted);margin-top:3px">' + s.course + '</div><div style="font-size:11px;color:var(--g700);margin-top:2px">' + s.dates + ' &middot; ' + (TOURS.find(function(x){return x.id===s.tour})?.name||'') + '</div></div><div style="text-align:right">' + (s.purse ? '<div style="font-size:13px;font-weight:700">' + s.purse + '</div>' : '') + (s.tv ? '<div style="font-size:10px;color:var(--text-muted);margin-top:3px">' + s.tv + '</div>' : '') + '</div></div></div>';
+  });
+  return html;
 }
 
 // ============================================
@@ -2399,24 +1580,22 @@ function renderPlayers() {
 // ============================================
 let _renderTimeout = null;
 function renderApp() {
-  // Debounce — prevent multiple rapid re-renders from parallel fetches
   if (_renderTimeout) clearTimeout(_renderTimeout);
   _renderTimeout = setTimeout(_doRender, 16);
 }
+
 function _doRender() {
   const app = document.getElementById('app');
   if (!app) return;
   let html = '<div style="padding:10px 0">';
 
-  // Update watch bar
   const wb = document.getElementById('watchBar');
-  if (!wb) return;
-  if (TOURNAMENT && TOURNAMENT.broadcast && TOURNAMENT.status && !TOURNAMENT.status.toLowerCase().includes('scheduled')) {
-    wb.style.display = 'flex';
-    document.getElementById('watchChannel').textContent = TOURNAMENT.broadcast;
-    document.getElementById('watchEvent').textContent = `— ${TOURNAMENT.name} ${TOURNAMENT.status}`;
-  } else {
-    wb.style.display = 'none';
+  if (wb) {
+    if (TOURNAMENT && TOURNAMENT.broadcast && TOURNAMENT.status && !TOURNAMENT.status.toLowerCase().includes('scheduled')) {
+      wb.style.display = 'flex';
+      document.getElementById('watchChannel').textContent = TOURNAMENT.broadcast;
+      document.getElementById('watchEvent').textContent = '- ' + TOURNAMENT.name + ' ' + TOURNAMENT.status;
+    } else wb.style.display = 'none';
   }
 
   switch(currentTab) {
@@ -2424,98 +1603,61 @@ function _doRender() {
     case 1: html += renderScores(); break;
     case 2: html += renderNews(); break;
     case 3: html += renderInsights(); break;
-    case 4: html += renderStandings(); break;
-    case 5: html += renderSchedule(); break;
+    case 4: html += renderBlog(); break;
+    case 5: html += renderStandings(); break;
+    case 6: html += renderSchedule(); break;
   }
 
   html += '</div>';
   app.innerHTML = html;
-  // Re-render any Twitter embeds after DOM update
-  if (window.twttr?.widgets) window.twttr.widgets.load();
+
+  // Bind article click handlers after DOM update
+  document.querySelectorAll('.article-card').forEach(function(el) {
+    // Find the article data for this card
+    const titleEl = el.querySelector('.article-card-title');
+    if (!titleEl) return;
+    const title = titleEl.textContent;
+    const allArticles = newsArticles.concat(blogArticles).concat(bettingArticles);
+    const match = allArticles.find(function(a) { return a.title === title; });
+    if (match) el._article = match;
+  });
+
+  // Bind home story clicks
+  app.querySelectorAll('[onclick*="openArticleDetail"]').forEach(function(el) {
+    // Already bound via inline - handled by _article property
+  });
 }
 
 // ============================================
 // INIT
 // ============================================
+fetchESPNScores(currentScoresTour);
+fetchAllArticles();
+fetchESPNSchedule();
+startAutoRefresh();
 
-// Check for article URL (/article/slug)
+// URL routing for /article/slug
 const pathMatch = window.location.pathname.match(/^\/article\/(.+)/);
 if (pathMatch) {
-  const slug = pathMatch[1];
-  currentTab = 2; // News tab
-  expandedCard = 'supabase-article';
-  (async () => {
+  const slug = decodeURIComponent(pathMatch[1]);
+  currentTab = 2;
+  (async function() {
     try {
       const { data } = await sb.from('articles').select('*').eq('slug', slug).limit(1);
       if (data?.[0]) {
-        recapArticle = { title: data[0].title, body: data[0].body, tournament: data[0].tag || 'NEWS' };
-        expandedCard = 'recap';
+        currentArticle = data[0];
+        renderNav();
         renderApp();
       }
-    } catch(e) {}
+    } catch(e) { console.error('Article load error:', e); }
   })();
-}
-
-// Check for recap deep link (?recap=slug)
-const urlParams = new URLSearchParams(window.location.search);
-const recapSlug = urlParams.get('recap');
-if (recapSlug) {
-  currentTab = 2;
-  expandedCard = 'recap';
-  (async () => {
-    try {
-      const res = await fetch('/.netlify/functions/get-recap');
-      if (res.ok) {
-        const data = await res.json();
-        if (data.recap) {
-          recapArticle = data.recap;
-          renderApp();
-        }
-      }
-    } catch(e) {}
-    // Also try generating from scratch if no stored recap
-    if (!recapArticle) {
-      try {
-        const res = await fetch('/.netlify/functions/auto-recap', { method: 'POST' });
-        if (res.ok) {
-          const rRes = await fetch('/.netlify/functions/get-recap');
-          if (rRes.ok) {
-            const data = await rRes.json();
-            if (data.recap) { recapArticle = data.recap; renderApp(); }
-          }
-        }
-      } catch(e) {}
-    }
-  })();
-}
-
-// Check for article deep link (?article=slug)
-const articleSlug = urlParams.get('article');
-if (articleSlug) {
-  // Switch to News tab and find matching article after news loads
-  currentTab = 2;
-  const waitForArticle = setInterval(() => {
-    if (!newsFetched || newsData.length === 0) return;
-    clearInterval(waitForArticle);
-    // Find article matching slug
-    const idx = newsData.findIndex(n => {
-      const s = n.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 60);
-      return s === articleSlug;
-    });
-    if (idx >= 0) {
-      expandedCard = 100 + idx;
-      if (!articleCache[`article_${idx}`]) generateArticle(idx);
-      renderApp();
-    }
-  }, 200);
 }
 
 renderNav();
 renderApp();
 
-// Register PWA service worker
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('/sw.js').catch(() => {});
+  navigator.serviceWorker.register('/sw.js').catch(function() {});
 }
 </script>
 </body>

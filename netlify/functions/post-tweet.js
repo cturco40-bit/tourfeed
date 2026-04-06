@@ -133,7 +133,9 @@ exports.handler = async (event) => {
   }
 
   try {
-    const { text, image } = JSON.parse(event.body);
+    const parsed = JSON.parse(event.body);
+    const text = parsed.text;
+    const image = parsed.image || parsed.image_url;
     if (!text) {
       return { statusCode: 400, headers, body: JSON.stringify({ error: 'Missing tweet text' }) };
     }

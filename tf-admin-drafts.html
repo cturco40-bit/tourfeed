@@ -3,54 +3,132 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <script async src="https://platform.twitter.com/widgets.js" charset="utf-8"></script>
   <meta name="robots" content="noindex, nofollow">
   <title>TF Drafts</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
   <style>
     * { margin:0; padding:0; box-sizing:border-box; }
-    body { font-family:'DM Sans',-apple-system,sans-serif; background:#111927; color:#fff; min-height:100vh; }
+    body { font-family:'DM Sans',-apple-system,sans-serif; background:#111927; color:#fff; min-height:100vh; -webkit-tap-highlight-color:transparent; }
+
+    /* LOGIN */
     .login { display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:100vh; padding:20px; }
-    .login input { padding:12px 16px; border-radius:8px; border:1px solid #243044; background:#1B2538; color:#fff; font-size:14px; width:280px; font-family:inherit; outline:none; }
+    .login input { padding:14px 18px; border-radius:10px; border:1px solid #243044; background:#1B2538; color:#fff; font-size:16px; width:300px; font-family:inherit; outline:none; }
     .login input:focus { border-color:#2D8F6F; }
-    .login button { margin-top:10px; padding:10px 24px; background:#2D8F6F; border:none; border-radius:8px; color:#fff; font-weight:700; font-size:14px; cursor:pointer; font-family:inherit; }
-    .container { max-width:600px; margin:0 auto; padding:20px; display:none; }
-    .header { display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; padding-bottom:14px; border-bottom:1px solid rgba(255,255,255,0.06); }
-    .title { font-size:18px; font-weight:800; }
-    .count { font-size:13px; color:#868E96; }
-    .refresh { background:none; border:1px solid #243044; border-radius:6px; padding:6px 14px; color:#2D8F6F; font-size:12px; font-weight:700; cursor:pointer; font-family:inherit; }
-    .draft { border-bottom:1px solid rgba(255,255,255,0.04); padding:16px 0; }
-    .draft:last-child { border-bottom:none; }
-    .draft-source { font-size:10px; font-weight:700; letter-spacing:1.5px; color:#868E96; margin-bottom:6px; text-transform:uppercase; }
-    .draft-text { font-size:14px; line-height:1.6; color:#CED4DA; white-space:pre-wrap; word-break:break-word; }
-    .draft-time { font-size:11px; color:#495057; margin-top:6px; }
-    .draft-actions { display:flex; gap:8px; margin-top:10px; }
-    .btn-approve { padding:8px 20px; background:#2D8F6F; border:none; border-radius:6px; color:#fff; font-weight:700; font-size:12px; cursor:pointer; font-family:inherit; }
-    .btn-reject { padding:8px 20px; background:transparent; border:1px solid #495057; border-radius:6px; color:#868E96; font-weight:700; font-size:12px; cursor:pointer; font-family:inherit; }
-    .btn-approve:hover { background:#34A37E; }
-    .btn-reject:hover { border-color:#FF6B6B; color:#FF6B6B; }
-    .draft-edit { width:100%; background:#1B2538; border:1px solid #243044; border-radius:6px; color:#CED4DA; font-size:14px; line-height:1.6; padding:10px 12px; font-family:inherit; resize:vertical; outline:none; }
+    .login button { margin-top:12px; padding:14px 32px; background:#2D8F6F; border:none; border-radius:10px; color:#fff; font-weight:700; font-size:16px; cursor:pointer; font-family:inherit; }
+
+    /* CONTAINER */
+    .container { max-width:640px; margin:0 auto; padding:16px; display:none; }
+
+    /* HEADER */
+    .page-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; padding-bottom:12px; border-bottom:1px solid rgba(255,255,255,0.06); }
+    .page-title { font-size:18px; font-weight:800; }
+    .page-count { font-size:12px; color:#868E96; margin-top:2px; }
+    .header-actions { display:flex; gap:8px; }
+    .btn-sm { background:none; border:1px solid #243044; border-radius:8px; padding:8px 14px; color:#2D8F6F; font-size:12px; font-weight:700; cursor:pointer; font-family:inherit; }
+    .btn-sm:hover { border-color:#2D8F6F; }
+
+    /* FILTERS */
+    .filters { display:flex; gap:6px; margin-bottom:16px; flex-wrap:wrap; }
+    .filter-pill { padding:6px 12px; border-radius:20px; border:1px solid rgba(255,255,255,0.08); background:transparent; color:#868E96; font-size:11px; font-weight:600; cursor:pointer; font-family:inherit; transition:all 0.15s; }
+    .filter-pill:hover { border-color:#2D8F6F; color:#2D8F6F; }
+    .filter-pill.active { background:#2D8F6F; color:#fff; border-color:#2D8F6F; }
+
+    /* BATCH BAR */
+    .batch-bar { display:none; position:sticky; top:0; z-index:50; background:#1B2538; border:1px solid rgba(45,143,111,0.3); border-radius:10px; padding:12px 16px; margin-bottom:12px; }
+    .batch-bar.show { display:flex; align-items:center; justify-content:space-between; }
+    .batch-count { font-size:13px; font-weight:700; }
+    .batch-actions { display:flex; gap:8px; }
+    .btn-batch { padding:10px 20px; border:none; border-radius:8px; font-weight:700; font-size:13px; cursor:pointer; font-family:inherit; }
+    .btn-batch-approve { background:#2D8F6F; color:#fff; }
+    .btn-batch-cancel { background:transparent; border:1px solid #495057; color:#868E96; }
+
+    /* DRAFT CARD */
+    .draft { background:#1B2538; border:1px solid rgba(255,255,255,0.06); border-radius:12px; padding:16px; margin-bottom:12px; transition:opacity 0.3s; }
+    .draft.rejected { opacity:0.2; pointer-events:none; }
+    .draft-top { display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; }
+    .draft-type { font-size:10px; font-weight:700; letter-spacing:1.5px; color:#868E96; text-transform:uppercase; }
+    .draft-type-tweet { color:#4A90D9; }
+    .draft-type-article { color:#2D8F6F; }
+    .draft-type-betting { color:#D4A853; }
+    .draft-time { font-size:10px; color:#495057; }
+    .draft-select { width:22px; height:22px; border-radius:6px; border:2px solid #495057; cursor:pointer; display:flex; align-items:center; justify-content:center; flex-shrink:0; margin-right:12px; }
+    .draft-select.checked { background:#2D8F6F; border-color:#2D8F6F; }
+    .draft-select.checked::after { content:''; display:block; width:10px; height:6px; border-left:2px solid #fff; border-bottom:2px solid #fff; transform:rotate(-45deg); margin-top:-2px; }
+
+    /* IMAGE PREVIEW */
+    .draft-image { width:100%; border-radius:8px; margin-bottom:10px; max-height:300px; object-fit:cover; }
+
+    /* ARTICLE PREVIEW */
+    .draft-article-title { font-size:16px; font-weight:800; color:#fff; margin-bottom:6px; line-height:1.3; }
+    .draft-article-excerpt { font-size:13px; color:#CED4DA; line-height:1.6; display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden; }
+
+    /* TWEET PREVIEW */
+    .tweet-preview { background:#0F1923; border:1px solid rgba(255,255,255,0.06); border-radius:12px; padding:14px; margin-bottom:10px; }
+    .tweet-avatar { width:36px; height:36px; border-radius:50%; background:linear-gradient(135deg,#2D8F6F,#1B2538); display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:900; color:#D4A853; flex-shrink:0; }
+    .tweet-header { display:flex; align-items:center; gap:8px; margin-bottom:8px; }
+    .tweet-name { font-size:14px; font-weight:700; color:#fff; }
+    .tweet-handle { font-size:12px; color:#495057; }
+    .tweet-body { font-size:14px; color:#CED4DA; line-height:1.6; white-space:pre-wrap; word-break:break-word; }
+    .tweet-link { display:block; margin-top:8px; padding:8px 10px; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.06); border-radius:8px; font-size:11px; color:#4A90D9; text-decoration:none; }
+    .tweet-char { font-size:11px; color:#495057; text-align:right; margin-top:4px; }
+    .tweet-char.over { color:#FF6B6B; }
+
+    /* EDIT */
+    .draft-edit { width:100%; background:#0F1923; border:1px solid rgba(255,255,255,0.06); border-radius:8px; color:#CED4DA; font-size:14px; line-height:1.6; padding:12px 14px; font-family:inherit; resize:vertical; outline:none; display:none; }
     .draft-edit:focus { border-color:#2D8F6F; }
-    .empty { text-align:center; padding:60px 20px; color:#495057; font-size:14px; }
-    .status { padding:8px 12px; border-radius:6px; margin-top:8px; font-size:12px; font-weight:600; }
+    .draft-edit.show { display:block; }
+
+    /* ACTIONS */
+    .draft-actions { display:flex; gap:8px; margin-top:12px; }
+    .btn-action { padding:12px 24px; border:none; border-radius:10px; font-weight:700; font-size:14px; cursor:pointer; font-family:inherit; min-height:48px; min-width:100px; }
+    .btn-approve { background:#2D8F6F; color:#fff; }
+    .btn-approve:hover { background:#34A37E; }
+    .btn-reject { background:transparent; border:1px solid #495057; color:#868E96; }
+    .btn-reject:hover { border-color:#FF6B6B; color:#FF6B6B; }
+    .btn-edit { background:transparent; border:1px solid #495057; color:#868E96; }
+    .btn-edit:hover { border-color:#4A90D9; color:#4A90D9; }
+
+    /* STATUS */
+    .status { padding:10px 14px; border-radius:8px; margin-top:10px; font-size:13px; font-weight:600; }
     .status-ok { background:rgba(45,212,160,0.1); color:#2DD4A0; }
     .status-err { background:rgba(255,107,107,0.1); color:#FF6B6B; }
+    .status-info { background:rgba(74,144,217,0.1); color:#4A90D9; }
+
+    /* EMPTY */
+    .empty { text-align:center; padding:60px 20px; color:#495057; font-size:14px; }
+
+    /* RESPONSIVE */
+    @media(max-width:600px) {
+      .btn-action { padding:14px 20px; font-size:13px; flex:1; }
+      .draft-actions { flex-wrap:wrap; }
+    }
   </style>
-  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
 </head>
 <body>
   <div class="login" id="loginScreen">
-    <div style="font-size:20px;font-weight:900;margin-bottom:20px"><span style="color:#fff">TOUR</span><span style="color:#D4A853">FEED</span></div>
-    <input type="password" id="passInput" placeholder="Enter access code" onkeydown="if(event.key==='Enter')doLogin()">
+    <div style="font-size:22px;font-weight:900;margin-bottom:24px"><span style="color:#fff">TOUR</span><span style="color:#D4A853">FEED</span></div>
+    <input type="password" id="passInput" placeholder="Access code" onkeydown="if(event.key==='Enter')doLogin()">
     <button onclick="doLogin()">Access Drafts</button>
   </div>
 
   <div class="container" id="main">
-    <div class="header">
+    <div class="page-header">
       <div>
-        <div class="title">Tweet Drafts</div>
-        <div class="count" id="draftCount">Loading...</div>
+        <div class="page-title">Content Drafts</div>
+        <div class="page-count" id="draftCount">Loading...</div>
       </div>
-      <button class="refresh" onclick="loadDrafts()">Refresh</button>
+      <div class="header-actions">
+        <button class="btn-sm" onclick="loadDrafts()">Refresh</button>
+      </div>
+    </div>
+
+    <div class="filters" id="filters"></div>
+    <div class="batch-bar" id="batchBar">
+      <div class="batch-count"><span id="batchCount">0</span> selected</div>
+      <div class="batch-actions">
+        <button class="btn-batch btn-batch-cancel" onclick="clearSelection()">Cancel</button>
+        <button class="btn-batch btn-batch-approve" onclick="batchApprove()">Approve All</button>
+      </div>
     </div>
     <div id="draftList"></div>
   </div>
@@ -60,140 +138,246 @@
     const SUPABASE_URL = 'https://yumahmnoltvbiadjefxw.supabase.co';
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl1bWFobW5vbHR2YmlhZGplZnh3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUzOTY0NDAsImV4cCI6MjA5MDk3MjQ0MH0.FAXp2t0zaHlm1W7aaut72btMilrYPy33XO3p8MfyYlo';
 
-    // Store loaded drafts for access in approve/reject
     let loadedDrafts = {};
+    let selectedIds = new Set();
+    let activeFilter = 'all';
+    let autoRefreshTimer = null;
 
-    // Track handled drafts in localStorage so they never come back
     function getHandledIds() {
       try { return JSON.parse(localStorage.getItem('tf_handled') || '[]'); } catch(e) { return []; }
     }
     function markHandled(id) {
       const ids = getHandledIds();
       ids.push(id);
-      // Keep last 200
-      localStorage.setItem('tf_handled', JSON.stringify(ids.slice(-200)));
+      localStorage.setItem('tf_handled', JSON.stringify(ids.slice(-500)));
     }
-    function isHandled(id) {
-      return getHandledIds().includes(id);
-    }
+    function isHandled(id) { return getHandledIds().includes(id); }
 
     function doLogin() {
-      const code = document.getElementById('passInput').value;
-      if (code === ACCESS_CODE) {
+      if (document.getElementById('passInput').value === ACCESS_CODE) {
         document.getElementById('loginScreen').style.display = 'none';
         document.getElementById('main').style.display = 'block';
         loadDrafts();
+        startAutoRefresh();
       } else {
         document.getElementById('passInput').style.borderColor = '#FF6B6B';
       }
     }
 
+    function startAutoRefresh() {
+      if (autoRefreshTimer) clearInterval(autoRefreshTimer);
+      autoRefreshTimer = setInterval(loadDrafts, 30000);
+    }
+
+    function typeClass(type) {
+      if (!type) return '';
+      if (type.includes('tweet')) return 'draft-type-tweet';
+      if (type.includes('article')) return 'draft-type-article';
+      if (type.includes('betting')) return 'draft-type-betting';
+      return '';
+    }
+
+    function typeLabel(type) {
+      if (!type) return 'DRAFT';
+      return type.replace(/_/g, ' ').toUpperCase();
+    }
+
+    function isTweetType(type) {
+      return type && (type.includes('tweet') || type === 'hot_take' || type === 'stat_card');
+    }
+
+    function isArticleType(type) {
+      return type && type.includes('article');
+    }
+
+    function escHtml(str) {
+      if (!str) return '';
+      return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
+    }
+
     async function loadDrafts() {
       const list = document.getElementById('draftList');
       const count = document.getElementById('draftCount');
-      list.innerHTML = '<div class="empty">Loading drafts...</div>';
 
       try {
-        const res = await fetch('/.netlify/functions/draft-tweet');
-        const data = await res.json();
-        const drafts = (data.drafts || []).filter(d => !isHandled(d.id));
+        // Fetch from Supabase directly
+        const res = await fetch(SUPABASE_URL + '/rest/v1/content_drafts?status=eq.pending&order=created_at.desc&limit=50', {
+          headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + SUPABASE_ANON_KEY }
+        });
 
-        // Store drafts for access in approveDraft
-        drafts.forEach(d => { loadedDrafts[d.id] = d; });
+        let drafts = [];
+        if (res.ok) {
+          drafts = await res.json();
+        } else {
+          // Fallback to Netlify function
+          const fallback = await fetch('/.netlify/functions/draft-tweet');
+          const fallbackData = await fallback.json();
+          drafts = fallbackData.drafts || [];
+        }
 
-        count.textContent = drafts.length + ' pending';
-        document.title = drafts.length > 0 ? `(${drafts.length}) TF Drafts` : 'TF Drafts';
+        drafts = drafts.filter(function(d) { return !isHandled(d.id); });
 
-        if (drafts.length === 0) {
-          list.innerHTML = '<div class="empty">No pending drafts. Tweets are being generated by the cron jobs and will appear here for approval.</div>';
+        // Store for actions
+        loadedDrafts = {};
+        drafts.forEach(function(d) { loadedDrafts[d.id] = d; });
+
+        // Build type filter pills
+        const types = new Set(['all']);
+        drafts.forEach(function(d) { if (d.type) types.add(d.type); });
+        const filtersEl = document.getElementById('filters');
+        filtersEl.innerHTML = Array.from(types).map(function(t) {
+          const label = t === 'all' ? 'All (' + drafts.length + ')' : typeLabel(t) + ' (' + drafts.filter(function(d){return d.type===t}).length + ')';
+          return '<button class="filter-pill ' + (activeFilter===t?'active':'') + '" onclick="setFilter(\'' + t + '\')">' + label + '</button>';
+        }).join('');
+
+        // Apply filter
+        const filtered = activeFilter === 'all' ? drafts : drafts.filter(function(d) { return d.type === activeFilter; });
+
+        count.textContent = filtered.length + ' pending' + (drafts.length !== filtered.length ? ' (' + drafts.length + ' total)' : '');
+        document.title = drafts.length > 0 ? '(' + drafts.length + ') TF Drafts' : 'TF Drafts';
+
+        if (filtered.length === 0) {
+          list.innerHTML = '<div class="empty">No pending drafts.' + (drafts.length > 0 ? ' Try a different filter.' : '') + '</div>';
           return;
         }
 
-        list.innerHTML = drafts.map(d => {
+        list.innerHTML = filtered.map(function(d) {
           const time = new Date(d.created_at).toLocaleString();
-          // Extract twitter URL from draft text for preview
-          const tweetUrlMatch = d.body.match(/https?:\/\/twitter\.com\/\w+\/status\/\d+/);
-          const tweetEmbed = tweetUrlMatch
-            ? '<div style="margin-bottom:10px;padding:10px;background:#1B2538;border-radius:8px;border-left:3px solid #4A90D9"><div style="font-size:10px;color:#4A90D9;margin-bottom:4px">QUOTING</div><a href="' + tweetUrlMatch[0] + '" target="_blank" style="font-size:12px;color:#868E96;word-break:break-all">' + tweetUrlMatch[0] + '</a><blockquote class="twitter-tweet" data-theme="dark" data-conversation="none"><a href="' + tweetUrlMatch[0] + '"></a></blockquote></div>'
-            : '';
-          const imagePreview = d.image_url
-            ? '<div style="margin-bottom:10px"><img src="' + d.image_url + '" style="width:100%;border-radius:8px;max-height:300px;object-fit:cover" onerror="this.style.display=\'none\'"></div>'
-            : '';
-          const titlePreview = d.title
-            ? '<div style="font-size:15px;font-weight:800;color:#fff;margin-bottom:8px">' + escHtml(d.title) + '</div>'
-            : '';
-          return `
-            <div class="draft" id="draft-${d.id}">
-              <div class="draft-source">${d.type || d.source_event || 'auto'}</div>
-              ${imagePreview}
-              ${titlePreview}
-              ${tweetEmbed}
-              <div style="font-size:10px;color:#495057;margin-bottom:4px">YOUR TWEET</div>
-              <textarea class="draft-edit" id="edit-${d.id}" rows="4">${d.body}</textarea>
-              <div style="font-size:11px;color:#495057;margin-top:4px;text-align:right"><span id="chars-${d.id}">${d.body.length}</span>/280</div>
-              <div class="draft-time">${time}</div>
-              <div class="draft-actions">
-                <button class="btn-approve" onclick="approveDraft(${d.id})">Approve & Post</button>
-                <button class="btn-reject" onclick="rejectDraft(${d.id})">Reject</button>
-              </div>
-            </div>
-          `;
+          const isTweet = isTweetType(d.type);
+          const isArticle = isArticleType(d.type);
+          const isSelected = selectedIds.has(d.id);
+
+          let content = '';
+
+          // Image preview
+          if (d.image_url) {
+            content += '<img src="' + d.image_url + '" class="draft-image" alt="" onerror="this.style.display=\'none\'">';
+          }
+
+          if (isArticle) {
+            // Article preview
+            if (d.title) content += '<div class="draft-article-title">' + escHtml(d.title) + '</div>';
+            const excerpt = (d.body || '').replace(/<[^>]+>/g, '').slice(0, 200);
+            content += '<div class="draft-article-excerpt">' + escHtml(excerpt) + '</div>';
+          } else {
+            // Tweet preview
+            content += '<div class="tweet-preview">';
+            content += '<div class="tweet-header"><div class="tweet-avatar">TF</div><div><div class="tweet-name">TourFeed</div><div class="tweet-handle">@TourFeedGolf</div></div></div>';
+            content += '<div class="tweet-body">' + escHtml(d.body) + '</div>';
+            if (d.article_url) content += '<a class="tweet-link" href="' + d.article_url + '" target="_blank">' + d.article_url + '</a>';
+            content += '</div>';
+            content += '<div class="tweet-char ' + ((d.body||'').length > 280 ? 'over' : '') + '">' + (d.body||'').length + '/280</div>';
+          }
+
+          return '<div class="draft" id="draft-' + d.id + '">' +
+            '<div class="draft-top">' +
+              '<div style="display:flex;align-items:center;gap:8px">' +
+                (isTweet ? '<div class="draft-select ' + (isSelected?'checked':'') + '" onclick="toggleSelect(' + d.id + ')"></div>' : '') +
+                '<span class="draft-type ' + typeClass(d.type) + '">' + typeLabel(d.type) + '</span>' +
+              '</div>' +
+              '<span class="draft-time">' + time + '</span>' +
+            '</div>' +
+            content +
+            '<textarea class="draft-edit" id="edit-' + d.id + '" rows="4">' + (isArticle ? (d.body || '') : (d.body || '')) + '</textarea>' +
+            '<div class="draft-actions" id="actions-' + d.id + '">' +
+              '<button class="btn-action btn-approve" onclick="approveDraft(' + d.id + ')">Approve</button>' +
+              '<button class="btn-action btn-edit" onclick="toggleEdit(' + d.id + ')">Edit</button>' +
+              '<button class="btn-action btn-reject" onclick="rejectDraft(' + d.id + ')">Reject</button>' +
+            '</div>' +
+          '</div>';
         }).join('');
 
-        // Load Twitter embeds
-        if (window.twttr && window.twttr.widgets) window.twttr.widgets.load();
-
-        // Add character counters
-        drafts.forEach(d => {
-          const textarea = document.getElementById('edit-' + d.id);
-          const counter = document.getElementById('chars-' + d.id);
-          if (textarea && counter) {
-            textarea.addEventListener('input', () => {
-              const len = textarea.value.length;
-              counter.textContent = len;
-              counter.style.color = len > 280 ? '#FF6B6B' : '#495057';
-            });
-          }
-        });
+        updateBatchBar();
       } catch(e) {
-        list.innerHTML = '<div class="empty">Error loading drafts</div>';
+        console.error('Load error:', e);
+        list.innerHTML = '<div class="empty">Error loading drafts: ' + e.message + '</div>';
       }
     }
 
-    async function approveDraft(id) {
+    function setFilter(type) {
+      activeFilter = type;
+      loadDrafts();
+    }
+
+    function toggleSelect(id) {
+      if (selectedIds.has(id)) selectedIds.delete(id);
+      else selectedIds.add(id);
+      const el = document.querySelector('#draft-' + id + ' .draft-select');
+      if (el) el.classList.toggle('checked');
+      updateBatchBar();
+    }
+
+    function clearSelection() {
+      selectedIds.clear();
+      document.querySelectorAll('.draft-select.checked').forEach(function(el) { el.classList.remove('checked'); });
+      updateBatchBar();
+    }
+
+    function updateBatchBar() {
+      const bar = document.getElementById('batchBar');
+      const countEl = document.getElementById('batchCount');
+      if (selectedIds.size > 0) {
+        bar.classList.add('show');
+        countEl.textContent = selectedIds.size;
+      } else {
+        bar.classList.remove('show');
+      }
+    }
+
+    async function batchApprove() {
+      const ids = Array.from(selectedIds);
+      if (ids.length === 0) return;
+      const bar = document.getElementById('batchBar');
+      bar.innerHTML = '<div class="status status-info">Approving ' + ids.length + ' drafts...</div>';
+
+      let success = 0;
+      for (const id of ids) {
+        try {
+          await approveDraft(id, true);
+          success++;
+        } catch(e) { console.error('Batch approve error:', e); }
+      }
+
+      selectedIds.clear();
+      bar.classList.remove('show');
+      bar.innerHTML = '<div class="batch-count"><span id="batchCount">0</span> selected</div><div class="batch-actions"><button class="btn-batch btn-batch-cancel" onclick="clearSelection()">Cancel</button><button class="btn-batch btn-batch-approve" onclick="batchApprove()">Approve All</button></div>';
+
+      setTimeout(loadDrafts, 500);
+    }
+
+    function toggleEdit(id) {
+      const textarea = document.getElementById('edit-' + id);
+      textarea.classList.toggle('show');
+      if (textarea.classList.contains('show')) textarea.focus();
+    }
+
+    async function approveDraft(id, batch) {
       const el = document.getElementById('draft-' + id);
       const textarea = document.getElementById('edit-' + id);
       const editedText = textarea ? textarea.value.trim() : '';
-      const actions = el.querySelector('.draft-actions');
+      const actions = document.getElementById('actions-' + id);
       const draft = loadedDrafts[id] || {};
-      const isArticle = (draft.type || '').startsWith('article');
+      const isArticle = isArticleType(draft.type);
 
-      if (!isArticle) {
-        // Tweet draft — enforce character limit
-        if (editedText.length > 280) {
-          actions.innerHTML = '<div class="status status-err">Over 280 characters — trim it down</div>';
-          return;
-        }
-        if (!editedText) {
-          actions.innerHTML = '<div class="status status-err">Tweet is empty</div>';
-          return;
-        }
+      if (!isArticle && editedText.length > 280) {
+        if (!batch) actions.innerHTML = '<div class="status status-err">Over 280 characters</div>';
+        return;
       }
 
-      actions.innerHTML = '<div class="status">' + (isArticle ? 'Publishing article...' : 'Posting...') + '</div>';
+      if (!batch) actions.innerHTML = '<div class="status status-info">' + (isArticle ? 'Publishing article...' : 'Posting tweet...') + '</div>';
       markHandled(id);
 
       try {
         if (isArticle) {
-          // Insert into Supabase articles table
           const slug = (draft.title || 'untitled').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 80);
           const articlePayload = {
             type: draft.type || 'article',
             title: draft.title || '',
-            body: editedText,
+            body: editedText || draft.body || '',
             summary: draft.summary || '',
             slug: slug,
-            tag: draft.tag || null,
+            tag: (draft.meta?.tag) || (draft.type || '').replace('article_','').toUpperCase() || 'NEWS',
+            header_image: draft.image_url || null,
             published_at: new Date().toISOString(),
             tour_id: draft.tour_id || null,
           };
@@ -209,56 +393,79 @@
             body: JSON.stringify(articlePayload),
           });
 
-          if (!sbRes.ok) {
-            const errText = await sbRes.text();
-            throw new Error('Supabase insert failed: ' + errText);
-          }
+          if (!sbRes.ok) throw new Error('Article publish failed: ' + await sbRes.text());
 
-          // Mark draft as published
-          await fetch('/.netlify/functions/draft-tweet?action=approve&id=' + id + '&text=' + encodeURIComponent(editedText));
-          actions.innerHTML = '<div class="status status-ok">Article published!</div>';
-          textarea.disabled = true;
-          textarea.style.opacity = '0.4';
+          // Mark draft as approved in Supabase
+          await fetch(SUPABASE_URL + '/rest/v1/content_drafts?id=eq.' + id, {
+            method: 'PATCH',
+            headers: {
+              'Content-Type': 'application/json',
+              'apikey': SUPABASE_ANON_KEY,
+              'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
+            },
+            body: JSON.stringify({ status: 'approved', reviewed_at: new Date().toISOString(), published_at: new Date().toISOString() }),
+          });
+
+          if (!batch) actions.innerHTML = '<div class="status status-ok">Article published</div>';
         } else {
-          // Tweet draft — post to Twitter
+          // Post tweet
+          const tweetText = editedText || draft.body || '';
+          const postBody = { text: tweetText };
+          if (draft.image_url) postBody.image_url = draft.image_url;
+
           const postRes = await fetch('/.netlify/functions/post-tweet', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ text: editedText }),
+            body: JSON.stringify(postBody),
           });
           const data = await postRes.json();
 
           if (data.success) {
-            // Mark as published in Supabase
-            await fetch('/.netlify/functions/draft-tweet?action=approve&id=' + id + '&text=' + encodeURIComponent(editedText));
-            actions.innerHTML = '<div class="status status-ok">Posted!</div>';
-            textarea.disabled = true;
-            textarea.style.opacity = '0.4';
+            // Mark as approved
+            await fetch(SUPABASE_URL + '/rest/v1/content_drafts?id=eq.' + id, {
+              method: 'PATCH',
+              headers: {
+                'Content-Type': 'application/json',
+                'apikey': SUPABASE_ANON_KEY,
+                'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
+              },
+              body: JSON.stringify({ status: 'approved', reviewed_at: new Date().toISOString(), published_at: new Date().toISOString() }),
+            });
+            if (!batch) actions.innerHTML = '<div class="status status-ok">Tweet posted</div>';
           } else {
-            actions.innerHTML = '<div class="status status-err">Failed: ' + (data.error || 'unknown') + '</div>';
+            throw new Error(data.error || 'Tweet failed');
           }
         }
+
+        if (!batch) {
+          el.style.opacity = '0.3';
+          el.style.pointerEvents = 'none';
+        }
       } catch(e) {
-        actions.innerHTML = '<div class="status status-err">Error: ' + e.message + '</div>';
+        if (!batch) actions.innerHTML = '<div class="status status-err">' + e.message + '</div>';
+        else throw e;
       }
     }
 
     async function rejectDraft(id) {
       const el = document.getElementById('draft-' + id);
       markHandled(id);
+
       try {
-        await fetch('/.netlify/functions/draft-tweet?action=reject&id=' + id);
-        el.style.opacity = '0.3';
-        el.querySelector('.draft-actions').innerHTML = '<div class="status" style="color:#D4A853">Rejected</div>';
+        await fetch(SUPABASE_URL + '/rest/v1/content_drafts?id=eq.' + id, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            'apikey': SUPABASE_ANON_KEY,
+            'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
+          },
+          body: JSON.stringify({ status: 'rejected', reviewed_at: new Date().toISOString() }),
+        });
       } catch(e) {}
-    }
 
-    function escHtml(str) {
-      return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
+      el.classList.add('rejected');
+      setTimeout(function() { el.remove(); }, 300);
     }
-
-    // Auto-refresh every 30 seconds
-    // Don't auto-refresh — it resets edits. Manual refresh button instead.
   </script>
 </body>
 </html>

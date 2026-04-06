@@ -285,12 +285,36 @@ Rules:
       results.errors.push('article_betting: ' + e.message);
     }
 
+    // Send batched notification
+    if (results.generated.length > 0) {
+      const parts = [];
+      const articles = results.generated.filter(g => g.startsWith('article')).length;
+      const tweets = results.generated.filter(g => g.startsWith('tweet')).length;
+      if (articles) parts.push(articles + ' article' + (articles > 1 ? 's' : ''));
+      if (tweets) parts.push(tweets + ' tweet' + (tweets > 1 ? 's' : ''));
+      try {
+        await fetch('https://ntfy.sh/tourfeed-alerts', {
+          method: 'POST',
+          headers: { 'Title': 'New Drafts Ready', 'Priority': '3' },
+          body: results.generated.length + ' new drafts — ' + parts.join(', ') + ' (' + results.tournament + ' R' + results.round + ')',
+        });
+      } catch(e) {}
+    }
+
     return {
       statusCode: 200,
       headers,
       body: JSON.stringify(results),
     };
   } catch (e) {
+    // Error notification
+    try {
+      await fetch('https://ntfy.sh/tourfeed-alerts', {
+        method: 'POST',
+        headers: { 'Title': 'TourFeed Error', 'Priority': '5', 'Tags': 'rotating_light' },
+        body: 'generate-content failed: ' + e.message,
+      });
+    } catch(ne) {}
     return {
       statusCode: 500,
       headers,

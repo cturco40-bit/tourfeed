@@ -100,10 +100,40 @@ exports.handler = async (event) => {
       }
     }
 
+    // Send notification for published items
+    const published = results.filter(r => r.status === 'published');
+    if (published.length > 0) {
+      const tweetCount = published.filter(r => r.type?.startsWith('tweet')).length;
+      const articleCount = published.filter(r => r.type?.startsWith('article')).length;
+      const parts = [];
+      if (tweetCount) parts.push(tweetCount + ' tweet' + (tweetCount > 1 ? 's' : ''));
+      if (articleCount) parts.push(articleCount + ' article' + (articleCount > 1 ? 's' : ''));
+      const msg = 'Published: ' + parts.join(', ');
+      try {
+        await fetch('https://ntfy.sh/tourfeed-alerts', {
+          method: 'POST',
+          headers: { 'Title': 'TourFeed Published', 'Priority': '3' },
+          body: msg,
+        });
+      } catch(e) {}
+    }
+
+    // Notify on errors
+    const errors = results.filter(r => r.status === 'error' || r.status === 'failed');
+    if (errors.length > 0) {
+      try {
+        await fetch('https://ntfy.sh/tourfeed-alerts', {
+          method: 'POST',
+          headers: { 'Title': 'TourFeed Error', 'Priority': '4', 'Tags': 'warning' },
+          body: 'Publish failed for ' + errors.length + ' draft(s): ' + errors.map(e => e.error).join(', '),
+        });
+      } catch(e) {}
+    }
+
     return {
       statusCode: 200,
       headers,
-      body: JSON.stringify({ published: results.filter(r => r.status === 'published').length, results }),
+      body: JSON.stringify({ published: published.length, results }),
     };
 
   } catch (err) {
