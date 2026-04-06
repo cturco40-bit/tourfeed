@@ -27,6 +27,8 @@
     .btn-reject { padding:8px 20px; background:transparent; border:1px solid #495057; border-radius:6px; color:#868E96; font-weight:700; font-size:12px; cursor:pointer; font-family:inherit; }
     .btn-approve:hover { background:#34A37E; }
     .btn-reject:hover { border-color:#FF6B6B; color:#FF6B6B; }
+    .draft-edit { width:100%; background:#1B2538; border:1px solid #243044; border-radius:6px; color:#CED4DA; font-size:14px; line-height:1.6; padding:10px 12px; font-family:inherit; resize:vertical; outline:none; }
+    .draft-edit:focus { border-color:#2D8F6F; }
     .empty { text-align:center; padding:60px 20px; color:#495057; font-size:14px; }
     .status { padding:8px 12px; border-radius:6px; margin-top:8px; font-size:12px; font-weight:600; }
     .status-ok { background:rgba(45,212,160,0.1); color:#2DD4A0; }
@@ -88,7 +90,8 @@
           return `
             <div class="draft" id="draft-${d.id}">
               <div class="draft-source">${d.source || 'auto'}</div>
-              <div class="draft-text">${escHtml(d.text)}</div>
+              <textarea class="draft-edit" id="edit-${d.id}" rows="4">${d.text}</textarea>
+              <div style="font-size:11px;color:#495057;margin-top:4px;text-align:right"><span id="chars-${d.id}">${d.text.length}</span>/280</div>
               <div class="draft-time">${time}</div>
               <div class="draft-actions">
                 <button class="btn-approve" onclick="approveDraft(${d.id})">Approve & Post</button>
@@ -97,6 +100,19 @@
             </div>
           `;
         }).join('');
+
+        // Add character counters
+        drafts.forEach(d => {
+          const textarea = document.getElementById('edit-' + d.id);
+          const counter = document.getElementById('chars-' + d.id);
+          if (textarea && counter) {
+            textarea.addEventListener('input', () => {
+              const len = textarea.value.length;
+              counter.textContent = len;
+              counter.style.color = len > 280 ? '#FF6B6B' : '#495057';
+            });
+          }
+        });
       } catch(e) {
         list.innerHTML = '<div class="empty">Error loading drafts</div>';
       }
@@ -104,17 +120,38 @@
 
     async function approveDraft(id) {
       const el = document.getElementById('draft-' + id);
+      const textarea = document.getElementById('edit-' + id);
+      const editedText = textarea ? textarea.value.trim() : '';
       const actions = el.querySelector('.draft-actions');
+
+      if (editedText.length > 280) {
+        actions.innerHTML = '<div class="status status-err">Over 280 characters — trim it down</div>';
+        return;
+      }
+      if (!editedText) {
+        actions.innerHTML = '<div class="status status-err">Tweet is empty</div>';
+        return;
+      }
+
       actions.innerHTML = '<div class="status">Posting...</div>';
 
       try {
-        const res = await fetch('/.netlify/functions/draft-tweet?action=approve&id=' + id);
-        const text = await res.text();
-        if (text.includes('Tweet Posted')) {
-          actions.innerHTML = '<div class="status status-ok">Posted successfully</div>';
-          setTimeout(() => el.style.opacity = '0.4', 1000);
+        // Post the edited version directly instead of the original
+        const postRes = await fetch('/.netlify/functions/post-tweet', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text: editedText }),
+        });
+        // Remove from drafts
+        await fetch('/.netlify/functions/draft-tweet?action=reject&id=' + id);
+        const data = await postRes.json();
+
+        if (data.success) {
+          actions.innerHTML = '<div class="status status-ok">Posted!</div>';
+          textarea.disabled = true;
+          textarea.style.opacity = '0.4';
         } else {
-          actions.innerHTML = '<div class="status status-err">Failed — draft may have expired</div>';
+          actions.innerHTML = '<div class="status status-err">Failed: ' + (data.error || 'unknown') + '</div>';
         }
       } catch(e) {
         actions.innerHTML = '<div class="status status-err">Error: ' + e.message + '</div>';
