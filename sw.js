@@ -28,7 +28,8 @@ self.addEventListener('fetch', (event) => {
   // Skip non-GET requests
   if (event.request.method !== 'GET') return;
 
-  // Skip API calls — always go to network
+  // Skip non-http requests and API calls
+  if (!event.request.url.startsWith('http')) return;
   if (event.request.url.includes('supabase') || event.request.url.includes('api.')) return;
 
   event.respondWith(
