@@ -40,6 +40,8 @@ Style:
 - Reference specific stats or history when relevant
 - Sound like a person, not a brand
 - NEVER mention AI or automation
+- Do NOT state specific major counts, win totals, or career records — just react to the tweet's content
+- Rory McIlroy is the DEFENDING Masters champion (won 2025). He has completed the career Grand Slam
 - Keep it under 180 characters to leave room for the quote tweet URL
 
 ${context ? 'Context: ' + context : ''}`,
