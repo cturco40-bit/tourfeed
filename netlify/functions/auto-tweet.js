@@ -150,20 +150,20 @@ async function tweetNextEvent(headers, force) {
     } else if (contentType === 1) {
       // Picks
       if (isMajor && /masters/i.test(name)) {
-        tweetText = `${name} Picks\n\nFAVORITE: Scheffler (+400)\nVALUE: Morikawa (+2000)\nLONGSHOT: MacIntyre (+4000)\n\nFull picks & odds → https://tourfeed.co/?ref=x\n\n#TheMasters #PGATour`;
+        tweetText = `My ${name} card.\n\nOutright: Scheffler.\nTop 5 sleeper: Morikawa.\nLongshot: MacIntyre.\n\nLock it in.`;
       } else {
-        tweetText = `${name} Preview\n\nWho's your pick this week?\n\nPicks & analysis → https://tourfeed.co/?ref=x\n\n#PGATour #Golf`;
+        tweetText = `${name} this week. Who you got? Give me your outright and your sleeper.`;
       }
     } else if (contentType === 2) {
       // Engagement question
       tweetText = isMajor
-        ? `${name} starts ${daysUntil === 1 ? 'tomorrow' : 'Thursday'}.\n\nWho's winning the green jacket?\n\nDrop your pick.\n\n#TheMasters #PGATour`
-        : `${name} this week.\n\nWho's taking it? Reply with your pick.\n\n#PGATour #Golf`;
+        ? `${name} starts ${daysUntil === 1 ? 'tomorrow' : 'Thursday'}. Who's wearing green Sunday? Give me a name.`
+        : `${name} this week at ${course}. Who's taking it?`;
     } else {
-      // Course/event info
+      // Bold take
       tweetText = isMajor
-        ? `${name}\n\n${course}\n\nOne of golf's ultimate tests. ${daysUntil} day${daysUntil !== 1 ? 's' : ''} out.\n\nPreviews & picks → https://tourfeed.co/?ref=x\n\n#TheMasters #Golf`
-        : `This week: ${name}\n\n${course}\n\nLive coverage → https://tourfeed.co/?ref=x\n\n#PGATour #Golf`;
+        ? `${daysUntil} days until the ${name}. ${course}. The best week in sports and it's not even close.`
+        : `${name} at ${course} this week. Sneaky good field. Don't sleep on it.`;
     }
 
     // Final dedup check
@@ -299,72 +299,37 @@ exports.handler = async (event) => {
       })};
     }
 
-    // Build tweet
+    // Build tweet — group chat voice, no emojis, no hashtags
     let tweetText = '';
 
     if (isFinal) {
       if (tied.length > 1) {
-        tweetText = `🏆 PLAYOFF at the ${tourneyName}!\n\n${tied.map(p => `${p.name} (${p.score})`).join('\n')}\n\nStay locked in → https://tourfeed.co/?ref=x`;
+        tweetText = `Playoff at the ${tourneyName}. ${tied.map(p => p.name).join(' vs ')}. This is about to be unreal.`;
       } else {
-        tweetText = `🏆 ${leader.fullName} wins the ${tourneyName} at ${leader.score}!\n\n${top5.slice(1, 4).map((p,i) => `${i+2}. ${p.name} (${p.score})`).join('\n')}\n\nFull leaderboard → https://tourfeed.co/?ref=x`;
+        tweetText = `${leader.fullName} wins the ${tourneyName} at ${leader.score}.\n\n${top5.slice(1, 3).map((p,i) => `${p.name} (${p.score})`).join(', ')} couldn't catch him. Built different.`;
       }
     } else if (isRoundComplete) {
       if (tied.length > 1) {
-        tweetText = `📊 R${round} Complete — ${tourneyName}\n\n${tied.length}-way tie at ${leader.score}:\n${tied.map(p => p.name).join(', ')}\n\nLive scores → https://tourfeed.co/?ref=x`;
+        tweetText = `R${round} in the books at the ${tourneyName}.\n\n${tied.length}-way tie at ${leader.score}: ${tied.map(p => p.name).join(', ')}.\n\nTomorrow's going to be chaos.`;
       } else {
-        tweetText = `📊 R${round} Complete — ${tourneyName}\n\n🥇 ${leader.name} leads at ${leader.score}\n${top5.slice(1, 3).map((p,i) => `${i+2}. ${p.name} (${p.score})`).join('\n')}\n\nLive scores → https://tourfeed.co/?ref=x`;
+        tweetText = `${leader.name} leads the ${tourneyName} at ${leader.score} after R${round}.\n\n${top5[1]?.name} lurking at ${top5[1]?.score}. This isn't over.`;
       }
     } else if (reason === 'leader_change') {
       if (tied.length > 1) {
-        tweetText = `🔄 NEW LEADERS — ${tourneyName} R${round}\n\nTied at ${leader.score}:\n${tied.map(p => p.name).join(', ')}\n\n→ https://tourfeed.co/?ref=x`;
+        tweetText = `New leaders at the ${tourneyName}. Tied at ${leader.score}: ${tied.map(p => p.name).join(', ')}.\n\nThis thing is wide open.`;
       } else {
-        tweetText = `🔄 LEAD CHANGE — ${tourneyName} R${round}\n\n🥇 ${leader.fullName} takes the lead at ${leader.score}\n\n${top5.slice(1, 3).map((p,i) => `${i+2}. ${p.name} (${p.score})`).join('\n')}\n\n→ https://tourfeed.co/?ref=x`;
+        tweetText = `${leader.fullName} just grabbed the lead at the ${tourneyName}. ${leader.score} and rolling.\n\nEverybody else is chasing now.`;
       }
     } else if (reason === 'big_mover' && bigMover) {
-      tweetText = `🔥 ${bigMover.fullName} is ${bigMover.today} today at the ${tourneyName}\n\nNow at ${bigMover.score} overall\n\n${tied.length > 1 ? `Leaders (${leader.score}): ${tied.map(p=>p.name).join(', ')}` : `Leader: ${leader.name} (${leader.score})`}\n\n→ https://tourfeed.co/?ref=x`;
+      tweetText = `${bigMover.fullName} is ${bigMover.today} through the turn at the ${tourneyName}. Now at ${bigMover.score}.\n\nWatch out for this guy.`;
     } else {
-      // Hourly update with pick
-      // Find a value pick — player 2-5 spots back with a good today score
-      const parseScore = (s) => s === 'E' ? 0 : (parseInt(s) || 0);
-      const leaderNum = parseScore(leader.score);
-      const contenders = players.slice(1, 15).map(p => ({
-        name: p.athlete?.shortName || '?',
-        score: typeof p.score === 'string' ? p.score : '?',
-        today: p.linescores?.[round - 1]?.displayValue || '',
-        back: Math.abs(parseScore(typeof p.score === 'string' ? p.score : '0') - leaderNum),
-      })).filter(p => p.back >= 1 && p.back <= 5);
-
-      const hotPick = contenders
-        .filter(p => p.today && p.today !== '-' && parseScore(p.today) < 0)
-        .sort((a, b) => parseScore(a.today) - parseScore(b.today))[0];
-
-      let pickLine = '';
-      if (hotPick) {
-        pickLine = `\n\n🎯 TourFeed Pick: ${hotPick.name} (${hotPick.score}, ${hotPick.today} today)`;
-      }
-
+      // Hourly update
       if (tied.length > 1) {
-        tweetText = `⛳ ${tourneyName} — R${round} Update\n\nTied at ${leader.score}:\n${tied.map(p => p.name).join(', ')}${pickLine}\n\n→ https://tourfeed.co/?ref=x`;
+        tweetText = `${tourneyName} R${round} update.\n\nTied at ${leader.score}: ${tied.map(p => p.name).join(', ')}\n\n${top5.filter(p => p.score !== leader.score).slice(0,2).map(p => `${p.name} (${p.score})`).join(', ')} right there.`;
       } else {
-        tweetText = `⛳ ${tourneyName} — R${round} Update\n\n🥇 ${leader.name} (${leader.score})\n${top5.slice(1, 3).map((p,i) => `${i+2}. ${p.name} (${p.score})`).join('\n')}${pickLine}\n\n→ https://tourfeed.co/?ref=x`;
+        tweetText = `${tourneyName} R${round} update.\n\n${leader.name} (${leader.score})\n${top5.slice(1, 4).map(p => `${p.name} (${p.score})`).join('\n')}\n\nThis leaderboard is stacked.`;
       }
     }
-
-    // Add hashtags based on tournament/tour
-    const hashtags = ['#PGATour', '#Golf'];
-    const tn = tourneyName.toLowerCase();
-    if (/masters/i.test(tn)) hashtags.unshift('#TheMasters');
-    else if (/u\.?s\.?\s*open/i.test(tn)) hashtags.unshift('#USOpen');
-    else if (/pga championship/i.test(tn)) hashtags.unshift('#PGAChamp');
-    else if (/open championship|the open/i.test(tn)) hashtags.unshift('#TheOpen');
-    else if (/rbc heritage/i.test(tn)) hashtags.unshift('#RBCHeritage');
-    if (/liv/i.test(tourLabel)) { hashtags[0] = '#LIVGolf'; hashtags[1] = '#Golf'; }
-    if (/lpga/i.test(tourLabel)) { hashtags[0] = '#LPGATour'; hashtags[1] = '#LPGA'; }
-    if (/dp world/i.test(tourLabel)) { hashtags[0] = '#DPWorldTour'; hashtags[1] = '#Golf'; }
-
-    // Append hashtags if they fit within 280
-    const tagStr = '\n\n' + hashtags.join(' ');
-    if (tweetText.length + tagStr.length <= 280) tweetText += tagStr;
 
     // Check for duplicate content before posting
     if (lastTweet?.allTexts && isTooSimilar(tweetText, lastTweet.allTexts)) {
