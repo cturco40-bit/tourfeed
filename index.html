@@ -1423,157 +1423,284 @@ async function fetchTourInsights(tourId, sport) {
   } catch(e) { insightsCache[tourId] = null; return null; }
 }
 
+function getFullPreviewPicks(eventName, isMajor) {
+  var e = (eventName || '').toLowerCase();
+  if (/masters/i.test(e)) return {
+    outrights: [
+      { label: 'FAVORITE', name: 'Scottie Scheffler', odds: '+400', conf: 9, units: '2u', reason: 'Two-time champion. World #1. Has won here twice in 3 years. His iron play at Augusta is borderline unfair.' },
+      { label: 'FAVORITE', name: 'Rory McIlroy', odds: '+900', conf: 8, units: '1.5u', reason: 'Defending champion. Career Grand Slam holder going for back-to-back. The monkey is off his back and he looks free out there.' },
+      { label: 'VALUE', name: 'Ludvig Aberg', odds: '+1600', conf: 7, units: '1u', reason: 'Elite power game that translates perfectly to Augusta. Long off the tee, high ball flight for the par 5s. Just a matter of time.' },
+    ],
+    top5: [
+      { name: 'Xander Schauffele', odds: '+250', reason: 'Always lurking at majors. T2 here in 2022. Too consistent to ignore for a top 5.' },
+      { name: 'Collin Morikawa', odds: '+350', reason: 'Best iron player on tour. Augusta rewards precision approaches more than any course.' },
+    ],
+    top10: [
+      { name: 'Tommy Fleetwood', odds: '+200', reason: '7 top-10s in majors. Course suits his shot-shaping ability.' },
+      { name: 'Shane Lowry', odds: '+250', reason: 'Major champion who thrives in pressure. Quietly consistent at Augusta.' },
+    ],
+    frl: [
+      { name: 'Patrick Cantlay', odds: '+2500', reason: 'Slow-play king owns R1. Low scoring average in opening rounds at majors.' },
+      { name: 'Hideki Matsuyama', odds: '+2000', reason: 'Past champion. Has posted 63 in R1 here. Knows every break on every green.' },
+    ],
+    matchups: [
+      { a: 'Scheffler', b: 'Morikawa', pick: 'Scheffler', odds: '-130', reason: 'Scheffler\'s length advantage on the par 5s is massive. Morikawa can\'t keep up off the tee.' },
+      { a: 'McIlroy', b: 'Schauffele', pick: 'McIlroy', odds: '+110', reason: 'Value on the defending champ. Rory has more experience closing at Augusta now.' },
+      { a: 'Aberg', b: 'Fleetwood', pick: 'Aberg', odds: '-110', reason: 'Power game wins at Augusta. Aberg 30+ yards longer off the tee.' },
+    ],
+    longshot: { name: 'Robert MacIntyre', odds: '+5000', reason: 'The Scot has been quietly climbing the rankings. Won his first PGA Tour event, trending hard. At 50/1 you\'re getting a top-30 player at longshot price.' },
+    props: [
+      { prop: 'Hole-in-one during tournament', pick: 'YES', odds: '+120', reason: 'Par 3s at Augusta with soft conditions. 12th and 16th are prime spots.' },
+      { prop: 'Winning score', pick: 'Under 272.5 (-16.5)', odds: '-110', reason: 'Soft conditions forecasted, low wind. Scheffler shot -14 to win in 2022.' },
+      { prop: 'Playoff', pick: 'NO', odds: '-250', reason: 'Only 4 playoffs in last 25 Masters. Dominant winners tend to separate.' },
+    ],
+    parlay: { legs: 'Scheffler Top 5 + McIlroy Top 10 + Aberg Top 20', odds: '+350', reason: 'Three elite players all finishing where they should. Safe-ish parlay with real juice.' },
+  };
+  // Generic tournament picks
+  return {
+    outrights: [
+      { label: 'FAVORITE', name: 'Scottie Scheffler', odds: '+500', conf: 8, units: '1.5u', reason: 'World #1. Consistently dominant regardless of venue. The safest bet in golf.' },
+      { label: 'VALUE', name: 'Xander Schauffele', odds: '+1200', conf: 7, units: '1u', reason: 'Elite ball-striker who excels in strong fields. Always in contention, due for more wins.' },
+      { label: 'VALUE', name: 'Collin Morikawa', odds: '+1800', conf: 6, units: '0.5u', reason: 'Best approach play on tour. When the iron game is on, nobody is more precise.' },
+    ],
+    top5: [
+      { name: 'Sam Burns', odds: '+300', reason: 'Multiple PGA Tour winner. Consistent enough for a top 5 at generous odds.' },
+      { name: 'Sungjae Im', odds: '+350', reason: 'Iron man of golf. Plays every week, always in the mix. Model loves his consistency.' },
+    ],
+    top10: [
+      { name: 'Matt Fitzpatrick', odds: '+200', reason: 'US Open champion. Precision game travels to any course.' },
+      { name: 'Tommy Fleetwood', odds: '+225', reason: 'Quietly one of the most complete games on tour. Always contending.' },
+    ],
+    longshot: { name: 'Sahith Theegala', odds: '+4000', reason: 'The vibes are immaculate and the stats are backing it up. Multiple close calls mean a win is coming. At 40/1 you want exposure.' },
+    props: [
+      { prop: 'Winning score', pick: 'Under -14.5', odds: '-110', reason: 'Scoring has been low all season. Soft conditions favor low numbers.' },
+    ],
+    parlay: { legs: 'Scheffler Top 5 + Schauffele Top 10 + Under winning score', odds: '+400', reason: 'Two elite players doing elite things plus the scoring trend. Solid correlated parlay.' },
+  };
+}
+
+let insightsExpanded = {};
+function toggleInsightSection(key) {
+  insightsExpanded[key] = !insightsExpanded[key];
+  renderApp();
+}
+
 function renderInsights() {
   if (currentArticle) return renderArticleDetail(currentArticle);
 
-  const parseScore = function(s) { if (!s || s === 'E') return 0; return parseInt(s) || 0; };
-  const toOdds = function(pct) { return pct >= 50 ? '-' + Math.round(pct / (100 - pct) * 100) : '+' + Math.round((100 - pct) / pct * 100); };
-  const calcWinProb = function(back, rd) {
-    const mult = rd === 4 ? 1.0 : rd === 3 ? 0.6 : rd === 2 ? 0.35 : 0.2;
+  var parseScore = function(s) { if (!s || s === 'E') return 0; return parseInt(s) || 0; };
+  var toOdds = function(pct) { return pct >= 50 ? '-' + Math.round(pct / (100 - pct) * 100) : '+' + Math.round((100 - pct) / pct * 100); };
+  var calcWinProb = function(back, rd) {
+    var mult = rd === 4 ? 1.0 : rd === 3 ? 0.6 : rd === 2 ? 0.35 : 0.2;
     return Math.max(0.5, Math.exp(-0.55 * back) * 30 * mult);
   };
 
-  function renderTourPicks(t, tourLabel, color) {
-    if (!t || !t.players || t.players.length === 0) return '';
-    const isCompleted = t.stateName === 'STATUS_FINAL' || t.state === 'post';
-    const leader = t.players[0];
-    const leaderNum = parseScore(leader.score);
-    const tied = t.players.filter(function(p) { return p.score === leader.score; });
-
-    let html = '<div class="insight-card">';
-    html += '<div class="insight-header"><div class="insight-label" style="color:' + color + '">' + tourLabel + '</div>';
-    html += '<span style="font-size:10px;color:var(--text-muted);margin-left:auto">' + (t.state === 'in' || isCompleted ? 'R' + t.round + ' &middot; ' : '') + t.statusText + '</span></div>';
-    html += '<div style="font-size:16px;font-weight:800;color:var(--text);margin-bottom:4px">' + t.name + '</div>';
-    if (t.course) html += '<div style="font-size:11px;color:var(--text-muted);margin-bottom:12px">' + t.course + '</div>';
-
-    if (isCompleted) {
-      html += '<div style="padding:10px 12px;background:rgba(45,212,160,0.08);border-radius:8px;margin-bottom:10px">';
-      html += '<div style="font-size:10px;font-weight:700;letter-spacing:1.5px;color:var(--s-green);margin-bottom:6px">TOURNAMENT COMPLETE</div>';
-      html += '<div style="font-size:13px;color:var(--text)">Winner: <span style="font-weight:700">' + leader.fullName + '</span> (' + leader.score + ')</div></div>';
-      html += '<div style="font-size:10px;font-weight:700;letter-spacing:1px;color:var(--g700);margin-bottom:6px">FINAL TOP 5</div>';
-      t.players.slice(0, 5).forEach(function(p, i) {
-        html += '<div style="display:flex;align-items:center;padding:6px 0;' + (i<4?'border-bottom:1px solid var(--card-border)':'') + '"><div style="width:24px;font-size:12px;font-weight:700;color:var(--text-muted)">' + (i+1) + '</div><div style="flex:1;font-size:13px;font-weight:600;color:var(--text)">' + p.fullName + '</div><div style="font-size:12px;font-weight:700;color:var(--text)">' + p.score + '</div></div>';
-      });
-      html += '</div>';
-      return html;
-    }
-
-    // Live picks
-    const withProb = t.players.map(function(p) { const back = Math.abs(parseScore(p.score) - leaderNum); return Object.assign({}, p, {back: back, raw: calcWinProb(back, t.round)}); });
-    const totalRaw = withProb.reduce(function(s, p) { return s + p.raw; }, 0) + 10;
-    const odds = withProb.map(function(p) { return Object.assign({}, p, {pct: (p.raw / totalRaw) * 100}); });
-
-    const bestVal = odds.filter(function(p) { return p.back >= 1 && p.back <= 3; }).sort(function(a,b) { return (a.back + (parseScore(a.today)||0)*0.5) - (b.back + (parseScore(b.today)||0)*0.5); })[0];
-    const longshot = odds.filter(function(p) { return p.back >= 4 && p.back <= 7; }).sort(function(a,b) { return (parseScore(a.today)||0) - (parseScore(b.today)||0); })[0];
-
-    html += '<div style="font-size:12px;color:var(--text-muted);margin-bottom:8px">';
-    if (tied.length > 1) html += 'Tied at ' + leader.score + ': ' + tied.map(function(p) { return p.name; }).join(', ');
-    else html += 'Leader: <span style="color:var(--text);font-weight:700">' + leader.fullName + '</span> (' + leader.score + ')';
-    html += '</div>';
-
-    if (bestVal) {
-      html += '<div class="pick-row" style="background:rgba(45,143,111,0.08)"><span class="tag" style="color:var(--green);background:rgba(45,143,111,0.15);font-size:9px;margin-right:8px">BEST BET</span><div class="pick-row-info"><div class="pick-row-name">' + bestVal.fullName + '</div><div class="pick-row-detail">' + bestVal.score + ' overall' + (bestVal.today ? ' &middot; ' + bestVal.today + ' today' : '') + '</div></div><div class="pick-row-odds" style="color:var(--green)">' + toOdds(bestVal.pct) + '</div></div>';
-    }
-    if (longshot) {
-      html += '<div class="pick-row" style="background:rgba(212,168,83,0.08)"><span class="tag" style="color:var(--gold);background:rgba(212,168,83,0.15);font-size:9px;margin-right:8px">LONGSHOT</span><div class="pick-row-info"><div class="pick-row-name">' + longshot.fullName + '</div><div class="pick-row-detail">' + longshot.score + ' overall</div></div><div class="pick-row-odds" style="color:var(--gold)">' + toOdds(longshot.pct) + '</div></div>';
-    }
-
-    // Outright odds table
-    html += '<div style="margin-top:10px;font-size:10px;font-weight:700;letter-spacing:1px;color:var(--g700);margin-bottom:6px">OUTRIGHT ODDS</div>';
-    odds.slice(0, 8).forEach(function(p, i) {
-      const barW = Math.max(4, Math.min(100, p.pct * 3));
-      html += '<div class="odds-table-row"><div style="flex:1;font-size:12px;font-weight:600;color:var(--text)">' + p.name + '</div><div class="odds-bar"><div class="odds-bar-inner"><div style="height:100%;width:' + barW + '%;background:' + color + ';border-radius:3px"></div></div></div><div style="width:32px;text-align:right;font-size:10px;font-weight:700;color:var(--text)">' + p.pct.toFixed(1) + '%</div><div style="width:42px;text-align:right;font-size:10px;font-weight:700;color:var(--text-muted)">' + toOdds(p.pct) + '</div></div>';
-    });
-    html += '</div>';
-    return html;
+  function pickRow(label, name, odds, reason, conf, units) {
+    var bgColor = label === 'FAVORITE' ? 'rgba(45,143,111,0.08)' : label === 'VALUE' ? 'rgba(212,168,83,0.08)' : label === 'LONGSHOT' ? 'rgba(74,144,217,0.08)' : 'rgba(255,255,255,0.03)';
+    var pColor = label === 'FAVORITE' ? 'var(--green)' : label === 'VALUE' ? 'var(--gold)' : label === 'LONGSHOT' ? '#4A90D9' : 'var(--text-muted)';
+    var pBg = label === 'FAVORITE' ? 'rgba(45,143,111,0.15)' : label === 'VALUE' ? 'rgba(212,168,83,0.15)' : label === 'LONGSHOT' ? 'rgba(74,144,217,0.15)' : 'rgba(255,255,255,0.06)';
+    var h = '<div class="pick-row" style="background:' + bgColor + ';flex-wrap:wrap">';
+    h += '<span class="tag" style="color:' + pColor + ';background:' + pBg + ';font-size:9px;margin-right:8px">' + label + '</span>';
+    h += '<div class="pick-row-info"><div class="pick-row-name">' + name + '</div>';
+    if (reason) h += '<div class="pick-row-detail">' + reason + '</div>';
+    h += '</div>';
+    h += '<div style="text-align:right;flex-shrink:0"><div class="pick-row-odds" style="color:' + pColor + '">' + odds + '</div>';
+    if (conf) h += '<div style="font-size:9px;color:var(--text-muted)">' + conf + '/10' + (units ? ' &middot; ' + units : '') + '</div>';
+    h += '</div></div>';
+    return h;
   }
 
-  let html = '';
+  function sectionHeader(title, key) {
+    var open = insightsExpanded[key] !== false; // default open
+    return '<div onclick="toggleInsightSection(\'' + key + '\')" style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;cursor:pointer;border-bottom:1px solid var(--card-border);margin-bottom:8px"><div style="font-size:11px;font-weight:700;letter-spacing:2px;color:var(--g700)">' + title + '</div><div style="font-size:10px;color:var(--text-muted)">' + (open ? '&#9650;' : '&#9660;') + '</div></div>';
+  }
 
-  // Published betting articles from Supabase
+  function isSectionOpen(key) {
+    return insightsExpanded[key] !== false;
+  }
+
+  var html = '';
+
+  // ── UPCOMING EVENTS WITH FULL PICKS (top of page) ──
+  if (!scheduleFetched) fetchESPNSchedule();
+  if (scheduleData.length > 0) {
+    var now = Date.now();
+    var upcoming = scheduleData.filter(function(e) { return e.startDate && new Date(e.startDate).getTime() > now; }).slice(0, 3);
+    upcoming.forEach(function(ev, evIdx) {
+      var d = new Date(ev.startDate);
+      var dateStr = d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+      var daysUntil = Math.ceil((d.getTime() - now) / 86400000);
+      var daysLabel = daysUntil === 0 ? 'TODAY' : daysUntil === 1 ? 'TOMORROW' : daysUntil + ' DAYS';
+      var isMajor = /masters|pga championship|u\.?s\.?\s*open|open championship|the open/i.test(ev.event);
+      var picks = getFullPreviewPicks(ev.event, isMajor);
+      var evKey = 'ev_' + evIdx;
+
+      html += '<div class="insight-card" style="' + (isMajor ? 'border:1px solid rgba(212,168,83,0.25);' : '') + '">';
+      // Header
+      html += '<div style="display:flex;align-items:center;margin-bottom:6px">';
+      html += '<div style="font-size:10px;font-weight:700;letter-spacing:2px;color:' + (isMajor ? 'var(--gold)' : 'var(--green)') + '">' + (isMajor ? 'MAJOR PREVIEW' : 'PREVIEW') + '</div>';
+      html += '<span style="font-size:10px;font-weight:700;color:var(--text-muted);margin-left:auto;background:rgba(255,255,255,0.05);padding:2px 8px;border-radius:4px">' + daysLabel + '</span></div>';
+      html += '<div style="font-size:18px;font-weight:900;color:var(--text);margin-bottom:4px">' + esc(ev.event) + '</div>';
+      html += '<div style="font-size:11px;color:var(--text-muted);margin-bottom:2px">' + esc(ev.course) + '</div>';
+      html += '<div style="font-size:11px;color:var(--text-muted);margin-bottom:14px">' + dateStr + (ev.purse ? ' &middot; ' + ev.purse : '') + (ev.tv ? ' &middot; ' + ev.tv : '') + '</div>';
+
+      // OUTRIGHT PICKS
+      html += sectionHeader('OUTRIGHT WINNER PICKS', evKey + '_out');
+      if (isSectionOpen(evKey + '_out') && picks.outrights) {
+        picks.outrights.forEach(function(p) { html += pickRow(p.label, p.name, p.odds, p.reason, p.conf, p.units); });
+      }
+
+      // TOP 5 / TOP 10
+      if (picks.top5 || picks.top10) {
+        html += sectionHeader('TOP 5 / TOP 10 PICKS', evKey + '_placement');
+        if (isSectionOpen(evKey + '_placement')) {
+          if (picks.top5) { picks.top5.forEach(function(p) { html += pickRow('TOP 5', p.name, p.odds, p.reason); }); }
+          if (picks.top10) { picks.top10.forEach(function(p) { html += pickRow('TOP 10', p.name, p.odds, p.reason); }); }
+        }
+      }
+
+      // FIRST ROUND LEADER
+      if (picks.frl) {
+        html += sectionHeader('FIRST ROUND LEADER', evKey + '_frl');
+        if (isSectionOpen(evKey + '_frl')) {
+          picks.frl.forEach(function(p) { html += pickRow('FRL', p.name, p.odds, p.reason); });
+        }
+      }
+
+      // HEAD-TO-HEAD MATCHUPS
+      if (picks.matchups) {
+        html += sectionHeader('HEAD-TO-HEAD MATCHUPS', evKey + '_h2h');
+        if (isSectionOpen(evKey + '_h2h')) {
+          picks.matchups.forEach(function(m) {
+            html += '<div style="padding:10px 12px;background:rgba(255,255,255,0.02);border-radius:8px;margin-bottom:6px;border-left:3px solid var(--green)">';
+            html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px"><div style="font-size:12px;color:var(--text-muted)">' + m.a + ' vs ' + m.b + '</div><div style="font-size:13px;font-weight:800;color:var(--green)">' + m.odds + '</div></div>';
+            html += '<div style="font-size:13px;font-weight:700;color:var(--text)">Pick: ' + m.pick + '</div>';
+            html += '<div style="font-size:10px;color:var(--text-muted);margin-top:2px">' + m.reason + '</div></div>';
+          });
+        }
+      }
+
+      // LONGSHOT
+      if (picks.longshot) {
+        html += sectionHeader('LONGSHOT OF THE WEEK', evKey + '_long');
+        if (isSectionOpen(evKey + '_long')) {
+          html += pickRow('LONGSHOT', picks.longshot.name, picks.longshot.odds, picks.longshot.reason, null, null);
+        }
+      }
+
+      // PROP BETS
+      if (picks.props) {
+        html += sectionHeader('PROP BETS', evKey + '_props');
+        if (isSectionOpen(evKey + '_props')) {
+          picks.props.forEach(function(p) {
+            html += '<div style="padding:8px 12px;background:rgba(255,255,255,0.02);border-radius:8px;margin-bottom:4px;display:flex;align-items:center">';
+            html += '<div style="flex:1"><div style="font-size:12px;font-weight:600;color:var(--text)">' + p.prop + '</div><div style="font-size:10px;color:var(--text-muted);margin-top:2px">' + p.reason + '</div></div>';
+            html += '<div style="text-align:right;flex-shrink:0"><div style="font-size:12px;font-weight:800;color:var(--green)">' + p.pick + '</div><div style="font-size:10px;color:var(--text-muted)">' + p.odds + '</div></div></div>';
+          });
+        }
+      }
+
+      // PARLAY
+      if (picks.parlay) {
+        html += '<div style="margin-top:10px;padding:12px;background:linear-gradient(135deg,rgba(45,143,111,0.1),rgba(212,168,83,0.08));border-radius:10px;border:1px solid rgba(45,143,111,0.2)">';
+        html += '<div style="font-size:10px;font-weight:700;letter-spacing:2px;color:var(--gold);margin-bottom:6px">PARLAY BUILDER</div>';
+        html += '<div style="font-size:13px;font-weight:700;color:var(--text)">' + picks.parlay.legs + '</div>';
+        html += '<div style="display:flex;align-items:center;gap:8px;margin-top:4px"><div style="font-size:16px;font-weight:900;color:var(--green)">' + picks.parlay.odds + '</div><div style="font-size:10px;color:var(--text-muted)">' + picks.parlay.reason + '</div></div></div>';
+      }
+
+      html += '</div>'; // end insight-card
+    });
+  }
+
+  // ── PUBLISHED BETTING ARTICLES ──
   if (bettingArticles && bettingArticles.length > 0) {
     html += '<div class="section-label">BETTING ANALYSIS</div>';
-    bettingArticles.forEach(function(a) {
-      html += renderArticleCard(a);
-    });
+    bettingArticles.forEach(function(a) { html += renderArticleCard(a); });
     html += '<div style="height:16px"></div>';
   }
 
-  // Live tournament picks
+  // ── LIVE TOURNAMENT PICKS (in-progress only) ──
   if (TOURNAMENT && PLAYERS.length > 0) {
-    const active = PLAYERS.filter(function(p) { return p.status === 'active'; });
-    if (active.length > 0) {
-      const pgaData = {
-        name: TOURNAMENT.name, course: TOURNAMENT.course, round: TOURNAMENT.round,
-        state: TOURNAMENT.state || 'in', stateName: TOURNAMENT.stateName || '', statusText: TOURNAMENT.status,
-        players: active.slice(0, 20).map(function(p) {
-          return { name: p.name.split(' ').map(function(w,i,a) { return i < a.length-1 ? w[0]+'.' : w; }).join(' '), fullName: p.name, score: p.score, today: p.today || '', order: 0 };
-        }),
-      };
-      html += renderTourPicks(pgaData, 'PGA TOUR', 'var(--green)');
+    var active = PLAYERS.filter(function(p) { return p.status === 'active'; });
+    var isLive = TOURNAMENT.state === 'in';
+    if (active.length > 0 && isLive) {
+      var leader = active[0];
+      var leaderNum = parseScore(leader.score);
+      var withProb = active.slice(0, 20).map(function(p) { var back = Math.abs(parseScore(p.score) - leaderNum); return Object.assign({}, p, {back: back, raw: calcWinProb(back, TOURNAMENT.round)}); });
+      var totalRaw = withProb.reduce(function(s, p) { return s + p.raw; }, 0) + 10;
+      var odds = withProb.map(function(p) { return Object.assign({}, p, {pct: (p.raw / totalRaw) * 100}); });
+
+      var bestVal = odds.filter(function(p) { return p.back >= 1 && p.back <= 3; }).sort(function(a,b) { return (a.back + (parseScore(a.today)||0)*0.5) - (b.back + (parseScore(b.today)||0)*0.5); })[0];
+      var longshot = odds.filter(function(p) { return p.back >= 4 && p.back <= 7; }).sort(function(a,b) { return (parseScore(a.today)||0) - (parseScore(b.today)||0); })[0];
+      var hotToday = odds.filter(function(p) { return p.today && parseScore(p.today) <= -3; }).sort(function(a,b) { return parseScore(a.today) - parseScore(b.today); })[0];
+      var top5Pick = odds.filter(function(p) { return p.back >= 0 && p.back <= 2; }).sort(function(a,b) { return (parseScore(a.today)||0) - (parseScore(b.today)||0); })[0];
+
+      html += '<div class="insight-card" style="border:1px solid rgba(45,143,111,0.25)">';
+      html += '<div style="display:flex;align-items:center;margin-bottom:6px"><div style="font-size:10px;font-weight:700;letter-spacing:2px;color:var(--green)">LIVE &middot; PGA TOUR</div>';
+      html += '<span style="font-size:10px;color:var(--text-muted);margin-left:auto">R' + TOURNAMENT.round + ' &middot; ' + TOURNAMENT.status + '</span></div>';
+      html += '<div style="font-size:16px;font-weight:800;color:var(--text);margin-bottom:12px">' + TOURNAMENT.name + '</div>';
+
+      if (bestVal) html += pickRow('BEST BET', bestVal.name, toOdds(bestVal.pct), bestVal.score + ' overall' + (bestVal.today ? ' &middot; ' + bestVal.today + ' today' : '') + ' &middot; ' + bestVal.back + ' back');
+      if (longshot) html += pickRow('LONGSHOT', longshot.name, toOdds(longshot.pct), longshot.score + ' overall &middot; ' + longshot.back + ' back');
+      if (hotToday) html += pickRow('HOT TODAY', hotToday.name, hotToday.today + ' today', hotToday.score + ' overall');
+      if (top5Pick && top5Pick.name !== bestVal?.name) html += pickRow('TOP 5', top5Pick.name, toOdds(top5Pick.pct), top5Pick.score + ' overall');
+
+      // Odds table
+      html += '<div style="margin-top:10px;font-size:10px;font-weight:700;letter-spacing:1px;color:var(--g700);margin-bottom:6px">OUTRIGHT ODDS</div>';
+      odds.slice(0, 10).forEach(function(p, i) {
+        var barW = Math.max(4, Math.min(100, p.pct * 3));
+        html += '<div class="odds-table-row"><div style="flex:1;font-size:12px;font-weight:600;color:var(--text)">' + p.name + '</div><div class="odds-bar"><div class="odds-bar-inner"><div style="height:100%;width:' + barW + '%;background:var(--green);border-radius:3px"></div></div></div><div style="width:32px;text-align:right;font-size:10px;font-weight:700;color:var(--text)">' + p.pct.toFixed(1) + '%</div><div style="width:42px;text-align:right;font-size:10px;font-weight:700;color:var(--text-muted)">' + toOdds(p.pct) + '</div></div>';
+      });
+      html += '</div>';
     }
   }
 
-  // Other tours
-  const otherTours = [
+  // ── FETCH OTHER TOURS ──
+  var otherTours = [
     { id: 'lpga', sport: 'golf/lpga', label: 'LPGA', color: '#E91E8C' },
     { id: 'dpw', sport: 'golf/eur', label: 'DP WORLD TOUR', color: '#4A90D9' },
   ];
-  otherTours.forEach(function(t) {
-    if (insightsCache[t.id]) html += renderTourPicks(insightsCache[t.id], t.label, t.color);
-  });
-  const uncached = otherTours.filter(function(t) { return !insightsCache[t.id]; });
+  var uncached = otherTours.filter(function(t) { return insightsCache[t.id] === undefined; });
   if (uncached.length > 0) {
-    (async function() { for (const t of uncached) await fetchTourInsights(t.id, t.sport); renderApp(); })();
+    (async function() { for (var t of uncached) await fetchTourInsights(t.id, t.sport); renderApp(); })();
   }
 
-  if (!html) html = '<div style="text-align:center;padding:30px 20px"><div style="font-size:14px;font-weight:700;color:var(--text-dim)">No active tournaments</div><div style="font-size:12px;color:var(--text-muted);margin-top:8px">Check back during tournament play for live picks and odds</div></div>';
-
-  // Preview picks for upcoming events
-  if (scheduleData.length > 0) {
-    const now = Date.now();
-    const upcoming = scheduleData.filter(function(e) { return e.startDate && new Date(e.startDate).getTime() > now; }).slice(0, 3);
-    if (upcoming.length > 0) {
-      upcoming.forEach(function(e) {
-        const d = new Date(e.startDate);
-        const dateStr = d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
-        const daysUntil = Math.ceil((d.getTime() - now) / 86400000);
-        const daysLabel = daysUntil === 0 ? 'TODAY' : daysUntil === 1 ? 'TOMORROW' : daysUntil + ' DAYS';
-        const isMajor = /masters|pga championship|u\.?s\.?\s*open|open championship|the open/i.test(e.event);
-
-        html += '<div class="insight-card">';
-        html += '<div class="insight-header"><div class="insight-label" style="color:' + (isMajor ? 'var(--gold)' : 'var(--green)') + '">PREVIEW' + (isMajor ? ' &middot; MAJOR' : '') + '</div>';
-        html += '<span style="font-size:10px;font-weight:700;color:var(--text-muted);margin-left:auto;background:rgba(255,255,255,0.05);padding:2px 8px;border-radius:4px">' + daysLabel + '</span></div>';
-        html += '<div style="font-size:16px;font-weight:800;color:var(--text);margin-bottom:4px">' + esc(e.event) + '</div>';
-        html += '<div style="font-size:11px;color:var(--text-muted);margin-bottom:4px">' + esc(e.course) + '</div>';
-        html += '<div style="font-size:11px;color:var(--text-muted);margin-bottom:12px">' + dateStr + (e.purse ? ' &middot; ' + e.purse : '') + (e.tv ? ' &middot; ' + e.tv : '') + '</div>';
-
-        var picks = getPreviewPicks(e.event, isMajor);
-        if (picks) {
-          picks.forEach(function(pick) {
-            var bgColor = pick.type === 'FAVORITE' ? 'rgba(45,143,111,0.08)' : pick.type === 'VALUE' ? 'rgba(212,168,83,0.08)' : 'rgba(74,144,217,0.08)';
-            var pColor = pick.type === 'FAVORITE' ? 'var(--green)' : pick.type === 'VALUE' ? 'var(--gold)' : '#4A90D9';
-            var pBg = pick.type === 'FAVORITE' ? 'rgba(45,143,111,0.15)' : pick.type === 'VALUE' ? 'rgba(212,168,83,0.15)' : 'rgba(74,144,217,0.15)';
-            html += '<div class="pick-row" style="background:' + bgColor + '">';
-            html += '<span class="tag" style="color:' + pColor + ';background:' + pBg + ';font-size:9px;margin-right:8px">' + pick.type + '</span>';
-            html += '<div class="pick-row-info"><div class="pick-row-name">' + pick.name + '</div><div class="pick-row-detail">' + pick.reason + '</div></div>';
-            html += '<div class="pick-row-odds" style="color:var(--text-muted)">' + pick.odds + '</div></div>';
-          });
-        }
-        html += '</div>';
-      });
-    }
-  } else if (!scheduleFetched) {
-    fetchESPNSchedule();
-  }
-
-  // Season record
-  html += '<div class="insight-card"><div class="insight-label" style="color:var(--green);margin-bottom:8px">SEASON RECORD</div>';
+  // ── SEASON RECORD ──
+  html += '<div class="insight-card"><div style="font-size:10px;font-weight:700;letter-spacing:2px;color:var(--green);margin-bottom:8px">SEASON RECORD</div>';
   html += '<div style="display:flex;gap:16px;justify-content:center">';
   html += '<div style="text-align:center"><div style="font-size:20px;font-weight:800">--</div><div style="font-size:9px;color:var(--text-muted)">WINS</div></div>';
   html += '<div style="text-align:center"><div style="font-size:20px;font-weight:800">--</div><div style="font-size:9px;color:var(--text-muted)">LOSSES</div></div>';
   html += '<div style="text-align:center"><div style="font-size:20px;font-weight:800">--</div><div style="font-size:9px;color:var(--text-muted)">ROI</div></div></div>';
   html += '<div style="font-size:10px;color:var(--text-muted);text-align:center;margin-top:8px">Record tracking begins with Masters 2026</div></div>';
+
+  // ── COMPLETED TOURNAMENTS (collapsed at bottom) ──
+  var completedHtml = '';
+  // PGA completed
+  if (TOURNAMENT && PLAYERS.length > 0 && (TOURNAMENT.stateName === 'STATUS_FINAL' || TOURNAMENT.state === 'post')) {
+    var winner = PLAYERS.filter(function(p) { return p.status === 'active'; })[0];
+    if (winner) {
+      completedHtml += '<div style="padding:10px 12px;background:rgba(255,255,255,0.02);border-radius:8px;margin-bottom:6px;display:flex;align-items:center">';
+      completedHtml += '<div style="flex:1"><div style="font-size:13px;font-weight:700;color:var(--text)">' + esc(TOURNAMENT.name) + '</div><div style="font-size:11px;color:var(--text-muted)">PGA Tour</div></div>';
+      completedHtml += '<div style="text-align:right"><div style="font-size:12px;font-weight:700;color:var(--s-green)">' + winner.name + '</div><div style="font-size:10px;color:var(--text-muted)">' + winner.score + '</div></div></div>';
+    }
+  }
+  // Other tour completed
+  otherTours.forEach(function(t) {
+    var data = insightsCache[t.id];
+    if (data && (data.stateName === 'STATUS_FINAL' || data.state === 'post') && data.players.length > 0) {
+      var w = data.players[0];
+      completedHtml += '<div style="padding:10px 12px;background:rgba(255,255,255,0.02);border-radius:8px;margin-bottom:6px;display:flex;align-items:center">';
+      completedHtml += '<div style="flex:1"><div style="font-size:13px;font-weight:700;color:var(--text)">' + data.name + '</div><div style="font-size:11px;color:var(--text-muted)">' + t.label + '</div></div>';
+      completedHtml += '<div style="text-align:right"><div style="font-size:12px;font-weight:700;color:var(--s-green)">' + w.fullName + '</div><div style="font-size:10px;color:var(--text-muted)">' + w.score + '</div></div></div>';
+    }
+  });
+
+  if (completedHtml) {
+    html += '<div class="insight-card" style="opacity:0.7">';
+    html += '<div style="font-size:10px;font-weight:700;letter-spacing:2px;color:var(--g700);margin-bottom:8px">COMPLETED</div>';
+    html += completedHtml;
+    html += '</div>';
+  }
 
   html += '<div class="disclaimer">All picks are model-generated for entertainment only. Please gamble responsibly. If you or someone you know has a gambling problem, call 1-800-GAMBLER.</div>';
   return html;
