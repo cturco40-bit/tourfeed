@@ -58,6 +58,20 @@
   <script>
     const ACCESS_CODE = 'Gr33nJack3t!';
 
+    // Track handled drafts in localStorage so they never come back
+    function getHandledIds() {
+      try { return JSON.parse(localStorage.getItem('tf_handled') || '[]'); } catch(e) { return []; }
+    }
+    function markHandled(id) {
+      const ids = getHandledIds();
+      ids.push(id);
+      // Keep last 200
+      localStorage.setItem('tf_handled', JSON.stringify(ids.slice(-200)));
+    }
+    function isHandled(id) {
+      return getHandledIds().includes(id);
+    }
+
     function doLogin() {
       const code = document.getElementById('passInput').value;
       if (code === ACCESS_CODE) {
@@ -77,7 +91,7 @@
       try {
         const res = await fetch('/.netlify/functions/draft-tweet');
         const data = await res.json();
-        const drafts = data.drafts || [];
+        const drafts = (data.drafts || []).filter(d => !isHandled(d.id));
 
         count.textContent = drafts.length + ' pending';
 
@@ -145,6 +159,7 @@
       }
 
       actions.innerHTML = '<div class="status">Posting...</div>';
+      markHandled(id);
 
       try {
         // Post the edited version directly instead of the original
@@ -171,6 +186,7 @@
 
     async function rejectDraft(id) {
       const el = document.getElementById('draft-' + id);
+      markHandled(id);
       try {
         await fetch('/.netlify/functions/draft-tweet?action=reject&id=' + id);
         el.style.opacity = '0.3';
