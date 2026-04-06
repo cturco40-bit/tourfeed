@@ -56,14 +56,44 @@ exports.handler = async (event) => {
       const { text, source } = JSON.parse(event.body);
       if (!text || text.length < 10) return { statusCode: 200, headers, body: JSON.stringify({ skipped: 'Too short' }) };
 
-      // Dedup: check if this exact text (or very similar) is already in drafts
       const newWords = text.toLowerCase().replace(/[^a-z0-9\s]/g, '').split(/\s+/).filter(w => w.length > 3);
+      if (newWords.length === 0) return { statusCode: 200, headers, body: JSON.stringify({ skipped: 'No real words' }) };
+
+      // Check against existing drafts
       for (const d of draftsCache) {
         const existingWords = d.text.toLowerCase().replace(/[^a-z0-9\s]/g, '').split(/\s+/).filter(w => w.length > 3);
         const overlap = newWords.filter(w => existingWords.includes(w)).length;
-        if (overlap >= newWords.length * 0.5) {
+        if (overlap >= newWords.length * 0.4) {
           return { statusCode: 200, headers, body: JSON.stringify({ skipped: 'Similar draft exists' }) };
         }
+      }
+
+      // Check against ACTUAL posted tweets on Twitter
+      const bearer = process.env.TWITTER_BEARER_TOKEN;
+      if (bearer) {
+        try {
+          const uRes = await fetch('https://api.twitter.com/2/users/by/username/TourFeedGolf', {
+            headers: { 'Authorization': `Bearer ${bearer}` },
+          });
+          if (uRes.ok) {
+            const userId = (await uRes.json()).data?.id;
+            if (userId) {
+              const tRes = await fetch(`https://api.twitter.com/2/users/${userId}/tweets?max_results=50&tweet.fields=text`, {
+                headers: { 'Authorization': `Bearer ${bearer}` },
+              });
+              if (tRes.ok) {
+                const posted = (await tRes.json()).data || [];
+                for (const t of posted) {
+                  const postedWords = t.text.toLowerCase().replace(/[^a-z0-9\s]/g, '').split(/\s+/).filter(w => w.length > 3);
+                  const overlap = newWords.filter(w => postedWords.includes(w)).length;
+                  if (overlap >= newWords.length * 0.4) {
+                    return { statusCode: 200, headers, body: JSON.stringify({ skipped: 'Already posted similar tweet' }) };
+                  }
+                }
+              }
+            }
+          }
+        } catch(e) {}
       }
 
       const id = Date.now() + Math.floor(Math.random() * 1000);
