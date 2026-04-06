@@ -257,21 +257,15 @@
 
           let content = '';
 
-          // Image preview — render as a styled card that matches what the image will look like
-          var imgTag = (d.type || '').replace('article_','').replace('tweet_','').toUpperCase() || 'NEWS';
-          if (d.type === 'tweet_reaction') imgTag = 'HOT TAKE';
-          if (d.type === 'tweet_content') imgTag = 'CONTENT';
-          if (d.type === 'tweet_betting') imgTag = 'BETTING';
-          var imgTagColor = imgTag === 'RECAP' ? '#2D8F6F' : imgTag === 'BETTING' ? '#D4A853' : imgTag === 'BREAKING' || imgTag === 'NEWS' ? '#FF6B6B' : imgTag === 'PREVIEW' ? '#2D8F6F' : imgTag === 'HOT TAKE' ? '#2D8F6F' : '#868E96';
-          var imgText = isArticle ? (d.title || '') : (d.body || '').slice(0, 80);
-          content += '<div class="draft-image-card" style="background:linear-gradient(135deg,#1B2538,#0F1923);border-left:4px solid ' + imgTagColor + '">';
-          content += '<div class="draft-image-card-inner">';
-          content += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">';
-          content += '<span class="draft-image-card-tag" style="color:' + imgTagColor + ';background:' + imgTagColor + '20">' + imgTag + '</span>';
-          content += '<span style="font-size:9px;color:#495057;font-weight:700;letter-spacing:1px">TOUR<span style="color:#D4A853">FEED</span></span>';
-          content += '</div>';
-          content += '<div class="draft-image-card-text">' + escHtml(imgText) + '</div>';
-          content += '</div></div>';
+          // Image preview — show the actual PNG that will be posted to Twitter
+          if (d.image_url) {
+            var pngUrl = d.image_url;
+            if (pngUrl.startsWith('/')) pngUrl = 'https://tourfeed.co' + pngUrl;
+            if (pngUrl.includes('generate-image') && !pngUrl.includes('format=')) {
+              pngUrl += (pngUrl.includes('?') ? '&' : '?') + 'format=png';
+            }
+            content += '<img src="' + pngUrl + '" class="draft-image" alt="Preview" onerror="this.style.display=\'none\'">';
+          }
 
           if (isArticle) {
             // Article preview — title + full scrollable body (always visible)
