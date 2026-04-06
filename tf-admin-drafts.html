@@ -203,10 +203,16 @@ function showTab(tab) {
   document.getElementById('tabDrafts').classList.toggle('active', tab === 'drafts');
   document.getElementById('tabCreate').classList.toggle('active', tab === 'create');
   if (tab === 'create') {
+    // Stop auto-refresh while editing images
+    if (autoRefreshTimer) { clearInterval(autoRefreshTimer); autoRefreshTimer = null; }
     if (!attachDraftId) document.getElementById('draftContext').innerHTML = '';
     updateFields(); renderPreview(); populateAttachDropdown();
   }
-  if (tab === 'drafts') loadDrafts();
+  if (tab === 'drafts') {
+    loadDrafts();
+    // Resume auto-refresh
+    if (!autoRefreshTimer) autoRefreshTimer = setInterval(loadDrafts, 30000);
+  }
 }
 
 function getHandledIds() { try { return JSON.parse(localStorage.getItem('tf_handled') || '[]'); } catch(e) { return []; } }
