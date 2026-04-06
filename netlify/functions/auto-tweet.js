@@ -189,10 +189,9 @@ exports.handler = async (event) => {
     // Check multiple tours for active events
     const tours = [
       { id: 'pga', sport: 'golf/pga', label: '' },
+      { id: 'liv', sport: 'golf/liv', label: 'LIV Golf: ' },
       { id: 'lpga', sport: 'golf/lpga', label: 'LPGA: ' },
       { id: 'dpw', sport: 'golf/eur', label: 'DP World: ' },
-      { id: 'kft', sport: 'golf/kft', label: 'Korn Ferry: ' },
-      { id: 'champ', sport: 'golf/champ', label: 'Champions: ' },
     ];
 
     let evt = null, comp = null, tourLabel = '';
@@ -358,12 +357,10 @@ exports.handler = async (event) => {
     else if (/u\.?s\.?\s*open/i.test(tn)) hashtags.unshift('#USOpen');
     else if (/pga championship/i.test(tn)) hashtags.unshift('#PGAChamp');
     else if (/open championship|the open/i.test(tn)) hashtags.unshift('#TheOpen');
-    else if (/valero/i.test(tn)) hashtags.unshift('#ValeroTXOpen');
     else if (/rbc heritage/i.test(tn)) hashtags.unshift('#RBCHeritage');
-    if (/lpga/i.test(tourneyName)) { hashtags[1] = '#LPGA'; hashtags[0] = '#LPGATour'; }
-    if (/dp world/i.test(tourneyName)) { hashtags[1] = '#DPWorldTour'; }
-    if (/korn ferry/i.test(tourneyName)) { hashtags[1] = '#KornFerryTour'; }
-    if (/champions/i.test(tourneyName)) { hashtags[1] = '#ChampionsTour'; }
+    if (/liv/i.test(tourLabel)) { hashtags[0] = '#LIVGolf'; hashtags[1] = '#Golf'; }
+    if (/lpga/i.test(tourLabel)) { hashtags[0] = '#LPGATour'; hashtags[1] = '#LPGA'; }
+    if (/dp world/i.test(tourLabel)) { hashtags[0] = '#DPWorldTour'; hashtags[1] = '#Golf'; }
 
     // Append hashtags if they fit within 280
     const tagStr = '\n\n' + hashtags.join(' ');

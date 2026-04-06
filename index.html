@@ -312,7 +312,7 @@ const ESPN_SPORTS = {
   pga: 'golf/pga',
   lpga: 'golf/lpga',
   dpw: 'golf/eur',
-  liv: null,
+  liv: 'golf/liv',
   kft: 'golf/dev',
   champ: 'golf/senior',
 };
@@ -385,9 +385,7 @@ async function fetchESPNScores(tour) {
   if (!sport) {
     TOURNAMENT = null;
     PLAYERS = [];
-    scoresError = tour === 'liv' 
-      ? 'LIV Golf scores available once backend is deployed' 
-      : 'No data source for this tour';
+    scoresError = 'No data source for this tour';
     scoresLoading = false;
     renderApp();
     return;
@@ -1991,6 +1989,7 @@ function renderInsights() {
   // Fetch other tours in background and render when ready
   const otherTours = [
     { id: 'lpga', sport: 'golf/lpga', label: 'LPGA', color: '#E91E8C' },
+    { id: 'liv', sport: 'golf/liv', label: 'LIV GOLF', color: '#D4A853' },
     { id: 'dpw', sport: 'golf/eur', label: 'DP WORLD TOUR', color: '#4A90D9' },
   ];
 
