@@ -113,6 +113,8 @@
 
     <!-- TAB 2: CREATE IMAGE -->
     <div class="tab-content" id="createTab">
+      <!-- Draft context — shows when opened from a specific draft -->
+      <div id="draftContext"></div>
       <div style="font-size:10px;font-weight:700;letter-spacing:2px;color:#868E96;margin-bottom:10px">TEMPLATE</div>
       <div class="tmpl-btns">
         <button class="tmpl-btn active" onclick="setTemplate('breaking')">Breaking News</button>
@@ -200,7 +202,10 @@ function showTab(tab) {
   document.getElementById('createTab').classList.toggle('active', tab === 'create');
   document.getElementById('tabDrafts').classList.toggle('active', tab === 'drafts');
   document.getElementById('tabCreate').classList.toggle('active', tab === 'create');
-  if (tab === 'create') { updateFields(); renderPreview(); populateAttachDropdown(); }
+  if (tab === 'create') {
+    if (!attachDraftId) document.getElementById('draftContext').innerHTML = '';
+    updateFields(); renderPreview(); populateAttachDropdown();
+  }
   if (tab === 'drafts') loadDrafts();
 }
 
@@ -314,8 +319,65 @@ async function rejectDraft(id) {
 
 function openImageEditor(draftId) {
   attachDraftId = draftId;
+  var draft = loadedDrafts[draftId];
   showTab('create');
   document.getElementById('attachSelect').value = draftId;
+
+  if (!draft) return;
+
+  // Show full draft context at top of editor
+  var isArticle = draft.type && draft.type.includes('article');
+  var isTweet = draft.type && draft.type.includes('tweet');
+  var plainBody = (draft.body || '').replace(/<[^>]+>/g, '');
+  var contextHtml = '<div style="background:#0F1923;border:1px solid rgba(255,255,255,0.06);border-radius:10px;padding:14px;margin-bottom:16px">';
+  contextHtml += '<div style="font-size:9px;font-weight:700;letter-spacing:1.5px;color:#4A90D9;margin-bottom:6px">CREATING IMAGE FOR DRAFT #' + draftId + '</div>';
+  if (draft.title) contextHtml += '<div style="font-size:15px;font-weight:800;color:#fff;margin-bottom:6px">' + escHtml(draft.title) + '</div>';
+  if (draft.source_event && draft.source_event !== 'auto' && draft.source_event !== 'generate-original') {
+    contextHtml += '<div style="font-size:11px;color:#4A90D9;margin-bottom:6px">Reacting to: ' + escHtml(draft.source_event) + '</div>';
+  }
+  contextHtml += '<div style="font-size:13px;color:#CED4DA;line-height:1.5;max-height:200px;overflow-y:auto">' + escHtml(plainBody.slice(0, 500)) + (plainBody.length > 500 ? '...' : '') + '</div>';
+  contextHtml += '<div style="font-size:10px;color:#495057;margin-top:6px">' + (draft.type || '').replace(/_/g, ' ').toUpperCase() + '</div>';
+  contextHtml += '</div>';
+  document.getElementById('draftContext').innerHTML = contextHtml;
+
+  // Auto-select template based on draft type
+  if (draft.type === 'tweet_reaction' || draft.type === 'hot_take') {
+    setTemplateByName('quote');
+  } else if (isArticle) {
+    setTemplateByName('breaking');
+  } else {
+    setTemplateByName('breaking');
+  }
+
+  // Pre-fill fields from draft content
+  setTimeout(function() {
+    if (currentTemplate === 'quote') {
+      var qf = document.getElementById('f_quote');
+      var pf = document.getElementById('f_player');
+      var cf = document.getElementById('f_context');
+      if (qf) qf.value = plainBody.slice(0, 200);
+      // Try to extract player name from text
+      if (pf) {
+        var src = draft.source_event || draft.title || '';
+        pf.value = src.replace(/\[.*?\]\s*/g, '').slice(0, 60);
+      }
+      if (cf) cf.value = (draft.type || '').replace(/_/g, ' ').toUpperCase();
+    } else if (currentTemplate === 'breaking') {
+      var hf = document.getElementById('f_headline');
+      var ctf = document.getElementById('f_context');
+      if (hf) hf.value = draft.title || plainBody.slice(0, 100);
+      if (ctf) ctf.value = '';
+    }
+    renderPreview();
+  }, 50);
+}
+
+function setTemplateByName(name) {
+  currentTemplate = name;
+  document.querySelectorAll('.tmpl-btn').forEach(b => {
+    b.classList.toggle('active', b.textContent.toLowerCase().includes(name));
+  });
+  updateFields();
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━
