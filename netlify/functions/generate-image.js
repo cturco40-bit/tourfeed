@@ -2,10 +2,17 @@
 // All images are real PNGs with bundled DM Sans font — no SVG, no font issues
 
 const { createCanvas, GlobalFonts } = require('@napi-rs/canvas');
+const fs = require('fs');
+const os = require('os');
 const path = require('path');
 
-// Register bundled font
-GlobalFonts.registerFromPath(path.join(__dirname, 'fonts', 'DMSans.ttf'), 'DM Sans');
+// Load font from embedded base64 data — avoids all file path issues on Netlify
+const fontB64 = require('./font-data');
+const fontPath = path.join(os.tmpdir(), 'DMSans.ttf');
+if (!fs.existsSync(fontPath)) {
+  fs.writeFileSync(fontPath, Buffer.from(fontB64, 'base64'));
+}
+GlobalFonts.registerFromPath(fontPath, 'DM Sans');
 
 const NAVY = '#1B2538';
 const NAVY_D = '#0F1923';
