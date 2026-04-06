@@ -106,21 +106,57 @@ exports.handler = async (event) => {
   // Reject content that indicates AI confusion or bad data
   const BAD_PHRASES = /data limitation|can't tell|no idea who|broken leaderboard|unknown.*winner|unnamed.*competitor|mystery.*champion|don't have access|can't see|I cannot|limited data|leaderboard.*broken|completely cooked|not doing anything/i;
 
+  // --- Topic-level dedup ---
+  function extractTopicKey(type, title, body) {
+    // Extract main player + event type for topic clustering
+    const text = ((title || '') + ' ' + (body || '')).toLowerCase();
+    const players = ['scheffler','mcilroy','rory','tiger','woods','schauffele','rahm','koepka','morikawa','hovland','fleetwood','spieth','cantlay','fowler','reed','spaun','aberg','theegala','homa','lowry','thomas','finau','matsuyama','dechambeau','woodland','mickelson'];
+    const events = ['withdraw','injury','win','champion','recap','preview','arrest','suspended','trade','transfer','fired','hired','baby','married','record'];
+    let player = '';
+    for (const p of players) { if (text.includes(p)) { player = p; break; } }
+    let event = type.replace('article_','').replace('tweet_','');
+    for (const e of events) { if (text.includes(e)) { event = e; break; } }
+    const month = new Date().toISOString().slice(0, 7);
+    return player + '-' + event + '-' + month;
+  }
+
+  async function checkTopic(topicKey) {
+    try {
+      const existing = await sb('content_topics?topic_key=eq.' + encodeURIComponent(topicKey));
+      if (existing.length > 0) {
+        const topic = existing[0];
+        if (topic.status === 'rejected') return { blocked: true, reason: 'Topic rejected' };
+        if (topic.times_covered >= 5) return { blocked: true, reason: 'Topic exhausted' };
+        // Allow but increment
+        await sb('content_topics?topic_key=eq.' + encodeURIComponent(topicKey), 'PATCH', { times_covered: topic.times_covered + 1 });
+        return { blocked: false };
+      }
+      // New topic
+      await sb('content_topics', 'POST', { topic_key: topicKey, event_type: topicKey.split('-')[1] || '', player_name: topicKey.split('-')[0] || '' });
+      return { blocked: false };
+    } catch(e) { return { blocked: false }; }
+  }
+
   async function saveDraft(type, title, body, tournamentId, round) {
-    // Quality check — reject garbage content
+    // Quality check
     if (BAD_PHRASES.test(title) || BAD_PHRASES.test(body)) {
       return { skipped: true, reason: 'Failed quality check' };
     }
+    // Hash dedup
     const hash = hashText(title + ' ' + body);
     if (await isDuplicate(hash)) {
       return { skipped: true, hash };
     }
-    // Generate real PNG with player photo and upload to Supabase Storage
+    // Topic dedup
+    const topicKey = extractTopicKey(type, title, body);
+    const topicCheck = await checkTopic(topicKey);
+    if (topicCheck.blocked) {
+      return { skipped: true, reason: topicCheck.reason };
+    }
+    // Generate image and save
     const imageUrl = await generateAndUploadImage(type, title, body);
     const draft = await sb('content_drafts', 'POST', {
-      type,
-      title,
-      body,
+      type, title, body,
       image_url: imageUrl,
       tournament_id: tournamentId,
       round,

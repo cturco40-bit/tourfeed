@@ -19,6 +19,14 @@ exports.handler = async (event) => {
   const headers = { 'Content-Type': 'application/json' };
 
   try {
+    // Auto-expire stale drafts (6h for tweets, 48h for articles/blogs)
+    const sixHoursAgo = new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString();
+    const twoDaysAgo = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
+    // Expire old tweet drafts
+    await sb('content_drafts?status=eq.pending&type=like.tweet*&created_at=lt.' + sixHoursAgo, 'PATCH', { status: 'expired' });
+    // Expire old article drafts
+    await sb('content_drafts?status=eq.pending&type=like.article*&created_at=lt.' + twoDaysAgo, 'PATCH', { status: 'expired' });
+
     // Get all approved drafts
     const approved = await sb('content_drafts?status=eq.approved&order=created_at.asc&limit=10');
 
