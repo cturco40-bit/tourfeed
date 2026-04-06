@@ -75,7 +75,7 @@ function wrapText(ctx, text, x, y, maxWidth, lineHeight, maxLines) {
       ctx.fillText(line, x, y);
       y += lineHeight;
       linesDrawn++;
-      if (linesDrawn >= (maxLines || 8)) return y;
+      if (linesDrawn >= (maxLines || 12)) return y;
       line = words[i];
     } else {
       line = test;
@@ -83,6 +83,33 @@ function wrapText(ctx, text, x, y, maxWidth, lineHeight, maxLines) {
   }
   if (line) { ctx.fillText(line, x, y); y += lineHeight; linesDrawn++; }
   return y;
+}
+
+// Auto-size text to fit — shrinks font until all text fits in available space
+function drawFittedText(ctx, text, x, y, maxWidth, maxHeight, startSize, weight) {
+  let size = startSize;
+  while (size > 20) {
+    ctx.font = font(weight, size);
+    const lh = size * 1.25;
+    const lines = [];
+    let line = '';
+    for (const word of (text || '').split(' ')) {
+      const test = line + (line ? ' ' : '') + word;
+      if (ctx.measureText(test).width > maxWidth && line) {
+        lines.push(line);
+        line = word;
+      } else line = test;
+    }
+    if (line) lines.push(line);
+    if (lines.length * lh <= maxHeight) {
+      lines.forEach((l, i) => ctx.fillText(l, x, y + i * lh));
+      return y + lines.length * lh;
+    }
+    size -= 2;
+  }
+  // Fallback at minimum size
+  ctx.font = font(weight, 20);
+  return wrapText(ctx, text, x, y, maxWidth, 25, 20);
 }
 
 function drawAccent(ctx, w, h, color) {
@@ -224,7 +251,7 @@ async function generateHeadline(params) {
   ctx.font = font(800, hasPhoto ? 44 : 48);
   ctx.fillStyle = WHITE;
   ctx.textAlign = 'left';
-  wrapText(ctx, headline, 50, 240, hasPhoto && !isUnsplash ? 750 : 980, 56, 10);
+  drawFittedText(ctx, headline, 50, 240, hasPhoto && !isUnsplash ? 700 : 980, 600, 48, 800);
   drawFooter(ctx, 1080, 1080, tagColor);
   return c.toBuffer('image/png');
 }
@@ -269,7 +296,7 @@ async function generateArticleHeader(params) {
   ctx.font = font(800, hasPhoto ? 34 : 38);
   ctx.fillStyle = WHITE;
   ctx.textAlign = 'left';
-  wrapText(ctx, headline, 50, 170, hasPhoto && !isUnsplash ? 850 : 1100, 44, 10);
+  drawFittedText(ctx, headline, 50, 170, hasPhoto && !isUnsplash ? 800 : 1100, 380, 38, 800);
   drawFooter(ctx, 1200, 630, tagColor);
   return c.toBuffer('image/png');
 }
@@ -320,7 +347,7 @@ async function generateHotTake(params) {
   // Quote text
   ctx.font = font(700, hasPhoto ? 36 : 40);
   ctx.fillStyle = WHITE;
-  const endY = wrapText(ctx, quote, 55, 310, hasPhoto && !isUnsplash ? 720 : 960, 48, 8);
+  const endY = drawFittedText(ctx, quote, 55, 310, hasPhoto && !isUnsplash ? 680 : 960, 550, 40, 700);
 
   // Attribution
   if (attribution) {
