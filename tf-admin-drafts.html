@@ -61,6 +61,10 @@
     /* ARTICLE PREVIEW */
     .draft-article-title { font-size:16px; font-weight:800; color:#fff; margin-bottom:6px; line-height:1.3; }
     .draft-article-excerpt { font-size:13px; color:#CED4DA; line-height:1.6; display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden; }
+    .draft-article-full { font-size:13px; color:#CED4DA; line-height:1.7; max-height:400px; overflow-y:auto; padding:12px; background:#0F1923; border-radius:8px; margin-top:8px; display:none; }
+    .draft-article-full.show { display:block; }
+    .draft-article-full p { margin-bottom:10px; }
+    .btn-expand { background:none; border:none; color:#4A90D9; font-size:12px; font-weight:700; cursor:pointer; font-family:inherit; padding:6px 0; }
 
     /* TWEET PREVIEW */
     .tweet-preview { background:#0F1923; border:1px solid rgba(255,255,255,0.06); border-radius:12px; padding:14px; margin-bottom:10px; }
@@ -251,14 +255,25 @@
 
           // Image preview
           if (d.image_url) {
-            content += '<img src="' + d.image_url + '" class="draft-image" alt="" onerror="this.style.display=\'none\'">';
+            var imgUrl = d.image_url;
+            // Make relative URLs absolute
+            if (imgUrl.startsWith('/')) imgUrl = 'https://tourfeed.co' + imgUrl;
+            // For SVG function URLs, use object tag for better rendering
+            if (imgUrl.includes('generate-image') || imgUrl.endsWith('.svg')) {
+              content += '<object data="' + imgUrl + '" type="image/svg+xml" style="width:100%;border-radius:8px;margin-bottom:10px;max-height:300px;background:#1B2538" onerror="this.style.display=\'none\'"><img src="' + imgUrl + '" class="draft-image" alt="" onerror="this.style.display=\'none\'"></object>';
+            } else {
+              content += '<img src="' + imgUrl + '" class="draft-image" alt="" onerror="this.style.display=\'none\'">';
+            }
           }
 
           if (isArticle) {
-            // Article preview
+            // Article preview — title, excerpt, expandable full body
             if (d.title) content += '<div class="draft-article-title">' + escHtml(d.title) + '</div>';
-            const excerpt = (d.body || '').replace(/<[^>]+>/g, '').slice(0, 200);
-            content += '<div class="draft-article-excerpt">' + escHtml(excerpt) + '</div>';
+            const plainBody = (d.body || '').replace(/<[^>]+>/g, '');
+            const excerpt = plainBody.slice(0, 200);
+            content += '<div class="draft-article-excerpt">' + escHtml(excerpt) + (plainBody.length > 200 ? '...' : '') + '</div>';
+            content += '<button class="btn-expand" onclick="toggleFullArticle(' + d.id + ')">Read Full Article</button>';
+            content += '<div class="draft-article-full" id="full-' + d.id + '">' + (d.body || escHtml(plainBody)) + '</div>';
           } else {
             // Tweet preview
             content += '<div class="tweet-preview">';
@@ -292,6 +307,14 @@
         console.error('Load error:', e);
         list.innerHTML = '<div class="empty">Error loading drafts: ' + e.message + '</div>';
       }
+    }
+
+    function toggleFullArticle(id) {
+      const el = document.getElementById('full-' + id);
+      if (!el) return;
+      el.classList.toggle('show');
+      const btn = el.previousElementSibling;
+      if (btn) btn.textContent = el.classList.contains('show') ? 'Collapse' : 'Read Full Article';
     }
 
     function setFilter(type) {
