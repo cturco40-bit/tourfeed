@@ -5,18 +5,23 @@ const TWITTER_BEARER = process.env.TWITTER_BEARER_TOKEN;
 
 async function sb(path, method, body) {
   const key = SUPABASE_KEY || process.env.SUPABASE_ANON_KEY;
+  if (!key) throw new Error('No Supabase key');
   const res = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
     method: method || 'GET',
     headers: {
       'apikey': key,
       'Authorization': `Bearer ${key}`,
       'Content-Type': 'application/json',
-      'Prefer': method === 'POST' ? 'return=representation' : 'return=minimal',
+      'Prefer': method === 'POST' ? 'return=representation' : (method === 'PATCH' ? 'return=minimal' : ''),
     },
     body: body ? JSON.stringify(body) : undefined,
   });
-  if (method === 'GET' || (method === 'POST' && res.ok)) {
-    return await res.json();
+  if (method === 'GET') {
+    const data = await res.json();
+    return Array.isArray(data) ? data : [];
+  }
+  if (method === 'POST' && res.ok) {
+    try { return await res.json(); } catch(e) { return []; }
   }
   return res.ok;
 }
