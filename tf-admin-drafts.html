@@ -274,13 +274,11 @@
           content += '</div></div>';
 
           if (isArticle) {
-            // Article preview — title, excerpt, expandable full body
+            // Article preview — title + full scrollable body (always visible)
             if (d.title) content += '<div class="draft-article-title">' + escHtml(d.title) + '</div>';
-            const plainBody = (d.body || '').replace(/<[^>]+>/g, '');
-            const excerpt = plainBody.slice(0, 200);
-            content += '<div class="draft-article-excerpt">' + escHtml(excerpt) + (plainBody.length > 200 ? '...' : '') + '</div>';
-            content += '<button class="btn-expand" onclick="toggleFullArticle(' + d.id + ')">Read Full Article</button>';
-            content += '<div class="draft-article-full" id="full-' + d.id + '">' + (d.body || escHtml(plainBody)) + '</div>';
+            var wordCount = (d.body || '').replace(/<[^>]+>/g, '').split(/\s+/).length;
+            content += '<div style="font-size:10px;color:#495057;margin-bottom:6px">' + wordCount + ' words</div>';
+            content += '<div class="draft-article-full" style="display:block">' + (d.body || '') + '</div>';
           } else {
             // Tweet preview
             content += '<div class="tweet-preview">';
