@@ -173,7 +173,8 @@ ${context}`,
 
     const drafted = [];
     for (const tweet of tweets) {
-      if (!tweet || tweet.length < 15 || /don't have|can't see|I cannot/i.test(tweet)) continue;
+      if (!tweet || tweet.length < 15) continue;
+      if (/don't have|can't see|I cannot|data limitation|broken leaderboard|no idea who|unknown.*winner|unnamed|mystery.*champion/i.test(tweet)) continue;
       // Dedup against existing drafts
       const words = tweet.toLowerCase().replace(/[^a-z0-9\s]/g, '').split(/\s+/).filter(w => w.length > 3);
       let isDupe = recentTexts.some(r => {

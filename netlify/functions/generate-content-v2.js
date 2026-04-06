@@ -66,7 +66,14 @@ exports.handler = async (event) => {
     return `${base}?type=headline&tag=NEWS&headline=${encodeURIComponent(title || '')}`;
   }
 
+  // Reject content that indicates AI confusion or bad data
+  const BAD_PHRASES = /data limitation|can't tell|no idea who|broken leaderboard|unknown.*winner|unnamed.*competitor|mystery.*champion|don't have access|can't see|I cannot|limited data|leaderboard.*broken|completely cooked|not doing anything/i;
+
   async function saveDraft(type, title, body, tournamentId, round) {
+    // Quality check — reject garbage content
+    if (BAD_PHRASES.test(title) || BAD_PHRASES.test(body)) {
+      return { skipped: true, reason: 'Failed quality check' };
+    }
     const hash = hashText(title + ' ' + body);
     if (await isDuplicate(hash)) {
       return { skipped: true, hash };
@@ -139,27 +146,48 @@ exports.handler = async (event) => {
 
     const currentRound = tournament.current_round || 1;
 
-    // Format leaderboard data for Claude
-    const leaderboardText = leaderboard.map((p, i) => {
+    // Format and VALIDATE leaderboard data
+    const validPlayers = leaderboard.filter(p => {
+      const name = p.players?.name;
+      const score = p.total_score;
+      return name && name !== 'Unknown' && name.length > 2 && score && score !== '--';
+    });
+
+    if (validPlayers.length < 5) {
+      return { statusCode: 200, headers, body: JSON.stringify({ message: 'Not enough valid player data (' + validPlayers.length + ' players with names/scores). Skipping.' }) };
+    }
+
+    const leaderboardText = validPlayers.map((p, i) => {
       const pos = p.position || (i + 1);
-      const name = p.players?.name || 'Unknown';
+      const name = p.players.name;
       const country = p.players?.country || '';
-      const total = p.total_score || '--';
-      const today = p.today_score || '--';
-      const r1 = p.round1 || '--';
-      const r2 = p.round2 || '--';
-      const r3 = p.round3 || '--';
-      const r4 = p.round4 || '--';
-      return `${pos}. ${name} (${country}) | Total: ${total} | R1: ${r1} R2: ${r2} R3: ${r3} R4: ${r4}`;
+      const total = p.total_score;
+      const r1 = p.round1 ? p.round1 + ' strokes' : '';
+      const r2 = p.round2 ? p.round2 + ' strokes' : '';
+      const r3 = p.round3 ? p.round3 + ' strokes' : '';
+      const r4 = p.round4 ? p.round4 + ' strokes' : '';
+      const rounds = [r1, r2, r3, r4].filter(Boolean).join(', ');
+      return `${pos}. ${name} (${country}) | Total: ${total}${rounds ? ' | Rounds: ' + rounds : ''}`;
     }).join('\n');
 
-    const dataBlock = `Tournament: ${tournament.name}\nRound: ${currentRound}\nDate: ${new Date().toISOString().split('T')[0]}\n\nLeaderboard (Top 15):\n${leaderboardText}`;
+    const tourName = tournament.tour_id === 'pga' ? 'PGA Tour' : tournament.tour_id === 'lpga' ? 'LPGA Tour' : tournament.tour_id === 'liv' ? 'LIV Golf' : tournament.tour_id === 'dpw' ? 'DP World Tour' : '';
+    const dataBlock = `Tour: ${tourName}\nTournament: ${tournament.name}\nCourse: ${tournament.course || 'TBD'}\nRound: ${currentRound}\nStatus: ${tournament.status}\n\nLeaderboard (Top ${validPlayers.length}):\n${leaderboardText}`;
 
     const results = { tournament: tournament.name, round: currentRound, generated: [], skipped: [] };
 
     // --- CONTENT 1: Round Recap Article ---
     try {
-      const recapSystem = "You are a golf journalist writing from raw data. Write a 300-400 word round recap. Clickbait-style headline. Short punchy paragraphs. Reference specific scores, movements, key storylines. Never mention AI. IMPORTANT: Rory McIlroy is the defending Masters champion (won 2025). It is 2026.";
+      const recapSystem = `You are a golf journalist writing from raw leaderboard data. ONLY state facts that appear in the data provided. Do NOT invent stats, quotes, hole numbers, or specific shots — you only have position and score data.
+
+Rules:
+- 300-400 words, clickbait headline, short punchy paragraphs
+- Only reference player names, scores, and positions from the data
+- Do not invent specific holes, shots, or moments you can't see in the data
+- Do not say "birdie on 18" or "eagle on 12" — you don't have hole data
+- Focus on: who's leading, margin, who's chasing, big movers, storylines
+- Rory McIlroy is defending Masters champion (won 2025). Year is 2026.
+- Never mention AI, data limitations, or that you're working from data
+- If this is a ${tourName} event, write for that tour's audience`;
       const recapPrompt = `Write a round recap article based on this leaderboard data. Return your response in this exact format:\n\nHEADLINE: <your headline here>\n\nBODY:\n<your HTML article here using <p> tags>\n\n${dataBlock}`;
 
       const recapRaw = await askClaude(recapSystem, recapPrompt, 1500);
@@ -186,7 +214,7 @@ exports.handler = async (event) => {
 
     // --- CONTENT 2: Tweet Reactions (4 tweets) ---
     try {
-      const tweetSystem = "Write 4 tweets reacting to this round. Voice: golf fan in a group chat. ZERO emojis. ZERO hashtags. Never mention TourFeed. Short, opinionated, funny when it fits. 1-2 sentences each.";
+      const tweetSystem = `Write 4 tweets about this ${tourName} tournament. Voice: golf fan in a group chat. ZERO emojis. ZERO hashtags. Never mention TourFeed. 1-2 sentences each. ONLY reference players and scores from the data. Do NOT invent specific shots, holes, or moments. Do NOT complain about data quality. Rory McIlroy is defending Masters champ (won 2025). Year 2026.`;
       const tweetPrompt = `Write 4 tweets reacting to this round. Number them 1-4, each on its own line.\n\n${dataBlock}`;
 
       const tweetRaw = await askClaude(tweetSystem, tweetPrompt, 800);
@@ -232,7 +260,7 @@ exports.handler = async (event) => {
 
     // --- CONTENT 3: Betting Insights Article ---
     try {
-      const bettingSystem = "You're a sharp handicapper. Write betting analysis from this leaderboard data. Include: best value outright pick, top 5 finish pick, top 10 finish pick, longshot pick, fade pick. Include odds and reasoning. ZERO emojis.";
+      const bettingSystem = `You're a sharp handicapper analyzing the ${tourName} ${tournament.name}. Write betting analysis using ONLY the leaderboard data provided. Include: outright winner pick, top 5 pick, top 10 pick, longshot, fade. Include estimated odds. ONLY reference players from the data. Do NOT invent stats like strokes gained or driving accuracy. Rory McIlroy is defending Masters champ (won 2025). Year 2026. ZERO emojis.`;
       const bettingPrompt = `Write betting insights based on this leaderboard data. Return your response in this exact format:\n\nHEADLINE: <your headline here>\n\nBODY:\n<your HTML article here using <p> and <h3> tags>\n\n${dataBlock}`;
 
       const bettingRaw = await askClaude(bettingSystem, bettingPrompt, 1500);
