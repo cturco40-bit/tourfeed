@@ -19,6 +19,7 @@
   },
   "homepage": "https://github.com/cturco40-bit/tourfeed#readme",
   "dependencies": {
+    "@netlify/blobs": "^10.7.4",
     "@netlify/functions": "^5.1.5"
   }
 }

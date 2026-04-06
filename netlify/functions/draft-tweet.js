@@ -1,8 +1,4 @@
-// Tweet draft queue — stores pending tweets, sends ntfy notification for approval
-// Approve via: POST /draft-tweet?action=approve&id=X
-// List via: GET /draft-tweet
-
-let drafts = []; // In-memory queue (resets on cold start)
+const { getStore } = require('@netlify/blobs');
 
 exports.handler = async (event) => {
   const headers = {
@@ -15,16 +11,31 @@ exports.handler = async (event) => {
     return { statusCode: 200, headers, body: '' };
   }
 
+  const store = getStore('tweet-drafts');
   const params = event.queryStringParameters || {};
+
+  // Load drafts from persistent store
+  async function loadDrafts() {
+    try {
+      const data = await store.get('drafts', { type: 'json' });
+      return data || [];
+    } catch(e) { return []; }
+  }
+
+  async function saveDrafts(drafts) {
+    await store.setJSON('drafts', drafts);
+  }
 
   // GET — list pending drafts
   if (event.httpMethod === 'GET' && !params.action) {
+    const drafts = await loadDrafts();
     return { statusCode: 200, headers, body: JSON.stringify({ drafts, count: drafts.length }) };
   }
 
   // Approve a draft
   if (params.action === 'approve') {
     const id = parseInt(params.id);
+    const drafts = await loadDrafts();
     const draft = drafts.find(d => d.id === id);
     if (!draft) return { statusCode: 200, headers: { 'Content-Type': 'text/html' }, body: '<html><body style="background:#111;color:#fff;font-family:sans-serif;text-align:center;padding:60px"><h2>Draft already posted or expired</h2></body></html>' };
 
@@ -35,7 +46,7 @@ exports.handler = async (event) => {
         body: JSON.stringify({ text: draft.text }),
       });
       const data = await res.json();
-      drafts = drafts.filter(d => d.id !== id);
+      await saveDrafts(drafts.filter(d => d.id !== id));
       return { statusCode: 200, headers: { 'Content-Type': 'text/html' }, body: `<html><body style="background:#111;color:#fff;font-family:sans-serif;text-align:center;padding:60px"><h2 style="color:#2DD4A0">Tweet Posted!</h2><p style="color:#868E96;max-width:400px;margin:20px auto">${draft.text.replace(/</g,'&lt;').replace(/\n/g,'<br>')}</p></body></html>` };
     } catch (e) {
       return { statusCode: 200, headers: { 'Content-Type': 'text/html' }, body: `<html><body style="background:#111;color:#fff;font-family:sans-serif;text-align:center;padding:60px"><h2 style="color:#FF6B6B">Failed to post</h2><p style="color:#868E96">${e.message}</p></body></html>` };
@@ -45,13 +56,14 @@ exports.handler = async (event) => {
   // Reject a draft
   if (params.action === 'reject') {
     const id = parseInt(params.id);
-    drafts = drafts.filter(d => d.id !== id);
-    return { statusCode: 200, headers: { 'Content-Type': 'text/html' }, body: '<html><body style="background:#111;color:#fff;font-family:sans-serif;text-align:center;padding:60px"><h2 style="color:#D4A853">Tweet Rejected</h2><p style="color:#868E96">Draft has been discarded.</p></body></html>' };
+    const drafts = await loadDrafts();
+    await saveDrafts(drafts.filter(d => d.id !== id));
+    return { statusCode: 200, headers: { 'Content-Type': 'text/html' }, body: '<html><body style="background:#111;color:#fff;font-family:sans-serif;text-align:center;padding:60px"><h2 style="color:#D4A853">Tweet Rejected</h2></body></html>' };
   }
 
   // Clear all drafts
   if (params.action === 'clear') {
-    drafts = [];
+    await saveDrafts([]);
     return { statusCode: 200, headers, body: JSON.stringify({ success: true, cleared: true }) };
   }
 
@@ -63,10 +75,12 @@ exports.handler = async (event) => {
 
       const id = Date.now();
       const draft = { id, text, source: source || 'auto', created: new Date().toISOString() };
+      const drafts = await loadDrafts();
       drafts.push(draft);
 
-      // Keep only last 20 drafts
-      if (drafts.length > 20) drafts = drafts.slice(-20);
+      // Keep only last 30 drafts
+      const trimmed = drafts.slice(-30);
+      await saveDrafts(trimmed);
 
       return { statusCode: 200, headers, body: JSON.stringify({ success: true, id, text }) };
     } catch (e) {
