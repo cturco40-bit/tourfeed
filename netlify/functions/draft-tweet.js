@@ -26,7 +26,7 @@ exports.handler = async (event) => {
   if (params.action === 'approve') {
     const id = parseInt(params.id);
     const draft = drafts.find(d => d.id === id);
-    if (!draft) return { statusCode: 404, headers, body: JSON.stringify({ error: 'Draft not found' }) };
+    if (!draft) return { statusCode: 200, headers: { 'Content-Type': 'text/html' }, body: '<html><body style="background:#111;color:#fff;font-family:sans-serif;text-align:center;padding:60px"><h2>Draft already posted or expired</h2></body></html>' };
 
     try {
       const res = await fetch('https://tourfeed.co/.netlify/functions/post-tweet', {
@@ -36,9 +36,9 @@ exports.handler = async (event) => {
       });
       const data = await res.json();
       drafts = drafts.filter(d => d.id !== id);
-      return { statusCode: 200, headers, body: JSON.stringify({ success: true, tweet_id: data.tweet_id, text: draft.text }) };
+      return { statusCode: 200, headers: { 'Content-Type': 'text/html' }, body: `<html><body style="background:#111;color:#fff;font-family:sans-serif;text-align:center;padding:60px"><h2 style="color:#2DD4A0">Tweet Posted!</h2><p style="color:#868E96;max-width:400px;margin:20px auto">${draft.text.replace(/</g,'&lt;').replace(/\n/g,'<br>')}</p></body></html>` };
     } catch (e) {
-      return { statusCode: 500, headers, body: JSON.stringify({ error: e.message }) };
+      return { statusCode: 200, headers: { 'Content-Type': 'text/html' }, body: `<html><body style="background:#111;color:#fff;font-family:sans-serif;text-align:center;padding:60px"><h2 style="color:#FF6B6B">Failed to post</h2><p style="color:#868E96">${e.message}</p></body></html>` };
     }
   }
 
@@ -46,7 +46,7 @@ exports.handler = async (event) => {
   if (params.action === 'reject') {
     const id = parseInt(params.id);
     drafts = drafts.filter(d => d.id !== id);
-    return { statusCode: 200, headers, body: JSON.stringify({ success: true, rejected: id }) };
+    return { statusCode: 200, headers: { 'Content-Type': 'text/html' }, body: '<html><body style="background:#111;color:#fff;font-family:sans-serif;text-align:center;padding:60px"><h2 style="color:#D4A853">Tweet Rejected</h2><p style="color:#868E96">Draft has been discarded.</p></body></html>' };
   }
 
   // Clear all drafts
