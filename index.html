@@ -564,17 +564,30 @@ async function fetchESPNScores(tour) {
     renderApp();
 
     // Enrich with detailed status (tee times, precise positions, thru)
-    // Fetched in parallel after initial render for fast first paint
+    // Only fetch when tournament is in progress (not final/scheduled)
+    const stState = comp.status?.type?.state || '';
+    if (stState !== 'in' && stState !== 'pre') {
+      // Tournament is final — no need for status enrichment
+      renderApp();
+      return;
+    }
+
     const league = sport.replace('golf/', '') || 'pga';
     const eventId = event.id;
     const compId = comp.id || eventId;
     try {
-      const statusFetches = PLAYERS.map(p =>
-        fetch(`https://sports.core.api.espn.com/v2/sports/golf/leagues/${league}/events/${eventId}/competitions/${compId}/competitors/${p.athleteId}/status`)
-          .then(r => r.ok ? r.json() : null)
-          .catch(() => null)
-      );
-      const statuses = await Promise.all(statusFetches);
+      // Batch in groups of 20 to avoid overwhelming the browser
+      const allStatuses = [];
+      for (let i = 0; i < PLAYERS.length; i += 20) {
+        const batch = PLAYERS.slice(i, i + 20).map(p =>
+          fetch(`https://sports.core.api.espn.com/v2/sports/golf/leagues/${league}/events/${eventId}/competitions/${compId}/competitors/${p.athleteId}/status`)
+            .then(r => r.ok ? r.json() : null)
+            .catch(() => null)
+        );
+        const results = await Promise.all(batch);
+        allStatuses.push(...results);
+      }
+      const statuses = allStatuses;
       statuses.forEach((st, i) => {
         if (!st || !PLAYERS[i]) return;
         const p = PLAYERS[i];
