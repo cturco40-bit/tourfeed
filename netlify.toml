@@ -3,3 +3,21 @@
 
 [functions]
   directory = "netlify/functions"
+
+[functions."generate-content-v2"]
+  timeout = 60
+
+[functions."generate-image"]
+  timeout = 30
+
+[functions."news-detector"]
+  timeout = 60
+
+[functions."generate-tweets"]
+  timeout = 60
+
+[functions."blog-scheduler"]
+  timeout = 60
+
+[functions."publish-approved"]
+  timeout = 30
