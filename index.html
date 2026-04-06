@@ -849,7 +849,7 @@ function switchTab(i) {
   renderNav();
   if (i === 2 || i === 3 || i === 4 || i === 0) fetchAllArticles();
   if (i === 5 && !standingsFetched[standingsFilter]) fetchESPNStandings(standingsFilter);
-  if (i === 6 || i === 0) { if (!scheduleFetched) fetchESPNSchedule(); }
+  if (i === 6 || i === 3 || i === 0) { if (!scheduleFetched) fetchESPNSchedule(); }
   renderApp();
   // Update URL
   if (i === 0) history.pushState(null, '', '/');
@@ -1342,6 +1342,53 @@ function renderNews() {
 // ============================================
 let insightsCache = {};
 
+function getPreviewPicks(eventName, isMajor) {
+  var e = (eventName || '').toLowerCase();
+  if (/masters/i.test(e)) return [
+    { type: 'FAVORITE', name: 'Scottie Scheffler', odds: '+400', reason: 'Two-time champion, world #1, owns this course' },
+    { type: 'FAVORITE', name: 'Rory McIlroy', odds: '+900', reason: 'Defending champion, career Grand Slam holder, back-to-back bid' },
+    { type: 'VALUE', name: 'Ludvig Aberg', odds: '+1600', reason: 'Elite power game suits Augusta, consistent major contender' },
+    { type: 'LONGSHOT', name: 'Robert MacIntyre', odds: '+4000', reason: 'Trending up, recent winner, fits Augusta profile' },
+  ];
+  if (/u\.?s\.?\s*open/i.test(e)) return [
+    { type: 'FAVORITE', name: 'Scottie Scheffler', odds: '+500', reason: 'World #1, consistent in major setups' },
+    { type: 'VALUE', name: 'Xander Schauffele', odds: '+1200', reason: 'Defending champion, thrives in tough conditions' },
+    { type: 'LONGSHOT', name: 'Tommy Fleetwood', odds: '+4000', reason: 'US Open runner-up pedigree, precise iron play' },
+  ];
+  if (/pga championship/i.test(e)) return [
+    { type: 'FAVORITE', name: 'Scottie Scheffler', odds: '+450', reason: 'Dominant form, elite in strong fields' },
+    { type: 'VALUE', name: 'Collin Morikawa', odds: '+1800', reason: 'Past PGA champion, elite approach play' },
+    { type: 'LONGSHOT', name: 'Hideki Matsuyama', odds: '+3500', reason: 'Major pedigree, consistent contender' },
+  ];
+  if (/open championship|the open/i.test(e)) return [
+    { type: 'FAVORITE', name: 'Rory McIlroy', odds: '+700', reason: 'Career Grand Slam holder, two-time Claret Jug winner, links specialist' },
+    { type: 'VALUE', name: 'Tommy Fleetwood', odds: '+2000', reason: 'British player, elite links game' },
+    { type: 'LONGSHOT', name: 'Robert MacIntyre', odds: '+3500', reason: 'Scottish links upbringing, rising form' },
+  ];
+  if (/heritage/i.test(e)) return [
+    { type: 'FAVORITE', name: 'Scottie Scheffler', odds: '+600', reason: 'World #1, Harbour Town suits precision players' },
+    { type: 'VALUE', name: 'Matt Fitzpatrick', odds: '+2500', reason: 'Short tight course rewards accuracy over power' },
+    { type: 'LONGSHOT', name: 'J.J. Spaun', odds: '+5000', reason: 'Riding momentum, good approach stats recently' },
+  ];
+  if (isMajor) return [
+    { type: 'FAVORITE', name: 'Scottie Scheffler', odds: '+500', reason: 'World #1, major championship pedigree' },
+    { type: 'VALUE', name: 'Rory McIlroy', odds: '+1000', reason: 'Five-time major champion, career Grand Slam holder' },
+    { type: 'LONGSHOT', name: 'Ludvig Aberg', odds: '+2500', reason: 'Young talent with elite power metrics' },
+  ];
+  // Generic picks
+  var topPlayers = PLAYERS.filter(function(p) { return p.status === 'active'; }).slice(0, 10);
+  if (topPlayers.length >= 3) return [
+    { type: 'FAVORITE', name: topPlayers[0].name, odds: '+600', reason: 'Current form leader, riding momentum' },
+    { type: 'VALUE', name: topPlayers[2].name, odds: '+2000', reason: 'Strong recent play, good value at this price' },
+    { type: 'LONGSHOT', name: (topPlayers[6] || topPlayers[4] || topPlayers[2]).name, odds: '+5000', reason: 'Under the radar but trending in right direction' },
+  ];
+  return [
+    { type: 'FAVORITE', name: 'Scottie Scheffler', odds: '+500', reason: 'World #1, consistently dominant across all events' },
+    { type: 'VALUE', name: 'Xander Schauffele', odds: '+1200', reason: 'Elite ball-striker, excels in strong fields' },
+    { type: 'LONGSHOT', name: 'Sahith Theegala', odds: '+3000', reason: 'Due for a breakthrough, trending stats' },
+  ];
+}
+
 async function fetchTourInsights(tourId, sport) {
   if (insightsCache[tourId] !== undefined) return insightsCache[tourId];
   try {
@@ -1480,7 +1527,45 @@ function renderInsights() {
     (async function() { for (const t of uncached) await fetchTourInsights(t.id, t.sport); renderApp(); })();
   }
 
-  if (!html) html = '<div style="text-align:center;padding:50px 20px"><div style="font-size:14px;font-weight:700;color:var(--text-dim)">No active tournaments</div><div style="font-size:12px;color:var(--text-muted);margin-top:8px">Check back during tournament play for picks and odds</div></div>';
+  if (!html) html = '<div style="text-align:center;padding:30px 20px"><div style="font-size:14px;font-weight:700;color:var(--text-dim)">No active tournaments</div><div style="font-size:12px;color:var(--text-muted);margin-top:8px">Check back during tournament play for live picks and odds</div></div>';
+
+  // Preview picks for upcoming events
+  if (scheduleData.length > 0) {
+    const now = Date.now();
+    const upcoming = scheduleData.filter(function(e) { return e.startDate && new Date(e.startDate).getTime() > now; }).slice(0, 3);
+    if (upcoming.length > 0) {
+      upcoming.forEach(function(e) {
+        const d = new Date(e.startDate);
+        const dateStr = d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+        const daysUntil = Math.ceil((d.getTime() - now) / 86400000);
+        const daysLabel = daysUntil === 0 ? 'TODAY' : daysUntil === 1 ? 'TOMORROW' : daysUntil + ' DAYS';
+        const isMajor = /masters|pga championship|u\.?s\.?\s*open|open championship|the open/i.test(e.event);
+
+        html += '<div class="insight-card">';
+        html += '<div class="insight-header"><div class="insight-label" style="color:' + (isMajor ? 'var(--gold)' : 'var(--green)') + '">PREVIEW' + (isMajor ? ' &middot; MAJOR' : '') + '</div>';
+        html += '<span style="font-size:10px;font-weight:700;color:var(--text-muted);margin-left:auto;background:rgba(255,255,255,0.05);padding:2px 8px;border-radius:4px">' + daysLabel + '</span></div>';
+        html += '<div style="font-size:16px;font-weight:800;color:var(--text);margin-bottom:4px">' + esc(e.event) + '</div>';
+        html += '<div style="font-size:11px;color:var(--text-muted);margin-bottom:4px">' + esc(e.course) + '</div>';
+        html += '<div style="font-size:11px;color:var(--text-muted);margin-bottom:12px">' + dateStr + (e.purse ? ' &middot; ' + e.purse : '') + (e.tv ? ' &middot; ' + e.tv : '') + '</div>';
+
+        var picks = getPreviewPicks(e.event, isMajor);
+        if (picks) {
+          picks.forEach(function(pick) {
+            var bgColor = pick.type === 'FAVORITE' ? 'rgba(45,143,111,0.08)' : pick.type === 'VALUE' ? 'rgba(212,168,83,0.08)' : 'rgba(74,144,217,0.08)';
+            var pColor = pick.type === 'FAVORITE' ? 'var(--green)' : pick.type === 'VALUE' ? 'var(--gold)' : '#4A90D9';
+            var pBg = pick.type === 'FAVORITE' ? 'rgba(45,143,111,0.15)' : pick.type === 'VALUE' ? 'rgba(212,168,83,0.15)' : 'rgba(74,144,217,0.15)';
+            html += '<div class="pick-row" style="background:' + bgColor + '">';
+            html += '<span class="tag" style="color:' + pColor + ';background:' + pBg + ';font-size:9px;margin-right:8px">' + pick.type + '</span>';
+            html += '<div class="pick-row-info"><div class="pick-row-name">' + pick.name + '</div><div class="pick-row-detail">' + pick.reason + '</div></div>';
+            html += '<div class="pick-row-odds" style="color:var(--text-muted)">' + pick.odds + '</div></div>';
+          });
+        }
+        html += '</div>';
+      });
+    }
+  } else if (!scheduleFetched) {
+    fetchESPNSchedule();
+  }
 
   // Season record
   html += '<div class="insight-card"><div class="insight-label" style="color:var(--green);margin-bottom:8px">SEASON RECORD</div>';
