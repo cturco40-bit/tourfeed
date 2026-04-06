@@ -184,20 +184,25 @@ exports.handler = async (event) => {
 
     // --- CONTENT 1: Round Recap Article ---
     try {
-      const recapSystem = `You are a golf journalist writing from raw leaderboard data. ONLY state facts that appear in the data provided. Do NOT invent stats, quotes, hole numbers, or specific shots — you only have position and score data.
+      const recapSystem = `You are a golf journalist at TourFeed writing from raw leaderboard data. ONLY state facts that appear in the data provided. Do NOT invent stats, quotes, hole numbers, or specific shots — you only have position and score data.
 
 Rules:
-- 300-400 words, clickbait headline, short punchy paragraphs
+- MINIMUM 500 words, aim for 600-700. This is a full article, not a summary.
+- Clickbait headline that makes someone stop scrolling
+- 6-8 paragraphs with proper analysis and narrative
 - Only reference player names, scores, and positions from the data
 - Do not invent specific holes, shots, or moments you can't see in the data
 - Do not say "birdie on 18" or "eagle on 12" — you don't have hole data
-- Focus on: who's leading, margin, who's chasing, big movers, storylines
+- Cover: leader analysis, margin, chasers, dark horses, big movers, who fell off, what to watch next round
+- Add context: what this means for the tournament, who has momentum, who's in trouble
+- Voice: group chat golf fan who knows the game. Not stuffy. Punchy sentences. Make it fun to read.
 - Rory McIlroy is defending Masters champion (won 2025). Year is 2026.
 - Never mention AI, data limitations, or that you're working from data
+- Author is "TourFeed Staff" — write like a real media outlet
 - If this is a ${tourName} event, write for that tour's audience`;
-      const recapPrompt = `Write a round recap article based on this leaderboard data. Return your response in this exact format:\n\nHEADLINE: <your headline here>\n\nBODY:\n<your HTML article here using <p> tags>\n\n${dataBlock}`;
+      const recapPrompt = `Write a FULL round recap article (minimum 500 words, aim for 600+) based on this leaderboard data. This will be published on tourfeed.co as a standalone article. Make it worth reading — not a summary, a real article with analysis and narrative.\n\nReturn your response in this exact format:\n\nHEADLINE: <your headline here>\n\nBODY:\n<your HTML article here using <p> tags>\n\n${dataBlock}`;
 
-      const recapRaw = await askClaude(recapSystem, recapPrompt, 1500);
+      const recapRaw = await askClaude(recapSystem, recapPrompt, 2500);
 
       let recapTitle = 'Round ' + currentRound + ' Recap';
       let recapBody = recapRaw;
@@ -267,10 +272,26 @@ Rules:
 
     // --- CONTENT 3: Betting Insights Article ---
     try {
-      const bettingSystem = `You're a sharp handicapper analyzing the ${tourName} ${tournament.name}. Write betting analysis using ONLY the leaderboard data provided. Include: outright winner pick, top 5 pick, top 10 pick, longshot, fade. Include estimated odds. ONLY reference players from the data. Do NOT invent stats like strokes gained or driving accuracy. Rory McIlroy is defending Masters champ (won 2025). Year 2026. ZERO emojis.`;
-      const bettingPrompt = `Write betting insights based on this leaderboard data. Return your response in this exact format:\n\nHEADLINE: <your headline here>\n\nBODY:\n<your HTML article here using <p> and <h3> tags>\n\n${dataBlock}`;
+      const bettingSystem = `You're TourFeed's sharp handicapper analyzing the ${tourName} ${tournament.name}. Write a comprehensive betting breakdown using ONLY the leaderboard data provided. ZERO emojis. ZERO hashtags.
 
-      const bettingRaw = await askClaude(bettingSystem, bettingPrompt, 1500);
+Structure your article with these sections (use <h3> tags):
+1. OUTRIGHT WINNER PICKS — top 3 value plays with odds, model probability, reasoning
+2. TOP 5 / TOP 10 PICKS — 2 picks at each level, why they'll contend
+3. LONGSHOT OF THE ROUND — one 20:1+ shot that could shock everyone, full paragraph
+4. FADE — one player to avoid, explain why the price is wrong
+5. HEAD-TO-HEAD MATCHUP — one matchup pick for next round
+6. WHAT TO WATCH — key storyline for bettors going forward
+
+Rules:
+- MINIMUM 600 words. This is a full betting article, not a blurb.
+- Include estimated odds for every pick
+- ONLY reference players from the data. Do NOT invent strokes gained or course history stats.
+- Voice: sharp handicapper in the group chat. Confident, fun, not stuffy.
+- Rory McIlroy is defending Masters champ (won 2025). Year 2026.
+- Author is "TourFeed Staff"`;
+      const bettingPrompt = `Write a FULL betting analysis article (minimum 600 words) based on this leaderboard data. This is the main betting content on tourfeed.co — make it comprehensive.\n\nReturn your response in this exact format:\n\nHEADLINE: <your headline here>\n\nBODY:\n<your HTML article here using <p> and <h3> tags>\n\n${dataBlock}`;
+
+      const bettingRaw = await askClaude(bettingSystem, bettingPrompt, 2500);
 
       let bettingTitle = 'Betting Insights - Round ' + currentRound;
       let bettingBody = bettingRaw;

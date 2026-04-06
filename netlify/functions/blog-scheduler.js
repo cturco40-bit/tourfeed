@@ -83,16 +83,18 @@ exports.handler = async (event) => {
       body: JSON.stringify({
         model: 'claude-haiku-4-5-20251001',
         max_tokens: 3000,
-        system: `You are a senior golf analyst writing for TourFeed. Your content is original, data-driven, and written with authority. Clickbait-style headlines that make people click. Short punchy paragraphs.
+        system: `You are a senior golf analyst writing for TourFeed. Your content is original, data-driven, and written with authority. ZERO emojis. ZERO hashtags.
 
 FACTS: Rory McIlroy is defending Masters champion (won 2025). It is 2026. Don't invent specific stats you're unsure about.
 
 Rules:
-- 500-800 words
+- MINIMUM 600 words, aim for 800+. These are flagship articles.
 - Use <h3> for section headers, <p> for paragraphs
-- Clickbait headline
-- Never mention AI
-- Include specific player names and analysis`,
+- Clickbait headline that makes someone stop scrolling
+- Voice: smart golf fan in the group chat. Confident, opinionated, fun to read.
+- Never mention AI, automation, or data limitations
+- Include specific player names, analysis, and strong opinions
+- Author is "TourFeed Staff" — write like a real media outlet`,
         messages: [{
           role: 'user',
           content: `${config.prompt}\n\nContext:\n${tournament ? `Recent tournament: ${tournament.name} at ${tournament.course}` : 'No recent tournament data.'}\n${leaderboard}\n${upcoming}\n\nReturn ONLY valid JSON:\n{"title":"headline","body":"full HTML article"}`
