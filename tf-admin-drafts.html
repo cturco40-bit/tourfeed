@@ -257,13 +257,9 @@
 
           let content = '';
 
-          // Image preview — show the actual image that will be posted
-          if (d.image_url) {
-            var imgUrl = d.image_url;
-            if (imgUrl.startsWith('/')) imgUrl = 'https://tourfeed.co' + imgUrl;
-            // Use SVG directly in browser (renders fine), PNG only for Twitter
-            content += '<img src="' + imgUrl + '" class="draft-image" alt="Preview" loading="lazy" onerror="this.onerror=null;this.style.opacity=\'0.3\';this.alt=\'Image failed to load\'">';
-          }
+          // Image preview — render inline so it always works
+          var imgId = 'img-' + d.id;
+          content += '<div id="' + imgId + '" class="draft-image" style="min-height:80px;display:flex;align-items:center;justify-content:center;font-size:11px;color:#495057">Loading image...</div>';
 
           if (isArticle) {
             // Article preview — title + full scrollable body (always visible)
@@ -307,6 +303,27 @@
         }).join('');
 
         updateBatchBar();
+
+        // Load images after DOM render
+        filtered.forEach(function(d) {
+          if (!d.image_url) return;
+          var container = document.getElementById('img-' + d.id);
+          if (!container) return;
+          var imgUrl = d.image_url;
+          if (imgUrl.startsWith('/')) imgUrl = 'https://tourfeed.co' + imgUrl;
+          var img = new Image();
+          img.onload = function() {
+            container.innerHTML = '';
+            container.style.minHeight = '';
+            img.style.width = '100%';
+            img.style.borderRadius = '8px';
+            container.appendChild(img);
+          };
+          img.onerror = function() {
+            container.textContent = 'Image unavailable';
+          };
+          img.src = imgUrl;
+        });
       } catch(e) {
         console.error('Load error:', e);
         list.innerHTML = '<div class="empty">Error loading drafts: ' + e.message + '</div>';

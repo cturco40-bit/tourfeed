@@ -232,8 +232,11 @@ exports.handler = async (event) => {
     try {
       const { Resvg } = require('@resvg/resvg-js');
       const resvg = new Resvg(svg, {
-        fitTo: { mode: 'original' },
-        font: { loadSystemFonts: false },
+        fitTo: { mode: 'width', value: 1080 },
+        font: {
+          loadSystemFonts: true,
+          defaultFontFamily: 'Arial',
+        },
       });
       const pngData = resvg.render();
       const pngBuffer = pngData.asPng();
