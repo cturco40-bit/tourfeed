@@ -403,73 +403,15 @@
       markHandled(id);
 
       try {
-        if (isArticle) {
-          const slug = (draft.title || 'untitled').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 80);
-          const articlePayload = {
-            type: draft.type || 'article',
-            title: draft.title || '',
-            body: editedText || draft.body || '',
-            summary: draft.summary || '',
-            slug: slug,
-            tag: (draft.meta?.tag) || (draft.type || '').replace('article_','').toUpperCase() || 'NEWS',
-            header_image: draft.image_url || null,
-            published_at: new Date().toISOString(),
-            tour_id: draft.tour_id || null,
-          };
+        // Route ALL approvals through Netlify function (has service key for RLS)
+        var text = editedText || draft.body || '';
+        var approveRes = await fetch('/.netlify/functions/draft-tweet?action=approve&id=' + id + '&text=' + encodeURIComponent(text));
+        var approveData = await approveRes.json();
 
-          const sbRes = await fetch(SUPABASE_URL + '/rest/v1/articles', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'apikey': SUPABASE_ANON_KEY,
-              'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
-              'Prefer': 'return=minimal',
-            },
-            body: JSON.stringify(articlePayload),
-          });
-
-          if (!sbRes.ok) throw new Error('Article publish failed: ' + await sbRes.text());
-
-          // Mark draft as approved in Supabase
-          await fetch(SUPABASE_URL + '/rest/v1/content_drafts?id=eq.' + id, {
-            method: 'PATCH',
-            headers: {
-              'Content-Type': 'application/json',
-              'apikey': SUPABASE_ANON_KEY,
-              'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
-            },
-            body: JSON.stringify({ status: 'approved', reviewed_at: new Date().toISOString(), published_at: new Date().toISOString() }),
-          });
-
-          if (!batch) actions.innerHTML = '<div class="status status-ok">Article published</div>';
+        if (approveData.success) {
+          if (!batch) actions.innerHTML = '<div class="status status-ok">' + (isArticle ? 'Article published' : 'Tweet posted') + '</div>';
         } else {
-          // Post tweet
-          const tweetText = editedText || draft.body || '';
-          const postBody = { text: tweetText };
-          if (draft.image_url) postBody.image_url = draft.image_url;
-
-          const postRes = await fetch('/.netlify/functions/post-tweet', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(postBody),
-          });
-          const data = await postRes.json();
-
-          if (data.success) {
-            // Mark as approved
-            await fetch(SUPABASE_URL + '/rest/v1/content_drafts?id=eq.' + id, {
-              method: 'PATCH',
-              headers: {
-                'Content-Type': 'application/json',
-                'apikey': SUPABASE_ANON_KEY,
-                'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
-              },
-              body: JSON.stringify({ status: 'approved', reviewed_at: new Date().toISOString(), published_at: new Date().toISOString() }),
-            });
-            if (!batch) actions.innerHTML = '<div class="status status-ok">Tweet posted</div>';
-          } else {
-            throw new Error(data.error || 'Tweet failed');
-          }
+          throw new Error(approveData.error || 'Approve failed');
         }
 
         if (!batch) {
@@ -487,15 +429,7 @@
       markHandled(id);
 
       try {
-        await fetch(SUPABASE_URL + '/rest/v1/content_drafts?id=eq.' + id, {
-          method: 'PATCH',
-          headers: {
-            'Content-Type': 'application/json',
-            'apikey': SUPABASE_ANON_KEY,
-            'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
-          },
-          body: JSON.stringify({ status: 'rejected', reviewed_at: new Date().toISOString() }),
-        });
+        await fetch('/.netlify/functions/draft-tweet?action=reject&id=' + id);
       } catch(e) {}
 
       el.classList.add('rejected');

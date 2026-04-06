@@ -93,23 +93,47 @@ exports.handler = async (event) => {
     const id = parseInt(params.id);
     const drafts = await sb(`content_drafts?id=eq.${id}&status=eq.pending`);
     const draft = drafts?.[0];
-    if (!draft) return { statusCode: 200, headers: { 'Content-Type': 'text/html' }, body: '<html><body style="background:#111;color:#fff;font-family:sans-serif;text-align:center;padding:60px"><h2>Draft expired or already handled</h2><a href="/tf-admin-drafts" style="color:#2D8F6F">Back</a></body></html>' };
+    if (!draft) return { statusCode: 200, headers, body: JSON.stringify({ error: 'Draft not found or already handled' }) };
+
+    const isArticle = (draft.type || '').includes('article');
 
     try {
-      // Post the tweet (use edited text from query param if provided)
-      const tweetText = params.text || draft.body;
-      await fetch('https://tourfeed.co/.netlify/functions/post-tweet', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: tweetText, image: draft.image_url || undefined }),
-      });
+      if (isArticle) {
+        // Publish article to articles table (using service key)
+        const editedBody = params.text || draft.body || '';
+        const slug = (draft.title || 'untitled').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 80);
+        const wordCount = editedBody.replace(/<[^>]+>/g, '').split(/\s+/).length;
+        const tagMap = { article_recap: 'RECAP', article_news: 'NEWS', article_preview: 'PREVIEW', article_analysis: 'ANALYSIS', article_betting: 'BETTING' };
 
-      // Mark as published
-      await sb(`content_drafts?id=eq.${id}`, 'PATCH', { status: 'published', published_at: new Date().toISOString() });
+        await sb('articles', 'POST', {
+          type: (draft.type || '').replace('article_', '') || 'news',
+          title: draft.title || 'TourFeed Article',
+          body: editedBody,
+          summary: editedBody.replace(/<[^>]+>/g, '').slice(0, 200),
+          slug,
+          header_image: draft.image_url || null,
+          read_time: Math.max(1, Math.ceil(wordCount / 200)),
+          tag: tagMap[draft.type] || 'NEWS',
+          published_at: new Date().toISOString(),
+          tour_id: draft.tour_id || 'pga',
+          tournament_id: draft.tournament_id || null,
+        });
 
-      return { statusCode: 200, headers: { 'Content-Type': 'text/html' }, body: `<html><body style="background:#111;color:#fff;font-family:sans-serif;text-align:center;padding:60px"><h2 style="color:#2DD4A0">Posted</h2><p style="color:#868E96;max-width:400px;margin:20px auto;line-height:1.6">${tweetText.replace(/</g,'&lt;').replace(/\n/g,'<br>')}</p><a href="/tf-admin-drafts" style="color:#2D8F6F">Back</a></body></html>` };
+        await sb(`content_drafts?id=eq.${id}`, 'PATCH', { status: 'published', published_at: new Date().toISOString() });
+        return { statusCode: 200, headers, body: JSON.stringify({ success: true, type: 'article', slug }) };
+      } else {
+        // Post tweet
+        const tweetText = params.text || draft.body;
+        await fetch('https://tourfeed.co/.netlify/functions/post-tweet', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text: tweetText, image: draft.image_url || undefined }),
+        });
+        await sb(`content_drafts?id=eq.${id}`, 'PATCH', { status: 'published', published_at: new Date().toISOString() });
+        return { statusCode: 200, headers, body: JSON.stringify({ success: true, type: 'tweet' }) };
+      }
     } catch (e) {
-      return { statusCode: 200, headers: { 'Content-Type': 'text/html' }, body: `<html><body style="background:#111;color:#fff;font-family:sans-serif;text-align:center;padding:60px"><h2 style="color:#FF6B6B">Failed</h2><p style="color:#868E96">${e.message}</p><a href="/tf-admin-drafts" style="color:#2D8F6F">Back</a></body></html>` };
+      return { statusCode: 500, headers, body: JSON.stringify({ error: e.message }) };
     }
   }
 
