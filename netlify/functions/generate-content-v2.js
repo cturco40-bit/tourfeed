@@ -213,28 +213,53 @@ exports.handler = async (event) => {
     const tourName = tournament.tour_id === 'pga' ? 'PGA Tour' : tournament.tour_id === 'lpga' ? 'LPGA Tour' : tournament.tour_id === 'liv' ? 'LIV Golf' : tournament.tour_id === 'dpw' ? 'DP World Tour' : '';
     const dataBlock = `Tour: ${tourName}\nTournament: ${tournament.name}\nCourse: ${tournament.course || 'TBD'}\nRound: ${currentRound}\nStatus: ${tournament.status}\n\nLeaderboard (Top ${validPlayers.length}):\n${leaderboardText}`;
 
-    // Build player name → ESPN headshot URL map
+    // Well-known players — ESPN ID map for headshot lookup
+    const KNOWN_IDS = {
+      'tiger':462,'woods':462,'rory':3448,'mcilroy':3448,
+      'scheffler':9780,'scottie':9780,'schauffele':10046,'xander':10046,
+      'rahm':9527,'koepka':10592,'brooks':10592,'spieth':5765,
+      'morikawa':11098,'hovland':4364873,'fleetwood':5539,
+      'lowry':4587,'cantlay':10404,'matsuyama':4375627,'hideki':4375627,
+      'fowler':3702,'rickie':3702,'clark':4686009,'wyndham':4686009,
+      'burns':9726,'finau':9478,'thomas':4848,'aberg':4375972,'ludvig':4375972,
+      'macintyre':11378,'spaun':10166,'theegala':10980,'homa':8973,
+      'kim':7081,'fitzpatrick':9037,'sungjae':9508,'dechambeau':10046,
+    };
+
+    // Build player name → photo URL from leaderboard + known players
     const playerPhotos = {};
     validPlayers.forEach(p => {
       if (p.players?.id && p.players?.name) {
-        playerPhotos[p.players.name.toLowerCase()] = `https://a.espncdn.com/i/headshots/golf/players/full/${p.players.id}.png`;
+        const lastName = p.players.name.split(' ').pop().toLowerCase();
+        playerPhotos[lastName] = `https://a.espncdn.com/i/headshots/golf/players/full/${p.players.id}.png`;
       }
     });
-    const leaderPhoto = validPlayers[0]?.players?.id ? `https://a.espncdn.com/i/headshots/golf/players/full/${validPlayers[0].players.id}.png` : '';
 
-    // Find player photos mentioned in text
+    // Find player photos mentioned in text — check known IDs first, then leaderboard
     function findPhotosInText(text) {
       const found = [];
       const lower = (text || '').toLowerCase();
-      for (const [name, url] of Object.entries(playerPhotos)) {
-        // Match last name
-        const lastName = name.split(' ').pop();
-        if (lastName.length > 3 && lower.includes(lastName.toLowerCase())) {
-          found.push(url);
+
+      // Check known players first (Tiger, Rory, Scottie etc.)
+      for (const [name, id] of Object.entries(KNOWN_IDS)) {
+        if (lower.includes(name)) {
+          const url = `https://a.espncdn.com/i/headshots/golf/players/full/${id}.png`;
+          if (!found.includes(url)) found.push(url);
           if (found.length >= 2) break;
         }
       }
-      return found.length > 0 ? found.join(',') : leaderPhoto;
+
+      // Then check leaderboard players
+      if (found.length < 2) {
+        for (const [name, url] of Object.entries(playerPhotos)) {
+          if (lower.includes(name) && !found.includes(url)) {
+            found.push(url);
+            if (found.length >= 2) break;
+          }
+        }
+      }
+
+      return found.length > 0 ? found.join(',') : '';
     }
 
     const results = { tournament: tournament.name, round: currentRound, generated: [], skipped: [] };
