@@ -98,10 +98,16 @@ exports.handler = async (event) => {
     } catch(e) {}
     try {
       const dRes = await fetch('https://tourfeed.co/.netlify/functions/draft-tweet');
-      if (dRes.ok) (await dRes.json()).drafts?.forEach(d => {
-        const m = d.text.match(/twitter\.com\/\w+\/status\/(\d+)/);
-        if (m) usedIds.add(m[1]);
-      });
+      if (dRes.ok) {
+        const dData = await dRes.json();
+        // Add current draft tweet IDs
+        (dData.drafts || []).forEach(d => {
+          const m = d.text.match(/twitter\.com\/\w+\/status\/(\d+)/);
+          if (m) usedIds.add(m[1]);
+        });
+        // Add rejected tweet IDs
+        (dData.rejectedIds || []).forEach(id => usedIds.add(id));
+      }
     } catch(e) {}
 
     const results = [];
