@@ -21,14 +21,26 @@ function hashText(text) {
   return 'h' + Math.abs(h).toString(36);
 }
 
-const CONTENT_TYPES = {
-  0: { type: 'article_preview', prompt: 'Write a comprehensive MASTERS PREVIEW article. Cover the field, favorites, dark horses, key storylines (Rory defending, Tiger absent, Scottie with newborn, LIV players at Augusta), course breakdown, and your predictions. Make it the ultimate Masters preview — 800+ words. ONLY include players confirmed to be in the field.' },
-  1: { type: 'article_analysis', prompt: 'Write a POWER RANKINGS article ranking the top 15 golfers heading into this week. Include recent form, stats, and why each player is ranked where they are. ONLY rank players confirmed in the field — check PLAYER FACTS for who is NOT playing (injured, withdrawn, did not qualify). If a player is marked NOT in the field, do NOT include them.' },
-  2: { type: 'article_preview', prompt: 'Write a COURSE PREVIEW for this week\'s tournament. Cover course layout, key holes, what type of player the course rewards, weather expectations, and past champions.' },
-  3: { type: 'article_betting', prompt: 'Write a comprehensive BETTING PREVIEW. Include: outright winner picks (3), top 5 picks (3), top 10 picks (3), first round leader (2), head-to-head matchups (3), longshot pick, and a parlay suggestion. Include odds, confidence ratings, and detailed reasoning for each.' },
-  4: null, // Thursday — tournament starts
-  5: { type: 'article_betting', prompt: 'Write a CUT LINE ANALYSIS. Who\'s on the bubble? Which bubble players are worth betting on for the weekend? Include specific players, their scores, projected cut line, and weekend outright odds for players who make the cut.' },
-  6: null, // Saturday — covered by round recaps
+// All available content types — callable by day schedule or force_type param
+const ALL_CONTENT = {
+  power_rankings: { type: 'article_analysis', prompt: 'Write a POWER RANKINGS article ranking the top 15 golfers heading into this week\'s tournament. Include recent form, key stats, and reasoning. ONLY rank players confirmed in the field — check PLAYER FACTS for who is NOT playing. If a player is marked NOT in the field, do NOT include them. 800+ words.' },
+  course_preview: { type: 'article_preview', prompt: 'Write a detailed COURSE PREVIEW for this week\'s tournament. Cover course layout, key holes, signature moments, what type of player the course rewards, par 5 strategy, green complexes, historical scoring trends, and past champions. Include course-specific stats that matter. 800+ words.' },
+  betting_preview: { type: 'article_betting', prompt: 'Write a comprehensive BETTING PREVIEW. Include: outright winner picks (3 with odds, confidence 1-10, unit sizing), top 5 picks (3), top 10 picks (3), first round leader (2), head-to-head matchups (3 with pick and reasoning), longshot of the week (50:1+), prop bets (3), and a parlay suggestion. ONLY include players in the field. 800+ words.' },
+  cut_line: { type: 'article_betting', prompt: 'Write a CUT LINE ANALYSIS. Who is on the bubble? Which bubble players are worth betting on for the weekend? Include specific players, scores, projected cut line, and weekend outright odds.' },
+  field_breakdown: { type: 'article_analysis', prompt: 'Write a FIELD BREAKDOWN article. Group the field into tiers: favorites, contenders, dark horses, and longshots. For each tier, explain why those players are placed there. Include recent form, course history, and key stats. Focus on players actually IN the field. 800+ words.' },
+  storylines: { type: 'article_preview', prompt: 'Write a TOP STORYLINES article for this week\'s tournament. Cover the 5-7 biggest narratives: defending champion drama, injury comebacks, rivalry matchups, LIV players competing, record chases, personal stories (new babies, comebacks from surgery, etc.). Each storyline gets 2-3 paragraphs. Make it the article fans share with friends. 800+ words.' },
+  masters_preview: { type: 'article_preview', prompt: 'Write the ULTIMATE MASTERS PREVIEW. This is the biggest tournament in golf and this article needs to match the moment. Cover: defending champion Rory McIlroy\'s back-to-back bid, Scottie Scheffler arriving with newborn, Tiger Woods absence (first since 1994), Phil Mickelson withdrawal, LIV players at Augusta, course breakdown of Augusta National, Amen Corner, favorites, dark horses, and your pick to win. ONLY include players confirmed in the field. 1000+ words. Make this a flagship article.' },
+};
+
+// Monday-Sunday schedule — generates multiple articles on key days
+const DAILY_SCHEDULE = {
+  0: ['masters_preview'], // Sunday before tournament
+  1: ['power_rankings', 'storylines'], // Monday — rankings + narratives
+  2: ['course_preview', 'field_breakdown'], // Tuesday — deep dives
+  3: ['betting_preview'], // Wednesday — full betting guide
+  4: [], // Thursday — tournament starts, covered by generate-content
+  5: ['cut_line'], // Friday — cut line analysis
+  6: [], // Saturday — covered by round recaps
 };
 
 exports.handler = async (event) => {
@@ -37,11 +49,23 @@ exports.handler = async (event) => {
   if (!ANTHROPIC_KEY) return { statusCode: 200, headers, body: JSON.stringify({ skipped: 'No API key' }) };
 
   try {
+    const params = event.queryStringParameters || {};
     const today = new Date();
     const dayOfWeek = today.getDay();
-    const config = CONTENT_TYPES[dayOfWeek];
 
-    if (!config) return { statusCode: 200, headers, body: JSON.stringify({ skipped: `No scheduled content for day ${dayOfWeek}` }) };
+    // Allow forcing a specific content type via ?force=betting_preview
+    let contentKeys = [];
+    if (params.force && ALL_CONTENT[params.force]) {
+      contentKeys = [params.force];
+    } else {
+      contentKeys = DAILY_SCHEDULE[dayOfWeek] || [];
+    }
+
+    if (!contentKeys.length) return { statusCode: 200, headers, body: JSON.stringify({ skipped: 'No scheduled content for day ' + dayOfWeek }) };
+
+    const results = [];
+    for (const key of contentKeys) {
+      const config = ALL_CONTENT[key];
 
     // Get tournament data for context
     // Always prioritize PGA Tour for blog content
@@ -69,11 +93,12 @@ exports.handler = async (event) => {
       }
     }
 
-    // Check if we already generated today's content
+    // Check if we already generated this specific content type today
     const todayStr = today.toISOString().split('T')[0];
-    const existing = await sb(`content_drafts?type=eq.${config.type}&created_at=gte.${todayStr}T00:00:00`);
+    const existing = await sb(`content_drafts?type=eq.${config.type}&source_event=eq.blog-scheduler-${key}&created_at=gte.${todayStr}T00:00:00`);
     if (existing.length > 0) {
-      return { statusCode: 200, headers, body: JSON.stringify({ skipped: `Already generated ${config.type} today` }) };
+      results.push({ skipped: key, reason: 'Already generated today' });
+      continue;
     }
 
     // Fetch player facts for context
@@ -124,7 +149,7 @@ Rules:
       }),
     });
 
-    if (!res.ok) return { statusCode: 200, headers, body: JSON.stringify({ skipped: 'AI generation failed' }) };
+    if (!res.ok) { results.push({ skipped: key, reason: 'AI failed' }); continue; }
 
     const data = await res.json();
     const text = (data.content?.[0]?.text || '').trim();
@@ -134,12 +159,12 @@ Rules:
     } catch(e) {
       const m = text.match(/\{[\s\S]*"title"[\s\S]*"body"[\s\S]*\}/);
       if (m) article = JSON.parse(m[0]);
-      else return { statusCode: 200, headers, body: JSON.stringify({ skipped: 'Parse failed' }) };
+      else { results.push({ skipped: key, reason: 'Parse failed' }); continue; }
     }
 
     const hash = hashText(article.title + article.body.slice(0, 200));
     const existingHash = await sb(`content_hashes?hash=eq.${hash}`);
-    if (existingHash.length > 0) return { statusCode: 200, headers, body: JSON.stringify({ skipped: 'Duplicate hash' }) };
+    if (existingHash.length > 0) { results.push({ skipped: key, reason: 'Duplicate' }); continue; }
 
     await sb('content_hashes', 'POST', { hash, type: config.type, source: 'blog-scheduler' });
     const tagMap = { 'article_analysis': 'ANALYSIS', 'article_preview': 'PREVIEW', 'article_betting': 'BETTING' };
@@ -167,11 +192,14 @@ Rules:
       body: article.body,
       image_url: imageUrl,
       tournament_id: tournament?.id,
-      source_event: 'blog-scheduler',
+      source_event: 'blog-scheduler-' + key,
       content_hash: hash,
     });
 
-    return { statusCode: 200, headers, body: JSON.stringify({ success: true, type: config.type, title: article.title }) };
+    results.push({ success: true, key, type: config.type, title: article.title });
+    } // end for loop
+
+    return { statusCode: 200, headers, body: JSON.stringify({ results }) };
 
   } catch (err) {
     return { statusCode: 500, headers, body: JSON.stringify({ error: err.message }) };
