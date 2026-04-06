@@ -209,7 +209,7 @@ async function generateHeadline(params) {
   ctx.font = font(800, hasPhoto ? 44 : 48);
   ctx.fillStyle = WHITE;
   ctx.textAlign = 'left';
-  wrapText(ctx, headline, 50, 240, hasPhoto ? 620 : 980, 56, 8);
+  wrapText(ctx, headline, 50, 240, hasPhoto ? 750 : 980, 56, 10);
   drawFooter(ctx, 1080, 1080, tagColor);
   return c.toBuffer('image/png');
 }
@@ -241,7 +241,7 @@ async function generateArticleHeader(params) {
   ctx.font = font(800, hasPhoto ? 34 : 38);
   ctx.fillStyle = WHITE;
   ctx.textAlign = 'left';
-  wrapText(ctx, headline, 50, 170, hasPhoto ? 700 : 1100, 44, 8);
+  wrapText(ctx, headline, 50, 170, hasPhoto ? 850 : 1100, 44, 10);
   drawFooter(ctx, 1200, 630, tagColor);
   return c.toBuffer('image/png');
 }
@@ -279,7 +279,7 @@ async function generateHotTake(params) {
   const hasPhoto = photos.length > 0;
   ctx.font = font(700, hasPhoto ? 36 : 40);
   ctx.fillStyle = WHITE;
-  const endY = wrapText(ctx, quote, 55, 310, hasPhoto ? 600 : 960, 48, 7);
+  const endY = wrapText(ctx, quote, 55, 310, hasPhoto ? 720 : 960, 48, 8);
 
   // Attribution
   if (attribution) {

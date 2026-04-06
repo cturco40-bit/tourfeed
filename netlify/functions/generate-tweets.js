@@ -33,20 +33,24 @@ const KNOWN_PLAYERS = {
   'dechambeau':10046,'bryson':10046,
 };
 
-function findPlayerPhoto(text) {
+function findPlayerPhotos(text) {
   const lower = (text || '').toLowerCase();
+  const found = [];
+  const usedIds = new Set();
   for (const [name, id] of Object.entries(KNOWN_PLAYERS)) {
-    if (lower.includes(name)) {
-      return `https://a.espncdn.com/i/headshots/golf/players/full/${id}.png`;
+    if (lower.includes(name) && !usedIds.has(id)) {
+      found.push(`https://a.espncdn.com/i/headshots/golf/players/full/${id}.png`);
+      usedIds.add(id);
+      if (found.length >= 2) break;
     }
   }
-  return '';
+  return found.join(',');
 }
 
 async function uploadTweetImage(text) {
   try {
     const headline = text.slice(0, 80);
-    const photo = findPlayerPhoto(text);
+    const photo = findPlayerPhotos(text);
     const photoParam = photo ? `&photo=${encodeURIComponent(photo)}` : '';
     const url = `https://tourfeed.co/.netlify/functions/generate-image?type=hot_take&quote=${encodeURIComponent(headline)}${photoParam}`;
     const res = await fetch(url);
