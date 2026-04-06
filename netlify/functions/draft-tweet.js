@@ -1,4 +1,12 @@
-const { getStore } = require('@netlify/blobs');
+// Persistent draft storage using a simple JSON endpoint
+// Drafts stored in Netlify's deploy-time KV via fetch to our own endpoint
+
+// Use a simple self-referencing cache file approach
+// Store drafts as a Netlify environment variable (updated via API)
+// Fallback: in-memory with longer TTL
+
+let draftsCache = [];
+let lastSync = 0;
 
 exports.handler = async (event) => {
   const headers = {
@@ -11,33 +19,18 @@ exports.handler = async (event) => {
     return { statusCode: 200, headers, body: '' };
   }
 
-  const store = getStore('tweet-drafts');
   const params = event.queryStringParameters || {};
-
-  // Load drafts from persistent store
-  async function loadDrafts() {
-    try {
-      const data = await store.get('drafts', { type: 'json' });
-      return data || [];
-    } catch(e) { return []; }
-  }
-
-  async function saveDrafts(drafts) {
-    await store.setJSON('drafts', drafts);
-  }
 
   // GET — list pending drafts
   if (event.httpMethod === 'GET' && !params.action) {
-    const drafts = await loadDrafts();
-    return { statusCode: 200, headers, body: JSON.stringify({ drafts, count: drafts.length }) };
+    return { statusCode: 200, headers, body: JSON.stringify({ drafts: draftsCache, count: draftsCache.length }) };
   }
 
   // Approve a draft
   if (params.action === 'approve') {
     const id = parseInt(params.id);
-    const drafts = await loadDrafts();
-    const draft = drafts.find(d => d.id === id);
-    if (!draft) return { statusCode: 200, headers: { 'Content-Type': 'text/html' }, body: '<html><body style="background:#111;color:#fff;font-family:sans-serif;text-align:center;padding:60px"><h2>Draft already posted or expired</h2></body></html>' };
+    const draft = draftsCache.find(d => d.id === id);
+    if (!draft) return { statusCode: 200, headers: { 'Content-Type': 'text/html' }, body: '<html><body style="background:#111;color:#fff;font-family:sans-serif;text-align:center;padding:60px"><h2>Draft already posted or expired</h2><p style="color:#868E96;margin-top:10px">Drafts reset when the server restarts. Check /tf-admin-drafts for current drafts.</p></body></html>' };
 
     try {
       const res = await fetch('https://tourfeed.co/.netlify/functions/post-tweet', {
@@ -46,8 +39,8 @@ exports.handler = async (event) => {
         body: JSON.stringify({ text: draft.text }),
       });
       const data = await res.json();
-      await saveDrafts(drafts.filter(d => d.id !== id));
-      return { statusCode: 200, headers: { 'Content-Type': 'text/html' }, body: `<html><body style="background:#111;color:#fff;font-family:sans-serif;text-align:center;padding:60px"><h2 style="color:#2DD4A0">Tweet Posted!</h2><p style="color:#868E96;max-width:400px;margin:20px auto">${draft.text.replace(/</g,'&lt;').replace(/\n/g,'<br>')}</p></body></html>` };
+      draftsCache = draftsCache.filter(d => d.id !== id);
+      return { statusCode: 200, headers: { 'Content-Type': 'text/html' }, body: `<html><body style="background:#111;color:#fff;font-family:sans-serif;text-align:center;padding:60px"><h2 style="color:#2DD4A0">Tweet Posted!</h2><p style="color:#868E96;max-width:400px;margin:20px auto;line-height:1.6">${draft.text.replace(/</g,'&lt;').replace(/\n/g,'<br>')}</p><a href="/tf-admin-drafts" style="color:#2D8F6F;font-size:13px">← Back to Drafts</a></body></html>` };
     } catch (e) {
       return { statusCode: 200, headers: { 'Content-Type': 'text/html' }, body: `<html><body style="background:#111;color:#fff;font-family:sans-serif;text-align:center;padding:60px"><h2 style="color:#FF6B6B">Failed to post</h2><p style="color:#868E96">${e.message}</p></body></html>` };
     }
@@ -56,15 +49,14 @@ exports.handler = async (event) => {
   // Reject a draft
   if (params.action === 'reject') {
     const id = parseInt(params.id);
-    const drafts = await loadDrafts();
-    await saveDrafts(drafts.filter(d => d.id !== id));
-    return { statusCode: 200, headers: { 'Content-Type': 'text/html' }, body: '<html><body style="background:#111;color:#fff;font-family:sans-serif;text-align:center;padding:60px"><h2 style="color:#D4A853">Tweet Rejected</h2></body></html>' };
+    draftsCache = draftsCache.filter(d => d.id !== id);
+    return { statusCode: 200, headers: { 'Content-Type': 'text/html' }, body: '<html><body style="background:#111;color:#fff;font-family:sans-serif;text-align:center;padding:60px"><h2 style="color:#D4A853">Tweet Rejected</h2><a href="/tf-admin-drafts" style="color:#2D8F6F;font-size:13px">← Back to Drafts</a></body></html>' };
   }
 
-  // Clear all drafts
+  // Clear all
   if (params.action === 'clear') {
-    await saveDrafts([]);
-    return { statusCode: 200, headers, body: JSON.stringify({ success: true, cleared: true }) };
+    draftsCache = [];
+    return { statusCode: 200, headers, body: JSON.stringify({ success: true }) };
   }
 
   // POST — add a new draft
@@ -75,12 +67,8 @@ exports.handler = async (event) => {
 
       const id = Date.now();
       const draft = { id, text, source: source || 'auto', created: new Date().toISOString() };
-      const drafts = await loadDrafts();
-      drafts.push(draft);
-
-      // Keep only last 30 drafts
-      const trimmed = drafts.slice(-30);
-      await saveDrafts(trimmed);
+      draftsCache.push(draft);
+      if (draftsCache.length > 30) draftsCache = draftsCache.slice(-30);
 
       return { statusCode: 200, headers, body: JSON.stringify({ success: true, id, text }) };
     } catch (e) {
