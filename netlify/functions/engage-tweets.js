@@ -1,49 +1,19 @@
-const crypto = require('crypto');
+// TourFeed Engagement Engine
+// Finds PGA Tour highlight clips, trending golf content, and quote tweets
+// with hot takes to drive engagement and followers
 
-function oauthSign(method, url, params, consumerSecret, tokenSecret) {
-  const sortedParams = Object.keys(params).sort().map(k => `${encodeURIComponent(k)}=${encodeURIComponent(params[k])}`).join('&');
-  const baseString = `${method.toUpperCase()}&${encodeURIComponent(url)}&${encodeURIComponent(sortedParams)}`;
-  const signingKey = `${encodeURIComponent(consumerSecret)}&${encodeURIComponent(tokenSecret)}`;
-  return crypto.createHmac('sha1', signingKey).update(baseString).digest('base64');
-}
-
-function buildAuthHeader(params) {
-  return 'OAuth ' + Object.keys(params).filter(k => k.startsWith('oauth_')).sort()
-    .map(k => `${encodeURIComponent(k)}="${encodeURIComponent(params[k])}"`).join(', ');
-}
-
-async function postTweet(text, replyToId) {
-  const apiKey = process.env.TWITTER_API_KEY;
-  const apiSecret = process.env.TWITTER_API_SECRET;
-  const accessToken = process.env.TWITTER_ACCESS_TOKEN;
-  const accessSecret = process.env.TWITTER_ACCESS_SECRET;
-  if (!apiKey || !apiSecret || !accessToken || !accessSecret) throw new Error('Missing Twitter creds');
-
-  const url = 'https://api.twitter.com/2/tweets';
-  const oauthParams = {
-    oauth_consumer_key: apiKey,
-    oauth_nonce: crypto.randomBytes(16).toString('hex'),
-    oauth_signature_method: 'HMAC-SHA1',
-    oauth_timestamp: Math.floor(Date.now() / 1000).toString(),
-    oauth_token: accessToken,
-    oauth_version: '1.0',
-  };
-  oauthParams.oauth_signature = oauthSign('POST', url, oauthParams, apiSecret, accessSecret);
-
-  const body = { text: text.slice(0, 280) };
-  if (replyToId) body.quote_tweet_id = replyToId;
-
-  const res = await fetch(url, {
+async function postDraft(text, source) {
+  const res = await fetch('https://tourfeed.co/.netlify/functions/draft-tweet', {
     method: 'POST',
-    headers: { 'Authorization': buildAuthHeader(oauthParams), 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ text: text.slice(0, 280), source: source || 'engage' }),
   });
-  if (!res.ok) throw new Error(`Twitter ${res.status}: ${await res.text()}`);
+  if (!res.ok) throw new Error(`draft ${res.status}`);
   return await res.json();
 }
 
-// Generate a smart reply using Claude
-async function generateReply(tweetText, authorName) {
+// Generate a hot take using Claude
+async function generateTake(tweetText, authorName, context) {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) return null;
 
@@ -57,51 +27,55 @@ async function generateReply(tweetText, authorName) {
       },
       body: JSON.stringify({
         model: 'claude-haiku-4-5-20251001',
-        max_tokens: 200,
-        system: `You are the social media voice for TourFeed (@TourFeedGolf), a golf media brand. You quote tweet posts from major golf accounts with smart, knowledgeable takes. Your tone is confident but not arrogant — like a well-informed golf fan who watches every round.
+        max_tokens: 150,
+        system: `You write quote tweets for TourFeed (@TourFeedGolf), a golf media brand with personality. Think Foreplay/Barstool meets Golf Digest — knowledgeable but fun, not corporate.
 
-Rules:
-- Keep it under 200 characters — punchy and sharp
-- Add genuine insight, a hot take, or context — don't just agree
-- Never be negative about players — respect the game
-- Never mention AI or automation
-- Use 1-2 relevant hashtags naturally (e.g. #Masters, #PGATour)
-- Mention tourfeed.co only if it naturally fits
-- Sound like a real golf fan, not a corporate brand
-- Use golf terminology naturally
-- This is a QUOTE TWEET — the original tweet will be embedded below yours`,
+Style:
+- Short and punchy — 1-2 sentences MAX
+- Have an OPINION. Take a side. Be bold but respectful
+- React like a fan who really knows golf — stats, history, context
+- Use golf slang naturally (Sunday red, moving day, amen corner, etc.)
+- Emojis sparingly — max 1-2
+- Ask questions that drive replies ("Am I wrong?" "Who says no?")
+- Reference specific stats or history when relevant
+- Sound like a person, not a brand
+- NEVER mention AI or automation
+- Keep it under 180 characters to leave room for the quote tweet URL
+
+${context ? 'Context: ' + context : ''}`,
         messages: [{
           role: 'user',
-          content: `Write a quote tweet for this post from @${authorName}:\n\n"${tweetText}"\n\nReturn ONLY the quote tweet text, nothing else.`
+          content: `Write a quote tweet reaction to this from @${authorName}:\n\n"${tweetText}"\n\nReturn ONLY the quote tweet text.`
         }],
       }),
     });
-
     if (!res.ok) return null;
     const data = await res.json();
     return (data.content?.[0]?.text || '').trim().replace(/^["']|["']$/g, '');
-  } catch (e) {
-    return null;
-  }
+  } catch (e) { return null; }
 }
 
-// Accounts to engage with
-const TARGET_ACCOUNTS = [
-  'PGATour', 'LPGA', 'LIVGolfLeague', 'EuropeanTour',
-  'GolfDigest', 'GolfChannel', 'NoLayingUp', 'PIKIETA',
-  'SkySportsGolf', 'GolfWeek', 'TheMasters',
-  'RickieFowler', 'JustinThomas34', 'McIlroyRory',
-  'TigerWoods', 'JordanSpieth',
+// Target accounts — prioritized by engagement value
+const HIGHLIGHT_ACCOUNTS = [
+  'PGATour', 'TheMasters', 'LiveOnThePGA',
+];
+const GOLF_MEDIA = [
+  'GolfDigest', 'NoLayingUp', 'GolfChannel', 'SkratchTV',
+  'GolfWeek', 'NUCLRGOLF', 'foreaborik',
+];
+const PLAYERS = [
+  'McIlroyRory', 'JustinThomas34', 'JordanSpieth',
+  'TigerWoods', 'RickieFowler', 'MaxHoma',
+  'BKoepka', 'camaborik', 'ABORIK',
 ];
 
 exports.handler = async (event) => {
   const headers = { 'Content-Type': 'application/json' };
-
   const bearer = process.env.TWITTER_BEARER_TOKEN;
   if (!bearer) return { statusCode: 200, headers, body: JSON.stringify({ skipped: 'No bearer token' }) };
 
   try {
-    // Global cooldown — don't engage if we tweeted anything < 20 min ago
+    // Global cooldown — check last tweet
     try {
       const uRes = await fetch('https://api.twitter.com/2/users/by/username/TourFeedGolf', {
         headers: { 'Authorization': `Bearer ${bearer}` },
@@ -118,48 +92,45 @@ exports.handler = async (event) => {
             const last = tData.data?.[0];
             if (last) {
               const mins = (Date.now() - new Date(last.created_at).getTime()) / 60000;
-              if (mins < 20) return { statusCode: 200, headers, body: JSON.stringify({ skipped: 'Global cooldown', minutesSinceLast: Math.round(mins) }) };
+              if (mins < 30) return { statusCode: 200, headers, body: JSON.stringify({ skipped: 'Cooldown', mins: Math.round(mins) }) };
             }
           }
         }
       }
     } catch(e) {}
 
-    // Get our recent replies to avoid double-replying
-    let ourUserId = null;
-    try {
-      const uRes = await fetch('https://api.twitter.com/2/users/by/username/TourFeedGolf', {
-        headers: { 'Authorization': `Bearer ${bearer}` },
-      });
-      if (uRes.ok) {
-        const uData = await uRes.json();
-        ourUserId = uData.data?.id;
-      }
-    } catch(e) {}
+    // Strategy 1: Quote tweet PGA Tour highlight clips (highest value)
+    const highlightQuery = HIGHLIGHT_ACCOUNTS.map(a => `from:${a}`).join(' OR ');
+    let engaged = await tryQuoteTweet(bearer, `(${highlightQuery}) has:videos -is:retweet`, 'highlight');
+    if (engaged) return { statusCode: 200, headers, body: JSON.stringify(engaged) };
 
-    let recentReplies = [];
-    if (ourUserId) {
-      try {
-        const rRes = await fetch(`https://api.twitter.com/2/users/${ourUserId}/tweets?max_results=20&tweet.fields=in_reply_to_user_id,referenced_tweets`, {
-          headers: { 'Authorization': `Bearer ${bearer}` },
-        });
-        if (rRes.ok) {
-          const rData = await rRes.json();
-          recentReplies = (rData.data || [])
-            .filter(t => t.referenced_tweets?.some(r => r.type === 'quoted' || r.type === 'replied_to'))
-            .map(t => t.referenced_tweets.find(r => r.type === 'quoted' || r.type === 'replied_to')?.id)
-            .filter(Boolean);
-        }
-      } catch(e) {}
-    }
+    // Strategy 2: React to trending golf media takes
+    const mediaQuery = GOLF_MEDIA.map(a => `from:${a}`).join(' OR ');
+    engaged = await tryQuoteTweet(bearer, `(${mediaQuery}) -is:retweet -is:reply`, 'media_react');
+    if (engaged) return { statusCode: 200, headers, body: JSON.stringify(engaged) };
 
-    // Search for recent golf tweets from target accounts
-    const accountQuery = TARGET_ACCOUNTS.slice(0, 8).map(a => `from:${a}`).join(' OR ');
-    const query = `(${accountQuery}) -is:retweet -is:reply lang:en`;
+    // Strategy 3: React to player tweets
+    const playerQuery = PLAYERS.slice(0, 5).map(a => `from:${a}`).join(' OR ');
+    engaged = await tryQuoteTweet(bearer, `(${playerQuery}) -is:retweet -is:reply`, 'player_react');
+    if (engaged) return { statusCode: 200, headers, body: JSON.stringify(engaged) };
 
+    // Strategy 4: Jump on trending golf conversations
+    engaged = await tryQuoteTweet(bearer, `(#TheMasters OR #PGATour OR #LIVGolf) has:videos -is:retweet min_faves:50`, 'trending');
+    if (engaged) return { statusCode: 200, headers, body: JSON.stringify(engaged) };
+
+    return { statusCode: 200, headers, body: JSON.stringify({ skipped: 'No suitable content found' }) };
+
+  } catch (err) {
+    console.error('Engage error:', err);
+    return { statusCode: 500, headers, body: JSON.stringify({ error: err.message }) };
+  }
+};
+
+async function tryQuoteTweet(bearer, query, strategy) {
+  try {
     const searchUrl = new URL('https://api.twitter.com/2/tweets/search/recent');
     searchUrl.searchParams.set('query', query);
-    searchUrl.searchParams.set('max_results', '15');
+    searchUrl.searchParams.set('max_results', '10');
     searchUrl.searchParams.set('tweet.fields', 'created_at,public_metrics,author_id');
     searchUrl.searchParams.set('expansions', 'author_id');
     searchUrl.searchParams.set('user.fields', 'username');
@@ -167,63 +138,55 @@ exports.handler = async (event) => {
     const res = await fetch(searchUrl.toString(), {
       headers: { 'Authorization': `Bearer ${bearer}` },
     });
-
-    if (!res.ok) {
-      return { statusCode: 200, headers, body: JSON.stringify({ skipped: `Twitter search ${res.status}` }) };
-    }
+    if (!res.ok) return null;
 
     const data = await res.json();
     const tweets = data.data || [];
     const users = {};
     (data.includes?.users || []).forEach(u => { users[u.id] = u; });
 
-    if (tweets.length === 0) {
-      return { statusCode: 200, headers, body: JSON.stringify({ skipped: 'No tweets found' }) };
-    }
-
-    // Filter: skip tweets we already replied to, prefer high-engagement tweets
-    const candidates = tweets
-      .filter(t => !recentReplies.includes(t.id))
-      .filter(t => {
-        const metrics = t.public_metrics || {};
-        return (metrics.like_count || 0) >= 5; // Only reply to tweets with some engagement
-      })
+    // Sort by engagement
+    const sorted = tweets
+      .filter(t => (t.public_metrics?.like_count || 0) >= 3)
       .sort((a, b) => (b.public_metrics?.like_count || 0) - (a.public_metrics?.like_count || 0));
 
-    if (candidates.length === 0) {
-      return { statusCode: 200, headers, body: JSON.stringify({ skipped: 'No suitable tweets to reply to' }) };
-    }
+    // Get current tournament context for smarter takes
+    let context = '';
+    try {
+      const espnRes = await fetch('https://site.api.espn.com/apis/site/v2/sports/golf/pga/scoreboard');
+      if (espnRes.ok) {
+        const espnData = await espnRes.json();
+        const evt = espnData.events?.[0];
+        if (evt) {
+          const comp = evt.competitions?.[0];
+          const leader = comp?.competitors?.[0];
+          context = `Current: ${evt.shortName || evt.name}. Leader: ${leader?.athlete?.displayName} (${leader?.score}). Status: ${comp?.status?.type?.description}`;
+        }
+      }
+    } catch(e) {}
 
-    // Try candidates until one works (some restrict quoting)
-    for (const target of candidates.slice(0, 5)) {
+    // Try each candidate
+    for (const target of sorted.slice(0, 5)) {
       const author = users[target.author_id];
       const authorName = author?.username || 'unknown';
 
-      const reply = await generateReply(target.text, authorName);
-      if (!reply) continue;
+      const take = await generateTake(target.text, authorName, context);
+      if (!take) continue;
 
+      // Send to draft queue (not post directly)
       try {
-        const result = await postTweet(reply, target.id);
+        const result = await postDraft(take + '\n\nhttps://twitter.com/' + authorName + '/status/' + target.id, 'engage-' + strategy);
         return {
-          statusCode: 200,
-          headers,
-          body: JSON.stringify({
-            success: true,
-            replied_to: `@${authorName}: ${target.text.slice(0, 100)}`,
-            reply: reply,
-            tweet_id: result.data?.id,
-          }),
+          success: true,
+          strategy,
+          target: `@${authorName}: ${target.text.slice(0, 80)}`,
+          take,
+          draft_id: result.id,
         };
-      } catch (postErr) {
-        console.warn(`Quote tweet to @${authorName} failed:`, postErr.message);
-        continue; // Try next candidate
+      } catch (e) {
+        continue;
       }
     }
-
-    return { statusCode: 200, headers, body: JSON.stringify({ skipped: 'All candidates restricted' }) };
-
-  } catch (err) {
-    console.error('Engage error:', err);
-    return { statusCode: 500, headers, body: JSON.stringify({ error: err.message }) };
-  }
-};
+  } catch(e) {}
+  return null;
+}
