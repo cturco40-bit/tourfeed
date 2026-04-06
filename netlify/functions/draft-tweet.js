@@ -68,22 +68,6 @@ exports.handler = async (event) => {
       // Keep only last 20 drafts
       if (drafts.length > 20) drafts = drafts.slice(-20);
 
-      // Send ntfy notification
-      try {
-        await fetch('https://ntfy.sh/tourfeed-tweets', {
-          method: 'POST',
-          headers: {
-            'Title': 'TourFeed Tweet Draft',
-            'Priority': '3',
-            'Tags': 'golf',
-            'Actions': `http, Approve, https://tourfeed.co/.netlify/functions/draft-tweet?action=approve&id=${id}, method=GET; http, Reject, https://tourfeed.co/.netlify/functions/draft-tweet?action=reject&id=${id}, method=GET`,
-          },
-          body: text,
-        });
-      } catch (e) {
-        console.warn('ntfy notification failed:', e.message);
-      }
-
       return { statusCode: 200, headers, body: JSON.stringify({ success: true, id, text }) };
     } catch (e) {
       return { statusCode: 400, headers, body: JSON.stringify({ error: e.message }) };
