@@ -31,6 +31,8 @@ exports.handler = async (event) => {
         const url = new URL('https://api.twitter.com/2/tweets/search/recent');
         url.searchParams.set('query', q + ' -is:retweet lang:en');
         url.searchParams.set('max_results', '10');
+        // Only last 2 hours for freshness
+        url.searchParams.set('start_time', new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString());
         url.searchParams.set('tweet.fields', 'public_metrics,created_at');
         const res = await fetch(url.toString(), { headers: { 'Authorization': `Bearer ${bearer}` } });
         if (!res.ok) continue;

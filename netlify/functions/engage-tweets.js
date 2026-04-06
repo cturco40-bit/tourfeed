@@ -155,6 +155,9 @@ async function tryQuoteTweet(bearer, query, strategy, usedIds) {
     const searchUrl = new URL('https://api.twitter.com/2/tweets/search/recent');
     searchUrl.searchParams.set('query', query);
     searchUrl.searchParams.set('max_results', '10');
+    // Only tweets from the last 2 hours
+    const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString();
+    searchUrl.searchParams.set('start_time', twoHoursAgo);
     searchUrl.searchParams.set('tweet.fields', 'created_at,public_metrics,author_id');
     searchUrl.searchParams.set('expansions', 'author_id');
     searchUrl.searchParams.set('user.fields', 'username');
