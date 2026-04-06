@@ -121,24 +121,34 @@ exports.handler = async (event) => {
     const tournamentId = tournament.id;
 
     // 2. Get top 15 leaderboard entries for this tournament
+    // Join leaderboard with players to get names
     const leaderboard = await sb(
-      'leaderboard?tournament_id=eq.' + tournamentId + '&select=*&order=position.asc&limit=15'
+      'leaderboard?tournament_id=eq.' + tournamentId + '&select=*,players(name,country)&order=position.asc&limit=15'
     );
     if (!leaderboard.length) {
       return { statusCode: 200, headers, body: JSON.stringify({ message: 'No leaderboard data found for tournament: ' + tournament.name }) };
     }
 
-    // Determine current round from leaderboard data
-    const currentRound = leaderboard[0].current_round || leaderboard[0].round || tournament.current_round || 1;
+    // Check if we have actual player names — skip if data is garbage
+    const hasNames = leaderboard.some(p => p.players?.name && p.players.name !== 'Unknown');
+    if (!hasNames) {
+      return { statusCode: 200, headers, body: JSON.stringify({ message: 'Leaderboard has no player names — skipping content generation' }) };
+    }
+
+    const currentRound = tournament.current_round || 1;
 
     // Format leaderboard data for Claude
     const leaderboardText = leaderboard.map((p, i) => {
       const pos = p.position || (i + 1);
-      const name = p.player_name || p.name || 'Unknown';
-      const total = p.total_score || p.total || p.score || '--';
-      const today = p.today || p.round_score || '--';
-      const thru = p.thru || p.holes_played || '--';
-      return `${pos}. ${name} | Total: ${total} | Today: ${today} | Thru: ${thru}`;
+      const name = p.players?.name || 'Unknown';
+      const country = p.players?.country || '';
+      const total = p.total_score || '--';
+      const today = p.today_score || '--';
+      const r1 = p.round1 || '--';
+      const r2 = p.round2 || '--';
+      const r3 = p.round3 || '--';
+      const r4 = p.round4 || '--';
+      return `${pos}. ${name} (${country}) | Total: ${total} | R1: ${r1} R2: ${r2} R3: ${r3} R4: ${r4}`;
     }).join('\n');
 
     const dataBlock = `Tournament: ${tournament.name}\nRound: ${currentRound}\nDate: ${new Date().toISOString().split('T')[0]}\n\nLeaderboard (Top 15):\n${leaderboardText}`;

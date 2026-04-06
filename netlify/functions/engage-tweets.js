@@ -80,6 +80,9 @@ exports.handler = async (event) => {
   if (!bearer) return { statusCode: 200, headers, body: JSON.stringify({ skipped: 'No bearer token' }) };
 
   try {
+    // v2 pipeline handles content now — disable this function
+    return { statusCode: 200, headers, body: JSON.stringify({ skipped: 'Disabled — v2 pipeline active' }) };
+
     // Collect tweet IDs already posted or in drafts — never re-draft these
     const usedIds = new Set();
     try {
