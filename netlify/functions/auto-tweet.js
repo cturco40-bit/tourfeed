@@ -13,13 +13,14 @@ function buildAuthHeader(params) {
     .map(k => `${encodeURIComponent(k)}="${encodeURIComponent(params[k])}"`).join(', ');
 }
 
-async function postTweet(text, imageUrl) {
-  const res = await fetch('https://tourfeed.co/.netlify/functions/post-tweet', {
+async function postTweet(text) {
+  // Send to draft queue for approval instead of posting directly
+  const res = await fetch('https://tourfeed.co/.netlify/functions/draft-tweet', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ text: text.slice(0, 280), image: imageUrl || null }),
+    body: JSON.stringify({ text: text.slice(0, 280), source: 'auto-tweet' }),
   });
-  if (!res.ok) throw new Error(`post-tweet ${res.status}: ${await res.text()}`);
+  if (!res.ok) throw new Error(`draft-tweet ${res.status}: ${await res.text()}`);
   return await res.json();
 }
 

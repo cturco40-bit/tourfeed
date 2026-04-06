@@ -1923,6 +1923,30 @@ function renderInsights() {
       html += '</div>';
     }
 
+    // Top 5 / Top 10 finish picks
+    const top5Pick = odds.filter(p => p.back >= 0 && p.back <= 2)
+      .sort((a,b) => (parseScore(a.today) || 0) - (parseScore(b.today) || 0))[0];
+    const top10Pick = odds.filter(p => p.back >= 2 && p.back <= 5)
+      .sort((a,b) => (parseScore(a.today) || 0) - (parseScore(b.today) || 0))[0];
+
+    if (top5Pick || top10Pick) {
+      html += '<div style="margin-top:8px;font-size:10px;font-weight:700;letter-spacing:1px;color:var(--g700);margin-bottom:6px">PLACEMENT PICKS</div>';
+      if (top5Pick) {
+        html += '<div style="padding:8px 10px;background:rgba(45,143,111,0.06);border-radius:8px;margin-bottom:4px;display:flex;align-items:center">';
+        html += '<span class="tag" style="color:var(--green);background:rgba(45,143,111,0.12);font-size:9px;margin-right:8px">TOP 5</span>';
+        html += '<span style="font-size:12px;font-weight:700;color:var(--text);flex:1">' + top5Pick.fullName + '</span>';
+        html += '<span style="font-size:11px;color:var(--text-muted)">' + top5Pick.score + '</span>';
+        html += '</div>';
+      }
+      if (top10Pick && top10Pick.fullName !== top5Pick?.fullName) {
+        html += '<div style="padding:8px 10px;background:rgba(74,144,217,0.06);border-radius:8px;margin-bottom:4px;display:flex;align-items:center">';
+        html += '<span class="tag" style="color:#4A90D9;background:rgba(74,144,217,0.12);font-size:9px;margin-right:8px">TOP 10</span>';
+        html += '<span style="font-size:12px;font-weight:700;color:var(--text);flex:1">' + top10Pick.fullName + '</span>';
+        html += '<span style="font-size:11px;color:var(--text-muted)">' + top10Pick.score + '</span>';
+        html += '</div>';
+      }
+    }
+
     // Top 5 odds table
     html += '<div style="margin-top:10px;font-size:10px;font-weight:700;letter-spacing:1px;color:var(--g700);margin-bottom:6px">OUTRIGHT ODDS</div>';
     odds.slice(0, 8).forEach((p, i) => {
