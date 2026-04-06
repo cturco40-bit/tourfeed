@@ -191,25 +191,39 @@ async function generateHeadline(params) {
   const ctx = c.getContext('2d');
   drawGradientBg(ctx, 1080, 1080);
 
-  // Photos
+  // Photos — ESPN headshots or Unsplash backgrounds
   const photos = (params.photo || '').split(',').filter(Boolean);
-  if (photos.length >= 2) {
+  const isUnsplash = photos[0]?.includes('unsplash');
+  let hasPhoto = false;
+
+  if (isUnsplash && photos[0]) {
+    // Full background photo with dark overlay
+    const bg = await fetchImage(photos[0]);
+    if (bg) {
+      const scale = Math.max(1080 / bg.width, 1080 / bg.height);
+      ctx.globalAlpha = 0.35;
+      ctx.drawImage(bg, (1080 - bg.width * scale) / 2, (1080 - bg.height * scale) / 2, bg.width * scale, bg.height * scale);
+      ctx.globalAlpha = 1;
+      ctx.fillStyle = NAVY_D + 'AA';
+      ctx.fillRect(0, 0, 1080, 1080);
+      hasPhoto = true;
+    }
+  } else if (photos.length >= 2) {
     const [img1, img2] = await Promise.all([fetchImage(photos[0]), fetchImage(photos[1])]);
-    drawTwoPlayers(ctx, img1, img2, 1080, 1080);
+    if (img1 || img2) { drawTwoPlayers(ctx, img1, img2, 1080, 1080); hasPhoto = true; }
   } else if (photos.length === 1) {
     const img = await fetchImage(photos[0]);
-    if (img) drawPlayer(ctx, img, 1080, 1080);
+    if (img) { drawPlayer(ctx, img, 1080, 1080); hasPhoto = true; }
   }
 
   drawAccent(ctx, 1080, 1080, tagColor);
   drawLogo(ctx, 50, 60, 24);
   drawTag(ctx, tag, 50, 110, tagColor);
 
-  const hasPhoto = photos.length > 0;
   ctx.font = font(800, hasPhoto ? 44 : 48);
   ctx.fillStyle = WHITE;
   ctx.textAlign = 'left';
-  wrapText(ctx, headline, 50, 240, hasPhoto ? 750 : 980, 56, 10);
+  wrapText(ctx, headline, 50, 240, hasPhoto && !isUnsplash ? 750 : 980, 56, 10);
   drawFooter(ctx, 1080, 1080, tagColor);
   return c.toBuffer('image/png');
 }
@@ -225,23 +239,36 @@ async function generateArticleHeader(params) {
   drawGradientBg(ctx, 1200, 630);
 
   const photos = (params.photo || '').split(',').filter(Boolean);
-  if (photos.length >= 2) {
+  const isUnsplash = photos[0]?.includes('unsplash');
+  let hasPhoto = false;
+
+  if (isUnsplash && photos[0]) {
+    const bg = await fetchImage(photos[0]);
+    if (bg) {
+      const scale = Math.max(1200 / bg.width, 630 / bg.height);
+      ctx.globalAlpha = 0.3;
+      ctx.drawImage(bg, (1200 - bg.width * scale) / 2, (630 - bg.height * scale) / 2, bg.width * scale, bg.height * scale);
+      ctx.globalAlpha = 1;
+      ctx.fillStyle = NAVY_D + 'BB';
+      ctx.fillRect(0, 0, 1200, 630);
+      hasPhoto = true;
+    }
+  } else if (photos.length >= 2) {
     const [img1, img2] = await Promise.all([fetchImage(photos[0]), fetchImage(photos[1])]);
-    drawTwoPlayers(ctx, img1, img2, 1200, 630);
+    if (img1 || img2) { drawTwoPlayers(ctx, img1, img2, 1200, 630); hasPhoto = true; }
   } else if (photos.length === 1) {
     const img = await fetchImage(photos[0]);
-    if (img) drawPlayer(ctx, img, 1200, 630);
+    if (img) { drawPlayer(ctx, img, 1200, 630); hasPhoto = true; }
   }
 
   drawAccent(ctx, 1200, 630, tagColor);
   drawLogo(ctx, 50, 50, 20);
   drawTag(ctx, tag, 50, 90, tagColor);
 
-  const hasPhoto = photos.length > 0;
   ctx.font = font(800, hasPhoto ? 34 : 38);
   ctx.fillStyle = WHITE;
   ctx.textAlign = 'left';
-  wrapText(ctx, headline, 50, 170, hasPhoto ? 850 : 1100, 44, 10);
+  wrapText(ctx, headline, 50, 170, hasPhoto && !isUnsplash ? 850 : 1100, 44, 10);
   drawFooter(ctx, 1200, 630, tagColor);
   return c.toBuffer('image/png');
 }
@@ -257,12 +284,26 @@ async function generateHotTake(params) {
   drawGradientBg(ctx, 1080, 1080);
 
   const photos = (params.photo || '').split(',').filter(Boolean);
-  if (photos.length >= 2) {
+  const isUnsplash = photos[0]?.includes('unsplash');
+  let hasPhoto = false;
+
+  if (isUnsplash && photos[0]) {
+    const bg = await fetchImage(photos[0]);
+    if (bg) {
+      const scale = Math.max(1080 / bg.width, 1080 / bg.height);
+      ctx.globalAlpha = 0.3;
+      ctx.drawImage(bg, (1080 - bg.width * scale) / 2, (1080 - bg.height * scale) / 2, bg.width * scale, bg.height * scale);
+      ctx.globalAlpha = 1;
+      ctx.fillStyle = NAVY_D + 'AA';
+      ctx.fillRect(0, 0, 1080, 1080);
+      hasPhoto = true;
+    }
+  } else if (photos.length >= 2) {
     const [img1, img2] = await Promise.all([fetchImage(photos[0]), fetchImage(photos[1])]);
-    drawTwoPlayers(ctx, img1, img2, 1080, 1080);
+    if (img1 || img2) { drawTwoPlayers(ctx, img1, img2, 1080, 1080); hasPhoto = true; }
   } else if (photos.length === 1) {
     const img = await fetchImage(photos[0]);
-    if (img) drawPlayer(ctx, img, 1080, 1080);
+    if (img) { drawPlayer(ctx, img, 1080, 1080); hasPhoto = true; }
   }
 
   drawAccent(ctx, 1080, 1080, GREEN);
@@ -276,10 +317,9 @@ async function generateHotTake(params) {
   ctx.fillText('\u201C', 40, 260);
 
   // Quote text
-  const hasPhoto = photos.length > 0;
   ctx.font = font(700, hasPhoto ? 36 : 40);
   ctx.fillStyle = WHITE;
-  const endY = wrapText(ctx, quote, 55, 310, hasPhoto ? 720 : 960, 48, 8);
+  const endY = wrapText(ctx, quote, 55, 310, hasPhoto && !isUnsplash ? 720 : 960, 48, 8);
 
   // Attribution
   if (attribution) {

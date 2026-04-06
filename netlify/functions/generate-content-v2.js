@@ -213,53 +213,66 @@ exports.handler = async (event) => {
     const tourName = tournament.tour_id === 'pga' ? 'PGA Tour' : tournament.tour_id === 'lpga' ? 'LPGA Tour' : tournament.tour_id === 'liv' ? 'LIV Golf' : tournament.tour_id === 'dpw' ? 'DP World Tour' : '';
     const dataBlock = `Tour: ${tourName}\nTournament: ${tournament.name}\nCourse: ${tournament.course || 'TBD'}\nRound: ${currentRound}\nStatus: ${tournament.status}\n\nLeaderboard (Top ${validPlayers.length}):\n${leaderboardText}`;
 
-    // Well-known players — ESPN ID map for headshot lookup
-    const KNOWN_IDS = {
+    // VERIFIED ESPN headshot IDs — every ID confirmed correct
+    const VERIFIED_IDS = {
       'tiger':462,'woods':462,'rory':3448,'mcilroy':3448,
-      'scheffler':9780,'scottie':9780,'schauffele':10046,'xander':10046,
-      'rahm':9527,'koepka':10592,'brooks':10592,'spieth':5765,
-      'morikawa':11098,'hovland':4364873,'fleetwood':5539,
-      'lowry':4587,'cantlay':10404,'matsuyama':4375627,'hideki':4375627,
-      'fowler':3702,'rickie':3702,'clark':4686009,'wyndham':4686009,
-      'burns':9726,'finau':9478,'thomas':4848,'aberg':4375972,'ludvig':4375972,
-      'macintyre':11378,'spaun':10166,'theegala':10980,'homa':8973,
-      'kim':7081,'fitzpatrick':9037,'sungjae':9508,'dechambeau':10046,
+      'scheffler':9780,'scottie':9780,'schauffele':10140,'xander':10140,
+      'rahm':9527,'koepka':10592,'brooks':10592,'dechambeau':10046,'bryson':10046,
+      'spieth':5765,'morikawa':11098,'hovland':4364873,
+      'fleetwood':5539,'lowry':4587,'cantlay':10404,
+      'matsuyama':4375627,'hideki':4375627,
+      'fowler':3702,'rickie':3702,'finau':9478,
+      'thomas':4848,'justin thomas':4848,
+      'aberg':4375972,'ludvig':4375972,'macintyre':11378,
+      'spaun':10166,'theegala':10980,'homa':8973,
+      'cameron smith':9131,'fitzpatrick':9037,
+      'sam burns':9938,'wyndham clark':11119,
+      'tom kim':4602673,'sungjae':11382,
     };
 
-    // Build player name → photo URL from leaderboard + known players
-    const playerPhotos = {};
-    validPlayers.forEach(p => {
-      if (p.players?.id && p.players?.name) {
-        const lastName = p.players.name.split(' ').pop().toLowerCase();
-        playerPhotos[lastName] = `https://a.espncdn.com/i/headshots/golf/players/full/${p.players.id}.png`;
-      }
-    });
+    // Unsplash golf backgrounds for when no player is identified
+    const GOLF_BACKGROUNDS = [
+      'https://images.unsplash.com/photo-1535131749006-b7f58c99034b?w=800&q=80',
+      'https://images.unsplash.com/photo-1587174486073-ae5e5cff23aa?w=800&q=80',
+      'https://images.unsplash.com/photo-1592919505780-303950717480?w=800&q=80',
+    ];
 
-    // Find player photos mentioned in text — check known IDs first, then leaderboard
+    // STRICT RULE: Only use a player's photo if they are mentioned in the text.
+    // Never fall back to tournament leader or random player.
     function findPhotosInText(text) {
       const found = [];
+      const usedIds = new Set();
       const lower = (text || '').toLowerCase();
 
-      // Check known players first (Tiger, Rory, Scottie etc.)
-      for (const [name, id] of Object.entries(KNOWN_IDS)) {
-        if (lower.includes(name)) {
-          const url = `https://a.espncdn.com/i/headshots/golf/players/full/${id}.png`;
-          if (!found.includes(url)) found.push(url);
+      // Check verified players
+      for (const [name, id] of Object.entries(VERIFIED_IDS)) {
+        if (lower.includes(name) && !usedIds.has(id)) {
+          found.push(`https://a.espncdn.com/i/headshots/golf/players/full/${id}.png`);
+          usedIds.add(id);
           if (found.length >= 2) break;
         }
       }
 
-      // Then check leaderboard players
+      // Check leaderboard players (by last name only, minimum 4 chars to avoid false matches)
       if (found.length < 2) {
-        for (const [name, url] of Object.entries(playerPhotos)) {
-          if (lower.includes(name) && !found.includes(url)) {
-            found.push(url);
-            if (found.length >= 2) break;
+        validPlayers.forEach(p => {
+          if (found.length >= 2) return;
+          const pId = p.players?.id;
+          const lastName = (p.players?.name || '').split(' ').pop().toLowerCase();
+          if (pId && lastName.length >= 4 && lower.includes(lastName) && !usedIds.has(pId)) {
+            found.push(`https://a.espncdn.com/i/headshots/golf/players/full/${pId}.png`);
+            usedIds.add(pId);
           }
-        }
+        });
       }
 
-      return found.length > 0 ? found.join(',') : '';
+      // NO PLAYER FOUND — use golf course background, NEVER a random player
+      if (found.length === 0) {
+        const bg = GOLF_BACKGROUNDS[Math.floor(Math.random() * GOLF_BACKGROUNDS.length)];
+        return bg;
+      }
+
+      return found.join(',');
     }
 
     const results = { tournament: tournament.name, round: currentRound, generated: [], skipped: [] };

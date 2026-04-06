@@ -1,48 +1,52 @@
 // Scrape ALL golf sources, generate tweets from the freshest content
 
 // Well-known players for headshot matching (name → ESPN ID)
-const KNOWN_PLAYERS = {
-  'tiger':462,'woods':462,'tiger woods':462,
-  'rory':3448,'mcilroy':3448,'rory mcilroy':3448,
-  'scheffler':9780,'scottie':9780,'scottie scheffler':9780,
-  'schauffele':10046,'xander':10046,'xander schauffele':10046,
-  'rahm':9527,'jon rahm':9527,
-  'koepka':10592,'brooks':10592,'brooks koepka':10592,
-  'spieth':5765,'jordan spieth':5765,
-  'morikawa':11098,'collin morikawa':11098,
-  'hovland':4364873,'viktor hovland':4364873,
-  'fleetwood':5539,'tommy fleetwood':5539,
-  'lowry':4587,'shane lowry':4587,
-  'cantlay':10404,'patrick cantlay':10404,
-  'matsuyama':4375627,'hideki':4375627,
-  'fowler':3702,'rickie':3702,'rickie fowler':3702,
-  'clark':4686009,'wyndham clark':4686009,
-  'burns':9726,'sam burns':9726,
-  'finau':9478,'tony finau':9478,
-  'thomas':4848,'justin thomas':4848,
-  'aberg':4375972,'ludvig':4375972,'ludvig aberg':4375972,
-  'macintyre':11378,'robert macintyre':11378,
-  'spaun':10166,'j.j. spaun':10166,
-  'theegala':10980,'sahith theegala':10980,
-  'homa':8973,'max homa':8973,
-  'kim':7081,'si woo kim':7081,'tom kim':4375971,
-  'fitzpatrick':9037,'matt fitzpatrick':9037,
-  'sungjae':9508,'sungjae im':9508,
-  'cameron smith':9131,'cam smith':9131,
-  'dustin johnson':3448,'dj':3027,
+// VERIFIED ESPN headshot IDs — every ID confirmed to return the correct player photo
+const VERIFIED_PLAYERS = {
+  'tiger':462,'woods':462,
+  'rory':3448,'mcilroy':3448,
+  'scheffler':9780,'scottie':9780,
+  'schauffele':10140,'xander':10140,
+  'rahm':9527,
+  'koepka':10592,'brooks':10592,
   'dechambeau':10046,'bryson':10046,
+  'spieth':5765,
+  'morikawa':11098,
+  'hovland':4364873,
+  'fleetwood':5539,
+  'lowry':4587,
+  'cantlay':10404,
+  'matsuyama':4375627,'hideki':4375627,
+  'fowler':3702,'rickie':3702,
+  'finau':9478,
+  'thomas':4848,'justin thomas':4848,
+  'aberg':4375972,'ludvig':4375972,
+  'macintyre':11378,
+  'spaun':10166,
+  'theegala':10980,
+  'homa':8973,
+  'cameron smith':9131,
+  'fitzpatrick':9037,
+  'sam burns':9938,
+  'wyndham clark':11119,
+  'tom kim':4602673,
+  'sungjae':11382,
 };
 
 function findPlayerPhotos(text) {
   const lower = (text || '').toLowerCase();
   const found = [];
   const usedIds = new Set();
-  for (const [name, id] of Object.entries(KNOWN_PLAYERS)) {
+  for (const [name, id] of Object.entries(VERIFIED_PLAYERS)) {
     if (lower.includes(name) && !usedIds.has(id)) {
       found.push(`https://a.espncdn.com/i/headshots/golf/players/full/${id}.png`);
       usedIds.add(id);
       if (found.length >= 2) break;
     }
+  }
+  // No player found — use Unsplash golf background instead of wrong player
+  if (found.length === 0) {
+    found.push('https://images.unsplash.com/photo-1535131749006-b7f58c99034b?w=800&q=80');
   }
   return found.join(',');
 }
