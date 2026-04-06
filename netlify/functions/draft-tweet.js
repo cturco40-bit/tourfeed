@@ -141,9 +141,11 @@ exports.handler = async (event) => {
       }
 
       // Check against existing pending/rejected drafts in Supabase
-      const recent = await sb('content_drafts?order=created_at.desc&limit=50&select=body');
+      let recent = [];
+      try { recent = await sb('content_drafts?order=created_at.desc&limit=50&select=body') || []; } catch(e) { recent = []; }
+      if (!Array.isArray(recent)) recent = [];
       const newWords = text.toLowerCase().replace(/[^a-z0-9\s]/g, '').split(/\s+/).filter(w => w.length > 3);
-      for (const d of (recent || [])) {
+      for (const d of recent) {
         const existingWords = d.body.toLowerCase().replace(/[^a-z0-9\s]/g, '').split(/\s+/).filter(w => w.length > 3);
         const overlap = newWords.filter(w => existingWords.includes(w)).length;
         if (overlap >= newWords.length * 0.4) {
