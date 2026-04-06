@@ -102,15 +102,20 @@ function generateArticleHeader(params) {
   const tournament = params.tournament || '';
   const tagColor = tag === 'RECAP' ? GREEN : tag === 'BETTING' ? GOLD : tag === 'PREVIEW' ? GREEN : tag === 'ANALYSIS' ? '#4A90D9' : tag === 'BREAKING' ? RED : GREEN;
   return `<svg width="1200" height="630" xmlns="http://www.w3.org/2000/svg">
-    <defs><linearGradient id="bg" x1="0" y1="0" x2="0.5" y2="1"><stop offset="0%" stop-color="${NAVY}"/><stop offset="100%" stop-color="#0F1923"/></linearGradient></defs>
+    <defs>
+      <linearGradient id="bg" x1="0" y1="0" x2="0.5" y2="1"><stop offset="0%" stop-color="${NAVY}"/><stop offset="100%" stop-color="#0F1923"/></linearGradient>
+      <linearGradient id="accent" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${tagColor}" stop-opacity="0.12"/><stop offset="100%" stop-color="${tagColor}" stop-opacity="0"/></linearGradient>
+    </defs>
     <rect width="1200" height="630" fill="url(#bg)"/>
     <rect width="1200" height="5" fill="${tagColor}"/>
-    ${logo(50, 60, 28)}
-    <rect x="50" y="90" width="${tag.length * 14 + 30}" height="32" rx="6" fill="${tagColor}" opacity="0.15"/>
-    <text x="65" y="112" font-family="Arial,Helvetica,sans-serif" font-size="13" font-weight="700" fill="${tagColor}" letter-spacing="2">${escXml(tag)}</text>
-    ${wrapText(headline, 35, 50, 200, 48, WHITE, 38, '800')}
-    ${tournament ? `<text x="50" y="560" font-family="Arial,Helvetica,sans-serif" font-size="16" font-weight="600" fill="${DIM}">${escXml(tournament)}</text>` : ''}
-    <line x1="50" y1="580" x2="1150" y2="580" stroke="rgba(255,255,255,0.06)" stroke-width="1"/>
+    <rect x="0" y="0" width="6" height="630" fill="${tagColor}" opacity="0.6"/>
+    <rect x="0" y="100" width="1200" height="400" fill="url(#accent)"/>
+    ${logo(50, 55, 24)}
+    <rect x="50" y="85" width="${tag.length * 13 + 28}" height="30" rx="6" fill="${tagColor}" opacity="0.2"/>
+    <text x="64" y="105" font-family="Arial,Helvetica,sans-serif" font-size="12" font-weight="700" fill="${tagColor}" letter-spacing="2">${escXml(tag)}</text>
+    ${wrapText(headline, 38, 50, 185, 46, WHITE, 36, '800')}
+    ${tournament ? `<text x="50" y="560" font-family="Arial,Helvetica,sans-serif" font-size="15" font-weight="600" fill="${DIM}">${escXml(tournament)}</text>` : ''}
+    <rect x="50" y="585" width="160" height="3" rx="2" fill="${tagColor}" opacity="0.4"/>
     ${logo(50, 610, 18)}
     <text x="1150" y="610" font-family="Arial,Helvetica,sans-serif" font-size="12" font-weight="600" fill="${GRAY}" text-anchor="end">tourfeed.co</text>
   </svg>`;

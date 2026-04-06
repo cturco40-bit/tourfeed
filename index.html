@@ -933,15 +933,13 @@ function renderArticleDetail(a) {
   let html = '<div class="article-detail">';
   html += '<button onclick="closeArticleDetail()" style="background:none;border:none;color:var(--green);font-size:13px;font-weight:700;cursor:pointer;padding:8px 0;font-family:inherit">&larr; ' + backLabel + '</button>';
 
-  if (a.header_image && !a.header_image.includes('generate-image')) {
-    // Real uploaded image
-    html += '<img src="' + esc(a.header_image) + '" class="article-detail-img" alt="" onerror="this.style.display=\'none\'">';
-  } else {
-    // Styled banner header
-    html += '<div style="background:linear-gradient(135deg,var(--navy-l),var(--navy));border-left:4px solid ' + tc + ';border-radius:12px;padding:24px;margin-bottom:16px">';
-    html += '<span class="tag" style="color:' + tc + ';background:' + tc + '15;margin-bottom:10px">' + esc(a.tag || 'NEWS') + '</span>';
-    html += '<div style="font-size:9px;color:var(--g700);margin-top:8px;letter-spacing:1px;font-weight:700">TOUR<span style="color:var(--gold)">FEED</span></div>';
-    html += '</div>';
+  if (a.header_image) {
+    var headerUrl = a.header_image;
+    // For generated images, use article_header format (1200x630) as PNG
+    if (headerUrl.includes('generate-image')) {
+      headerUrl = 'https://tourfeed.co/.netlify/functions/generate-image?type=article_header&tag=' + encodeURIComponent(a.tag || 'NEWS') + '&headline=' + encodeURIComponent(a.title || '') + '&format=png';
+    }
+    html += '<img src="' + esc(headerUrl) + '" class="article-detail-img" alt="" onerror="this.style.display=\'none\'">';
   }
 
   html += '<div class="article-detail-title">' + esc(a.title) + '</div>';
