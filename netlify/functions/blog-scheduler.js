@@ -22,8 +22,8 @@ function hashText(text) {
 }
 
 const CONTENT_TYPES = {
-  0: null, // Sunday — handled by auto-recap
-  1: { type: 'article_analysis', prompt: 'Write a POWER RANKINGS article ranking the top 15 golfers heading into this week. Include recent form, stats, and why each player is ranked where they are.' },
+  0: { type: 'article_preview', prompt: 'Write a comprehensive MASTERS PREVIEW article. Cover the field, favorites, dark horses, key storylines (Rory defending, Tiger absent, Scottie with newborn, LIV players at Augusta), course breakdown, and your predictions. Make it the ultimate Masters preview — 800+ words. ONLY include players confirmed to be in the field.' },
+  1: { type: 'article_analysis', prompt: 'Write a POWER RANKINGS article ranking the top 15 golfers heading into this week. Include recent form, stats, and why each player is ranked where they are. ONLY rank players confirmed in the field — check PLAYER FACTS for who is NOT playing (injured, withdrawn, did not qualify). If a player is marked NOT in the field, do NOT include them.' },
   2: { type: 'article_preview', prompt: 'Write a COURSE PREVIEW for this week\'s tournament. Cover course layout, key holes, what type of player the course rewards, weather expectations, and past champions.' },
   3: { type: 'article_betting', prompt: 'Write a comprehensive BETTING PREVIEW. Include: outright winner picks (3), top 5 picks (3), top 10 picks (3), first round leader (2), head-to-head matchups (3), longshot pick, and a parlay suggestion. Include odds, confidence ratings, and detailed reasoning for each.' },
   4: null, // Thursday — tournament starts

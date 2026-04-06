@@ -203,6 +203,12 @@ exports.handler = async (event) => {
     const tournament = tournaments[0];
     const tournamentId = tournament.id;
 
+    // Skip if tournament is completed — no more recaps for finished events
+    const tStatus = (tournament.status || '').toLowerCase();
+    if (tStatus === 'final' || tStatus === 'complete' || tStatus === 'closed') {
+      return { statusCode: 200, headers, body: JSON.stringify({ message: 'Tournament ' + tournament.name + ' is completed. No new recaps needed.' }) };
+    }
+
     // 2. Get top 15 leaderboard entries for this tournament
     // Join leaderboard with players to get names
     const leaderboard = await sb(
