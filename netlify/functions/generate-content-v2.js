@@ -253,18 +253,8 @@ exports.handler = async (event) => {
         }
       }
 
-      // Check leaderboard players (by last name only, minimum 4 chars to avoid false matches)
-      if (found.length < 2) {
-        validPlayers.forEach(p => {
-          if (found.length >= 2) return;
-          const pId = p.players?.id;
-          const lastName = (p.players?.name || '').split(' ').pop().toLowerCase();
-          if (pId && lastName.length >= 4 && lower.includes(lastName) && !usedIds.has(pId)) {
-            found.push(`https://a.espncdn.com/i/headshots/golf/players/full/${pId}.png`);
-            usedIds.add(pId);
-          }
-        });
-      }
+      // STRICT: Only use VERIFIED_IDS. Never use leaderboard player IDs
+      // because Supabase player IDs don't reliably match ESPN headshot IDs.
 
       // NO PLAYER FOUND — use golf course background, NEVER a random player
       if (found.length === 0) {

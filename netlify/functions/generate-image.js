@@ -104,81 +104,82 @@ function drawFooter(ctx, w, h, color) {
   ctx.textAlign = 'left';
 }
 
-// Draw single player headshot on right side
+// Draw single player headshot — pinned to far right, face never under text
 function drawPlayer(ctx, img, w, h) {
   if (!img) return;
-  const scale = (h * 0.9) / img.height;
+  // Scale to 70% of canvas height, push far right so face is in right 40%
+  const scale = (h * 0.7) / img.height;
   const imgW = img.width * scale;
   const imgH = img.height * scale;
-  const x = w - imgW + 80;
-  const y = h - imgH;
+  const x = w - imgW * 0.75; // only 75% of image visible, rest off-screen
+  const y = h - imgH - 40;
 
-  ctx.globalAlpha = 0.8;
+  ctx.globalAlpha = 0.75;
   ctx.drawImage(img, x, y, imgW, imgH);
   ctx.globalAlpha = 1;
 
-  // Left fade
-  const fade = ctx.createLinearGradient(x - 30, 0, x + imgW * 0.45, 0);
+  // Heavy left fade — text zone (left 55%) stays completely clear
+  const fade = ctx.createLinearGradient(w * 0.35, 0, w * 0.65, 0);
   fade.addColorStop(0, NAVY_D);
-  fade.addColorStop(0.5, NAVY_D + 'DD');
   fade.addColorStop(1, 'transparent');
   ctx.fillStyle = fade;
-  ctx.fillRect(x - 30, 0, imgW + 60, h);
+  ctx.fillRect(0, 0, w, h);
 
   // Bottom fade
+  const bf = ctx.createLinearGradient(0, h - 100, 0, h);
+  bf.addColorStop(0, 'transparent');
+  bf.addColorStop(1, NAVY_D);
+  ctx.fillStyle = bf;
+  ctx.fillRect(0, h - 100, w, 100);
+
+  // Top fade
+  const tf = ctx.createLinearGradient(0, 0, 0, 80);
+  tf.addColorStop(0, NAVY_D);
+  tf.addColorStop(1, 'transparent');
+  ctx.fillStyle = tf;
+  ctx.fillRect(0, 0, w, 80);
+}
+
+// Draw two player headshots — one each side, text in center
+function drawTwoPlayers(ctx, img1, img2, w, h) {
+  // Player 1 — far left, partially off-screen
+  if (img1) {
+    const scale = (h * 0.6) / img1.height;
+    const iw = img1.width * scale;
+    const ih = img1.height * scale;
+    ctx.globalAlpha = 0.5;
+    ctx.drawImage(img1, -iw * 0.35, h - ih - 30, iw, ih);
+    ctx.globalAlpha = 1;
+  }
+  // Player 2 — far right, partially off-screen
+  if (img2) {
+    const scale = (h * 0.6) / img2.height;
+    const iw = img2.width * scale;
+    const ih = img2.height * scale;
+    ctx.globalAlpha = 0.5;
+    ctx.drawImage(img2, w - iw * 0.65, h - ih - 30, iw, ih);
+    ctx.globalAlpha = 1;
+  }
+  // Heavy center overlay — text area is fully readable
+  const cg = ctx.createLinearGradient(0, 0, w, 0);
+  cg.addColorStop(0, 'transparent');
+  cg.addColorStop(0.2, NAVY_D + 'DD');
+  cg.addColorStop(0.5, NAVY_D + 'F5');
+  cg.addColorStop(0.8, NAVY_D + 'DD');
+  cg.addColorStop(1, 'transparent');
+  ctx.fillStyle = cg;
+  ctx.fillRect(0, 0, w, h);
+  // Bottom + top fades
   const bf = ctx.createLinearGradient(0, h - 120, 0, h);
   bf.addColorStop(0, 'transparent');
   bf.addColorStop(1, NAVY_D);
   ctx.fillStyle = bf;
   ctx.fillRect(0, h - 120, w, 120);
-
-  // Top fade
   const tf = ctx.createLinearGradient(0, 0, 0, 100);
   tf.addColorStop(0, NAVY_D);
   tf.addColorStop(1, 'transparent');
   ctx.fillStyle = tf;
-  ctx.fillRect(x - 30, 0, imgW + 60, 100);
-}
-
-// Draw two player headshots — debate/comparison style
-function drawTwoPlayers(ctx, img1, img2, w, h) {
-  // Player 1 on left
-  if (img1) {
-    const scale = (h * 0.75) / img1.height;
-    const iw = img1.width * scale;
-    const ih = img1.height * scale;
-    ctx.globalAlpha = 0.6;
-    ctx.drawImage(img1, -40, h - ih, iw, ih);
-    ctx.globalAlpha = 1;
-  }
-  // Player 2 on right
-  if (img2) {
-    const scale = (h * 0.75) / img2.height;
-    const iw = img2.width * scale;
-    const ih = img2.height * scale;
-    ctx.globalAlpha = 0.6;
-    ctx.drawImage(img2, w - iw + 40, h - ih, iw, ih);
-    ctx.globalAlpha = 1;
-  }
-  // Center dark overlay for text readability
-  const cg = ctx.createLinearGradient(w * 0.2, 0, w * 0.8, 0);
-  cg.addColorStop(0, 'transparent');
-  cg.addColorStop(0.3, NAVY_D + 'EE');
-  cg.addColorStop(0.7, NAVY_D + 'EE');
-  cg.addColorStop(1, 'transparent');
-  ctx.fillStyle = cg;
-  ctx.fillRect(0, 0, w, h);
-  // Bottom + top fades
-  const bf = ctx.createLinearGradient(0, h - 150, 0, h);
-  bf.addColorStop(0, 'transparent');
-  bf.addColorStop(1, NAVY_D);
-  ctx.fillStyle = bf;
-  ctx.fillRect(0, h - 150, w, 150);
-  const tf = ctx.createLinearGradient(0, 0, 0, 120);
-  tf.addColorStop(0, NAVY_D);
-  tf.addColorStop(1, 'transparent');
-  ctx.fillStyle = tf;
-  ctx.fillRect(0, 0, w, 120);
+  ctx.fillRect(0, 0, w, 100);
 }
 
 // ────── HEADLINE (1080x1080) ──────
