@@ -1816,17 +1816,17 @@ function getPreviewPicks(eventName, isMajor) {
 let insightsCache = {};
 
 async function fetchTourInsights(tourId, sport) {
-  if (insightsCache[tourId]) return insightsCache[tourId];
+  if (insightsCache[tourId] !== undefined) return insightsCache[tourId]; // includes cached nulls (failed)
   try {
     const res = await fetch('https://site.api.espn.com/apis/site/v2/sports/' + sport + '/scoreboard');
-    if (!res.ok) return null;
+    if (!res.ok) { insightsCache[tourId] = null; return null; }
     const data = await res.json();
     const evt = data.events?.[0];
-    if (!evt) return null;
+    if (!evt) { insightsCache[tourId] = null; return null; }
     const comp = evt.competitions?.[0];
-    if (!comp) return null;
+    if (!comp) { insightsCache[tourId] = null; return null; }
     const players = (comp.competitors || []).slice(0, 20);
-    if (players.length === 0) return null;
+    if (players.length === 0) { insightsCache[tourId] = null; return null; }
     const status = comp.status || {};
     const result = {
       name: evt.shortName || evt.name || '',
@@ -1845,7 +1845,7 @@ async function fetchTourInsights(tourId, sport) {
     };
     insightsCache[tourId] = result;
     return result;
-  } catch(e) { return null; }
+  } catch(e) { insightsCache[tourId] = null; return null; }
 }
 
 function renderInsights() {
@@ -1968,8 +1968,6 @@ function renderInsights() {
   const otherTours = [
     { id: 'lpga', sport: 'golf/lpga', label: 'LPGA', color: '#E91E8C' },
     { id: 'dpw', sport: 'golf/eur', label: 'DP WORLD TOUR', color: '#4A90D9' },
-    { id: 'kft', sport: 'golf/kft', label: 'KORN FERRY TOUR', color: 'var(--gold)' },
-    { id: 'champ', sport: 'golf/champ', label: 'CHAMPIONS TOUR', color: 'var(--text-muted)' },
   ];
 
   // Render cached tours immediately
