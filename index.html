@@ -2283,7 +2283,13 @@ function renderPlayers() {
 // ============================================
 // MAIN RENDER
 // ============================================
+let _renderTimeout = null;
 function renderApp() {
+  // Debounce — prevent multiple rapid re-renders from parallel fetches
+  if (_renderTimeout) clearTimeout(_renderTimeout);
+  _renderTimeout = setTimeout(_doRender, 16);
+}
+function _doRender() {
   const app = document.getElementById('app');
   if (!app) return;
   let html = '<div style="padding:10px 0">';
