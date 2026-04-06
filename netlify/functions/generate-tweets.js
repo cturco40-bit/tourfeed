@@ -19,10 +19,10 @@ exports.handler = async (event) => {
   try {
     // 1. Find what's trending in golf right now
     const searches = [
-      '#TheMasters OR #Masters OR "the masters" OR "augusta national"',
-      '#PGATour OR "pga tour"',
-      '"golf" (scheffler OR rory OR mcilroy OR tiger OR spieth OR rahm OR koepka)',
-      '#LIVGolf OR "liv golf"',
+      'masters golf',
+      'pga tour golf',
+      'scheffler OR mcilroy OR rory OR tiger woods',
+      'liv golf OR augusta OR "green jacket"',
     ];
 
     let trendingTopics = [];
@@ -36,7 +36,7 @@ exports.handler = async (event) => {
         if (!res.ok) continue;
         const data = await res.json();
         (data.data || [])
-          .filter(t => (t.public_metrics?.like_count || 0) >= 5)
+          .filter(t => (t.public_metrics?.like_count || 0) >= 1)
           .forEach(t => {
             const text = (t.text || '').replace(/https?:\/\/\S+/g, '').trim();
             if (text.length > 20) trendingTopics.push(text);
