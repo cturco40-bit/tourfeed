@@ -33,11 +33,6 @@ async function uploadMedia(imageUrl) {
   const apiSecret = process.env.TWITTER_API_SECRET;
   const accessSecret = process.env.TWITTER_ACCESS_SECRET;
 
-  // If image is from generate-image function (SVG), request PNG format
-  if (imageUrl.includes('generate-image') && !imageUrl.includes('format=')) {
-    imageUrl += (imageUrl.includes('?') ? '&' : '?') + 'format=png';
-  }
-
   // Download the image
   const imgRes = await fetch(imageUrl);
   if (!imgRes.ok) throw new Error(`Image fetch failed: ${imgRes.status}`);
