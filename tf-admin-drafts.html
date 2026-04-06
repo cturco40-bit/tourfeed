@@ -256,14 +256,8 @@
           // Image preview
           if (d.image_url) {
             var imgUrl = d.image_url;
-            // Make relative URLs absolute
             if (imgUrl.startsWith('/')) imgUrl = 'https://tourfeed.co' + imgUrl;
-            // For SVG function URLs, use object tag for better rendering
-            if (imgUrl.includes('generate-image') || imgUrl.endsWith('.svg')) {
-              content += '<object data="' + imgUrl + '" type="image/svg+xml" style="width:100%;border-radius:8px;margin-bottom:10px;max-height:300px;background:#1B2538" onerror="this.style.display=\'none\'"><img src="' + imgUrl + '" class="draft-image" alt="" onerror="this.style.display=\'none\'"></object>';
-            } else {
-              content += '<img src="' + imgUrl + '" class="draft-image" alt="" onerror="this.style.display=\'none\'">';
-            }
+            content += '<img src="' + imgUrl + '" class="draft-image" alt="Preview" onerror="this.outerHTML=\'<div style=\\\'padding:10px;background:#1B2538;border-radius:8px;margin-bottom:10px;font-size:11px;color:#495057\\\'>Image failed to load</div>\'">';
           }
 
           if (isArticle) {

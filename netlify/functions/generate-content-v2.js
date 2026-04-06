@@ -56,14 +56,21 @@ exports.handler = async (event) => {
 
   // --- Save draft with dedup ---
   // Generate branded image URL based on content type
-  function getImageUrl(type, title, tournament) {
+  function getImageUrl(type, title, body) {
     const base = 'https://tourfeed.co/.netlify/functions/generate-image';
-    if (type === 'article_recap') return `${base}?type=headline&tag=RECAP&headline=${encodeURIComponent(title || '')}`;
-    if (type === 'article_betting') return `${base}?type=headline&tag=BETTING&headline=${encodeURIComponent(title || '')}`;
-    if (type === 'article_news') return `${base}?type=headline&tag=BREAKING&headline=${encodeURIComponent(title || '')}`;
-    if (type === 'article_preview') return `${base}?type=headline&tag=PREVIEW&headline=${encodeURIComponent(title || '')}`;
-    if (type === 'article_analysis') return `${base}?type=headline&tag=ANALYSIS&headline=${encodeURIComponent(title || '')}`;
-    return `${base}?type=headline&tag=NEWS&headline=${encodeURIComponent(title || '')}`;
+    // For tweets, use body text (the actual tweet) as the headline, not the internal title
+    const headline = type.startsWith('tweet') ? (body || title || '').slice(0, 80) : (title || '');
+    const tag = type.startsWith('tweet') ? 'HOT TAKE' :
+                type === 'article_recap' ? 'RECAP' :
+                type === 'article_betting' ? 'BETTING' :
+                type === 'article_news' ? 'BREAKING' :
+                type === 'article_preview' ? 'PREVIEW' :
+                type === 'article_analysis' ? 'ANALYSIS' : 'NEWS';
+    const imgType = type.startsWith('tweet') ? 'hot_take&quote' : 'headline&headline';
+    if (type.startsWith('tweet')) {
+      return `${base}?type=hot_take&quote=${encodeURIComponent(headline)}&context=${encodeURIComponent(title || '')}`;
+    }
+    return `${base}?type=headline&tag=${encodeURIComponent(tag)}&headline=${encodeURIComponent(headline)}`;
   }
 
   // Reject content that indicates AI confusion or bad data
@@ -78,7 +85,7 @@ exports.handler = async (event) => {
     if (await isDuplicate(hash)) {
       return { skipped: true, hash };
     }
-    const imageUrl = getImageUrl(type, title);
+    const imageUrl = getImageUrl(type, title, body);
     const draft = await sb('content_drafts', 'POST', {
       type,
       title,
