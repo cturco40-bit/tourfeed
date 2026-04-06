@@ -4,21 +4,25 @@ const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_SE
 const TWITTER_BEARER = process.env.TWITTER_BEARER_TOKEN;
 
 async function sb(path, method, body) {
-  const key = SUPABASE_KEY || process.env.SUPABASE_ANON_KEY;
+  const key = SUPABASE_KEY;
   if (!key) throw new Error('No Supabase key');
+  const hdrs = {
+    'apikey': key,
+    'Authorization': `Bearer ${key}`,
+    'Content-Type': 'application/json',
+  };
+  if (method === 'POST') hdrs['Prefer'] = 'return=representation';
+  if (method === 'PATCH') hdrs['Prefer'] = 'return=minimal';
   const res = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
     method: method || 'GET',
-    headers: {
-      'apikey': key,
-      'Authorization': `Bearer ${key}`,
-      'Content-Type': 'application/json',
-      'Prefer': method === 'POST' ? 'return=representation' : (method === 'PATCH' ? 'return=minimal' : ''),
-    },
+    headers: hdrs,
     body: body ? JSON.stringify(body) : undefined,
   });
-  if (method === 'GET') {
-    const data = await res.json();
-    return Array.isArray(data) ? data : [];
+  if (!method || method === 'GET') {
+    try {
+      const data = await res.json();
+      return Array.isArray(data) ? data : [];
+    } catch(e) { return []; }
   }
   if (method === 'POST' && res.ok) {
     try { return await res.json(); } catch(e) { return []; }
