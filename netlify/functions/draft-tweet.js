@@ -1,6 +1,6 @@
 // Draft system powered by Supabase — persistent, no more cold start issues
 const SUPABASE_URL = process.env.SUPABASE_URL || 'https://yumahmnoltvbiadjefxw.supabase.co';
-const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY;
+const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY;
 const TWITTER_BEARER = process.env.TWITTER_BEARER_TOKEN;
 
 async function sb(path, method, body) {
@@ -76,7 +76,11 @@ exports.handler = async (event) => {
 
   // GET — list pending drafts
   if (event.httpMethod === 'GET' && !params.action) {
-    const drafts = await sb('content_drafts?status=eq.pending&order=created_at.desc&limit=30');
+    let drafts = [];
+    try {
+      drafts = await sb('content_drafts?status=eq.pending&order=created_at.desc&limit=30');
+      if (!Array.isArray(drafts)) drafts = [];
+    } catch(e) { drafts = []; }
     return { statusCode: 200, headers, body: JSON.stringify({ drafts, count: drafts.length }) };
   }
 
