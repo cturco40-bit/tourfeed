@@ -213,9 +213,29 @@ exports.handler = async (event) => {
     const tourName = tournament.tour_id === 'pga' ? 'PGA Tour' : tournament.tour_id === 'lpga' ? 'LPGA Tour' : tournament.tour_id === 'liv' ? 'LIV Golf' : tournament.tour_id === 'dpw' ? 'DP World Tour' : '';
     const dataBlock = `Tour: ${tourName}\nTournament: ${tournament.name}\nCourse: ${tournament.course || 'TBD'}\nRound: ${currentRound}\nStatus: ${tournament.status}\n\nLeaderboard (Top ${validPlayers.length}):\n${leaderboardText}`;
 
-    // Get leader's ESPN headshot for images
-    const leaderId = validPlayers[0]?.players?.id;
-    const leaderPhoto = leaderId ? `https://a.espncdn.com/i/headshots/golf/players/full/${leaderId}.png` : '';
+    // Build player name → ESPN headshot URL map
+    const playerPhotos = {};
+    validPlayers.forEach(p => {
+      if (p.players?.id && p.players?.name) {
+        playerPhotos[p.players.name.toLowerCase()] = `https://a.espncdn.com/i/headshots/golf/players/full/${p.players.id}.png`;
+      }
+    });
+    const leaderPhoto = validPlayers[0]?.players?.id ? `https://a.espncdn.com/i/headshots/golf/players/full/${validPlayers[0].players.id}.png` : '';
+
+    // Find player photos mentioned in text
+    function findPhotosInText(text) {
+      const found = [];
+      const lower = (text || '').toLowerCase();
+      for (const [name, url] of Object.entries(playerPhotos)) {
+        // Match last name
+        const lastName = name.split(' ').pop();
+        if (lastName.length > 3 && lower.includes(lastName.toLowerCase())) {
+          found.push(url);
+          if (found.length >= 2) break;
+        }
+      }
+      return found.length > 0 ? found.join(',') : leaderPhoto;
+    }
 
     const results = { tournament: tournament.name, round: currentRound, generated: [], skipped: [] };
 
@@ -250,7 +270,7 @@ Rules:
       const bodyMatch = recapRaw.match(/BODY:\s*([\s\S]+)/);
       if (bodyMatch) recapBody = bodyMatch[1].trim();
 
-      const saved = await saveDraft('article_recap', recapTitle, recapBody, tournamentId, currentRound, leaderPhoto);
+      const saved = await saveDraft('article_recap', recapTitle, recapBody, tournamentId, currentRound, findPhotosInText(recapTitle + ' ' + recapBody));
       if (saved.skipped) {
         results.skipped.push('article_recap');
       } else {
@@ -295,7 +315,7 @@ Rules:
           tweet,
           tournamentId,
           currentRound,
-          leaderPhoto
+          findPhotosInText(tweet)
         );
         if (saved.skipped) {
           results.skipped.push('tweet_reaction_' + (i + 1));
@@ -340,7 +360,7 @@ Rules:
       const bodyMatch = bettingRaw.match(/BODY:\s*([\s\S]+)/);
       if (bodyMatch) bettingBody = bodyMatch[1].trim();
 
-      const saved = await saveDraft('article_betting', bettingTitle, bettingBody, tournamentId, currentRound, leaderPhoto);
+      const saved = await saveDraft('article_betting', bettingTitle, bettingBody, tournamentId, currentRound, findPhotosInText(bettingTitle + ' ' + bettingBody));
       if (saved.skipped) {
         results.skipped.push('article_betting');
       } else {

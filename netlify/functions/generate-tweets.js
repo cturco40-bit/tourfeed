@@ -1,9 +1,35 @@
 // Scrape ALL golf sources, generate tweets from the freshest content
 
+// Well-known players for headshot matching (name → ESPN ID)
+const KNOWN_PLAYERS = {
+  'scheffler':9780,'mcilroy':3448,'rory':3448,'scottie':9780,
+  'schauffele':10046,'xander':10046,'rahm':9780,'jon rahm':9527,
+  'koepka':10592,'dechambeau':10046,'bryson':10046,'tiger':462,
+  'woods':462,'spieth':10046,'jordan spieth':5765,'morikawa':11098,
+  'hovland':4364285,'fleetwood':5539,'lowry':3877,'cantlay':10404,
+  'matsuyama':4375627,'fowler':4364285,'rickie':4364285,
+  'clark':9611,'wyndham':9611,'burns':10423,'sam burns':10423,
+  'finau':9478,'tony finau':9478,'thomas':9917,'justin thomas':9917,
+  'aberg':4919828,'ludvig':4919828,'macintyre':4596444,
+  'spaun':10423,'kim':7081,'theegala':4686086,'homa':10225,
+};
+
+function findPlayerPhoto(text) {
+  const lower = (text || '').toLowerCase();
+  for (const [name, id] of Object.entries(KNOWN_PLAYERS)) {
+    if (lower.includes(name)) {
+      return `https://a.espncdn.com/i/headshots/golf/players/full/${id}.png`;
+    }
+  }
+  return '';
+}
+
 async function uploadTweetImage(text) {
   try {
     const headline = text.slice(0, 80);
-    const url = `https://tourfeed.co/.netlify/functions/generate-image?type=hot_take&quote=${encodeURIComponent(headline)}&format=png`;
+    const photo = findPlayerPhoto(text);
+    const photoParam = photo ? `&photo=${encodeURIComponent(photo)}` : '';
+    const url = `https://tourfeed.co/.netlify/functions/generate-image?type=hot_take&quote=${encodeURIComponent(headline)}${photoParam}`;
     const res = await fetch(url);
     if (!res.ok) return null;
     const buf = Buffer.from(await res.arrayBuffer());

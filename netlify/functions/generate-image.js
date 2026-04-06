@@ -1,29 +1,17 @@
 // Generate branded TourFeed images as PNG using canvas
-// All images are real PNGs with bundled DM Sans font — no SVG, no font issues
+// Player headshots from ESPN, composited with branded overlays
 
 const { createCanvas, GlobalFonts, loadImage } = require('@napi-rs/canvas');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
 
-// Load font from embedded base64 data
 const fontB64 = require('./font-data');
 const fontPath = path.join(os.tmpdir(), 'DMSans.ttf');
 if (!fs.existsSync(fontPath)) {
   fs.writeFileSync(fontPath, Buffer.from(fontB64, 'base64'));
 }
 GlobalFonts.registerFromPath(fontPath, 'DM Sans');
-
-// Fetch a remote image and return as canvas Image, or null on failure
-async function fetchImage(url) {
-  if (!url) return null;
-  try {
-    const res = await fetch(url);
-    if (!res.ok) return null;
-    const buf = Buffer.from(await res.arrayBuffer());
-    return await loadImage(buf);
-  } catch(e) { return null; }
-}
 
 const NAVY = '#1B2538';
 const NAVY_D = '#0F1923';
@@ -34,8 +22,17 @@ const GRAY = '#868E96';
 const DIM = '#CED4DA';
 const RED = '#FF6B6B';
 
-function font(weight, size) {
-  return `${weight} ${size}px "DM Sans"`;
+function font(weight, size) { return `${weight} ${size}px "DM Sans"`; }
+
+async function fetchImage(url) {
+  if (!url) return null;
+  try {
+    const res = await fetch(url);
+    if (!res.ok || res.headers.get('content-type')?.includes('text')) return null;
+    const buf = Buffer.from(await res.arrayBuffer());
+    if (buf.length < 500) return null;
+    return await loadImage(buf);
+  } catch(e) { return null; }
 }
 
 function drawGradientBg(ctx, w, h) {
@@ -48,6 +45,7 @@ function drawGradientBg(ctx, w, h) {
 
 function drawLogo(ctx, x, y, size) {
   ctx.font = font(900, size);
+  ctx.textAlign = 'left';
   ctx.fillStyle = WHITE;
   ctx.fillText('TOUR', x, y);
   const tw = ctx.measureText('TOUR').width;
@@ -57,138 +55,161 @@ function drawLogo(ctx, x, y, size) {
 
 function drawTag(ctx, tag, x, y, color) {
   ctx.font = font(700, 13);
+  ctx.textAlign = 'left';
   const tw = ctx.measureText(tag).width;
-  // Tag background
   ctx.fillStyle = color + '30';
-  roundRect(ctx, x, y - 18, tw + 24, 28, 6);
+  ctx.beginPath();
+  ctx.roundRect(x, y - 18, tw + 24, 28, 6);
   ctx.fill();
-  // Tag text
   ctx.fillStyle = color;
   ctx.fillText(tag, x + 12, y);
-}
-
-function roundRect(ctx, x, y, w, h, r) {
-  ctx.beginPath();
-  ctx.moveTo(x + r, y);
-  ctx.lineTo(x + w - r, y);
-  ctx.quadraticCurveTo(x + w, y, x + w, y + r);
-  ctx.lineTo(x + w, y + h - r);
-  ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
-  ctx.lineTo(x + r, y + h);
-  ctx.quadraticCurveTo(x, y + h, x, y + h - r);
-  ctx.lineTo(x, y + r);
-  ctx.quadraticCurveTo(x, y, x + r, y);
-  ctx.closePath();
 }
 
 function wrapText(ctx, text, x, y, maxWidth, lineHeight, maxLines) {
   const words = (text || '').split(' ');
   let line = '';
-  let lines = 0;
-  for (const word of words) {
-    const test = line + (line ? ' ' : '') + word;
+  let linesDrawn = 0;
+  for (let i = 0; i < words.length; i++) {
+    const test = line + (line ? ' ' : '') + words[i];
     if (ctx.measureText(test).width > maxWidth && line) {
       ctx.fillText(line, x, y);
       y += lineHeight;
-      lines++;
-      if (lines >= (maxLines || 6)) return y;
-      line = word;
+      linesDrawn++;
+      if (linesDrawn >= (maxLines || 8)) return y;
+      line = words[i];
     } else {
       line = test;
     }
   }
-  if (line) { ctx.fillText(line, x, y); y += lineHeight; }
+  if (line) { ctx.fillText(line, x, y); y += lineHeight; linesDrawn++; }
   return y;
 }
 
 function drawAccent(ctx, w, h, color) {
-  // Top bar
   ctx.fillStyle = color;
   ctx.fillRect(0, 0, w, 5);
-  // Left bar
-  ctx.globalAlpha = 0.6;
-  ctx.fillRect(0, 0, 6, h);
+  ctx.globalAlpha = 0.5;
+  ctx.fillRect(0, 0, 5, h);
   ctx.globalAlpha = 1;
-  // Gradient wash
-  const grad = ctx.createLinearGradient(0, 120, 0, h * 0.65);
-  grad.addColorStop(0, color + '20');
-  grad.addColorStop(1, 'transparent');
-  ctx.fillStyle = grad;
-  ctx.fillRect(0, 120, w, h * 0.5);
 }
 
 function drawFooter(ctx, w, h, color) {
-  ctx.fillStyle = color + '60';
-  roundRect(ctx, 50, h - 65, 160, 3, 2);
-  ctx.fill();
-  drawLogo(ctx, 50, h - 30, 18);
-  ctx.font = font(600, 12);
+  ctx.fillStyle = color + '50';
+  ctx.fillRect(50, h - 60, 120, 2);
+  drawLogo(ctx, 50, h - 28, 16);
+  ctx.font = font(600, 11);
   ctx.fillStyle = GRAY;
   ctx.textAlign = 'right';
-  ctx.fillText('tourfeed.co', w - 50, h - 30);
+  ctx.fillText('tourfeed.co', w - 50, h - 28);
   ctx.textAlign = 'left';
 }
 
-// Draw player headshot on right side with gradient fade
-function drawPlayerPhoto(ctx, img, w, h, color) {
+// Draw single player headshot on right side
+function drawPlayer(ctx, img, w, h) {
   if (!img) return;
-  // Draw player on the right side, fading into the background
-  const imgH = h * 0.85;
-  const imgW = imgH * (img.width / img.height);
-  const x = w - imgW + 60; // slightly off-screen right
+  const scale = (h * 0.9) / img.height;
+  const imgW = img.width * scale;
+  const imgH = img.height * scale;
+  const x = w - imgW + 80;
   const y = h - imgH;
 
-  // Dark overlay gradient from left to right so text stays readable
-  ctx.save();
-  ctx.globalAlpha = 0.7;
+  ctx.globalAlpha = 0.8;
   ctx.drawImage(img, x, y, imgW, imgH);
   ctx.globalAlpha = 1;
 
-  // Gradient overlay to fade the photo into the background on left side
-  const fade = ctx.createLinearGradient(x - 50, 0, x + imgW * 0.5, 0);
+  // Left fade
+  const fade = ctx.createLinearGradient(x - 30, 0, x + imgW * 0.45, 0);
   fade.addColorStop(0, NAVY_D);
-  fade.addColorStop(0.4, NAVY_D + 'CC');
+  fade.addColorStop(0.5, NAVY_D + 'DD');
   fade.addColorStop(1, 'transparent');
   ctx.fillStyle = fade;
-  ctx.fillRect(x - 50, 0, imgW + 100, h);
+  ctx.fillRect(x - 30, 0, imgW + 60, h);
 
   // Bottom fade
-  const bottomFade = ctx.createLinearGradient(0, h - 150, 0, h);
-  bottomFade.addColorStop(0, 'transparent');
-  bottomFade.addColorStop(1, NAVY_D);
-  ctx.fillStyle = bottomFade;
-  ctx.fillRect(x - 50, h - 150, imgW + 100, 150);
+  const bf = ctx.createLinearGradient(0, h - 120, 0, h);
+  bf.addColorStop(0, 'transparent');
+  bf.addColorStop(1, NAVY_D);
+  ctx.fillStyle = bf;
+  ctx.fillRect(0, h - 120, w, 120);
 
   // Top fade
-  const topFade = ctx.createLinearGradient(0, 0, 0, 120);
-  topFade.addColorStop(0, NAVY_D);
-  topFade.addColorStop(1, 'transparent');
-  ctx.fillStyle = topFade;
-  ctx.fillRect(x - 50, 0, imgW + 100, 120);
-  ctx.restore();
+  const tf = ctx.createLinearGradient(0, 0, 0, 100);
+  tf.addColorStop(0, NAVY_D);
+  tf.addColorStop(1, 'transparent');
+  ctx.fillStyle = tf;
+  ctx.fillRect(x - 30, 0, imgW + 60, 100);
+}
+
+// Draw two player headshots — debate/comparison style
+function drawTwoPlayers(ctx, img1, img2, w, h) {
+  // Player 1 on left
+  if (img1) {
+    const scale = (h * 0.75) / img1.height;
+    const iw = img1.width * scale;
+    const ih = img1.height * scale;
+    ctx.globalAlpha = 0.6;
+    ctx.drawImage(img1, -40, h - ih, iw, ih);
+    ctx.globalAlpha = 1;
+  }
+  // Player 2 on right
+  if (img2) {
+    const scale = (h * 0.75) / img2.height;
+    const iw = img2.width * scale;
+    const ih = img2.height * scale;
+    ctx.globalAlpha = 0.6;
+    ctx.drawImage(img2, w - iw + 40, h - ih, iw, ih);
+    ctx.globalAlpha = 1;
+  }
+  // Center dark overlay for text readability
+  const cg = ctx.createLinearGradient(w * 0.2, 0, w * 0.8, 0);
+  cg.addColorStop(0, 'transparent');
+  cg.addColorStop(0.3, NAVY_D + 'EE');
+  cg.addColorStop(0.7, NAVY_D + 'EE');
+  cg.addColorStop(1, 'transparent');
+  ctx.fillStyle = cg;
+  ctx.fillRect(0, 0, w, h);
+  // Bottom + top fades
+  const bf = ctx.createLinearGradient(0, h - 150, 0, h);
+  bf.addColorStop(0, 'transparent');
+  bf.addColorStop(1, NAVY_D);
+  ctx.fillStyle = bf;
+  ctx.fillRect(0, h - 150, w, 150);
+  const tf = ctx.createLinearGradient(0, 0, 0, 120);
+  tf.addColorStop(0, NAVY_D);
+  tf.addColorStop(1, 'transparent');
+  ctx.fillStyle = tf;
+  ctx.fillRect(0, 0, w, 120);
 }
 
 // ────── HEADLINE (1080x1080) ──────
 async function generateHeadline(params) {
   const tag = params.tag || 'BREAKING';
   const headline = params.headline || '';
-  const photo = params.photo || '';
   const tagColor = tag === 'RECAP' ? GREEN : tag === 'BETTING' ? GOLD : tag === 'PREVIEW' ? GREEN : tag === 'ANALYSIS' ? '#4A90D9' : RED;
 
   const c = createCanvas(1080, 1080);
   const ctx = c.getContext('2d');
   drawGradientBg(ctx, 1080, 1080);
 
-  // Player photo (behind everything else)
-  const playerImg = await fetchImage(photo);
-  if (playerImg) drawPlayerPhoto(ctx, playerImg, 1080, 1080, tagColor);
+  // Photos
+  const photos = (params.photo || '').split(',').filter(Boolean);
+  if (photos.length >= 2) {
+    const [img1, img2] = await Promise.all([fetchImage(photos[0]), fetchImage(photos[1])]);
+    drawTwoPlayers(ctx, img1, img2, 1080, 1080);
+  } else if (photos.length === 1) {
+    const img = await fetchImage(photos[0]);
+    if (img) drawPlayer(ctx, img, 1080, 1080);
+  }
 
   drawAccent(ctx, 1080, 1080, tagColor);
-  drawLogo(ctx, 50, 65, 26);
-  drawTag(ctx, tag, 50, 120, tagColor);
-  ctx.font = font(800, 48);
+  drawLogo(ctx, 50, 60, 24);
+  drawTag(ctx, tag, 50, 110, tagColor);
+
+  const hasPhoto = photos.length > 0;
+  ctx.font = font(800, hasPhoto ? 44 : 48);
   ctx.fillStyle = WHITE;
-  wrapText(ctx, headline, 50, 260, playerImg ? 680 : 980, 60, 6);
+  ctx.textAlign = 'left';
+  wrapText(ctx, headline, 50, 240, hasPhoto ? 620 : 980, 56, 8);
   drawFooter(ctx, 1080, 1080, tagColor);
   return c.toBuffer('image/png');
 }
@@ -197,59 +218,81 @@ async function generateHeadline(params) {
 async function generateArticleHeader(params) {
   const tag = params.tag || 'NEWS';
   const headline = params.headline || '';
-  const photo = params.photo || '';
   const tagColor = tag === 'RECAP' ? GREEN : tag === 'BETTING' ? GOLD : tag === 'PREVIEW' ? GREEN : tag === 'ANALYSIS' ? '#4A90D9' : tag === 'BREAKING' ? RED : GREEN;
 
   const c = createCanvas(1200, 630);
   const ctx = c.getContext('2d');
   drawGradientBg(ctx, 1200, 630);
 
-  const playerImg = await fetchImage(photo);
-  if (playerImg) drawPlayerPhoto(ctx, playerImg, 1200, 630, tagColor);
+  const photos = (params.photo || '').split(',').filter(Boolean);
+  if (photos.length >= 2) {
+    const [img1, img2] = await Promise.all([fetchImage(photos[0]), fetchImage(photos[1])]);
+    drawTwoPlayers(ctx, img1, img2, 1200, 630);
+  } else if (photos.length === 1) {
+    const img = await fetchImage(photos[0]);
+    if (img) drawPlayer(ctx, img, 1200, 630);
+  }
 
   drawAccent(ctx, 1200, 630, tagColor);
-  drawLogo(ctx, 50, 55, 22);
-  drawTag(ctx, tag, 50, 100, tagColor);
-  ctx.font = font(800, 38);
+  drawLogo(ctx, 50, 50, 20);
+  drawTag(ctx, tag, 50, 90, tagColor);
+
+  const hasPhoto = photos.length > 0;
+  ctx.font = font(800, hasPhoto ? 34 : 38);
   ctx.fillStyle = WHITE;
-  wrapText(ctx, headline, 50, 190, playerImg ? 750 : 1100, 50, 6);
+  ctx.textAlign = 'left';
+  wrapText(ctx, headline, 50, 170, hasPhoto ? 700 : 1100, 44, 8);
   drawFooter(ctx, 1200, 630, tagColor);
   return c.toBuffer('image/png');
 }
 
-// ────── HOT TAKE (1080x1080) ──────
+// ────── HOT TAKE / QUOTE (1080x1080) ──────
 async function generateHotTake(params) {
   const quote = params.quote || '';
   const context = params.context || '';
-  const photo = params.photo || '';
+  const attribution = params.attribution || '';
 
   const c = createCanvas(1080, 1080);
   const ctx = c.getContext('2d');
   drawGradientBg(ctx, 1080, 1080);
 
-  const playerImg = await fetchImage(photo);
-  if (playerImg) drawPlayerPhoto(ctx, playerImg, 1080, 1080, GREEN);
+  const photos = (params.photo || '').split(',').filter(Boolean);
+  if (photos.length >= 2) {
+    const [img1, img2] = await Promise.all([fetchImage(photos[0]), fetchImage(photos[1])]);
+    drawTwoPlayers(ctx, img1, img2, 1080, 1080);
+  } else if (photos.length === 1) {
+    const img = await fetchImage(photos[0]);
+    if (img) drawPlayer(ctx, img, 1080, 1080);
+  }
 
   drawAccent(ctx, 1080, 1080, GREEN);
-  drawLogo(ctx, 50, 65, 26);
-  drawTag(ctx, 'HOT TAKE', 50, 120, GREEN);
+  drawLogo(ctx, 50, 60, 24);
+  drawTag(ctx, 'HOT TAKE', 50, 110, GREEN);
 
   // Big quote mark
-  ctx.font = font(900, 120);
-  ctx.fillStyle = GREEN + '25';
-  ctx.fillText('\u201C', 40, 300);
+  ctx.font = font(900, 100);
+  ctx.fillStyle = GREEN + '30';
+  ctx.textAlign = 'left';
+  ctx.fillText('\u201C', 40, 260);
 
   // Quote text
-  ctx.font = font(700, 40);
+  const hasPhoto = photos.length > 0;
+  ctx.font = font(700, hasPhoto ? 36 : 40);
   ctx.fillStyle = WHITE;
-  wrapText(ctx, quote, 60, 350, playerImg ? 640 : 960, 52, 6);
+  const endY = wrapText(ctx, quote, 55, 310, hasPhoto ? 600 : 960, 48, 7);
 
+  // Attribution
+  if (attribution) {
+    ctx.font = font(700, 18);
+    ctx.fillStyle = GOLD;
+    ctx.fillText('— ' + attribution, 55, endY + 20);
+  }
+
+  // Context / topic
   if (context) {
-    ctx.font = font(600, 15);
+    ctx.font = font(600, 14);
     ctx.fillStyle = GRAY;
-    ctx.textAlign = 'center';
-    ctx.fillText(context, 540, 920);
-    ctx.textAlign = 'left';
+    ctx.fillText(context, 55, endY + (attribution ? 50 : 20));
   }
 
   drawFooter(ctx, 1080, 1080, GREEN);
@@ -264,32 +307,30 @@ async function generatePick(params) {
   const reason = params.reason || '';
   const labelColor = label === 'LONGSHOT' ? GOLD : label === 'FADE' ? RED : label === 'VALUE PLAY' ? '#4A90D9' : GREEN;
 
-  const photo = params.photo || '';
   const c = createCanvas(1080, 1080);
   const ctx = c.getContext('2d');
   drawGradientBg(ctx, 1080, 1080);
 
-  const playerImg = await fetchImage(photo);
-  if (playerImg) drawPlayerPhoto(ctx, playerImg, 1080, 1080, labelColor);
+  const img = await fetchImage(params.photo || '');
+  if (img) drawPlayer(ctx, img, 1080, 1080);
 
   drawAccent(ctx, 1080, 1080, labelColor);
-  drawLogo(ctx, 50, 65, 26);
-  drawTag(ctx, label, 50, 120, labelColor);
+  drawLogo(ctx, 50, 60, 24);
+  drawTag(ctx, label, 50, 110, labelColor);
 
-  ctx.font = font(900, 56);
+  ctx.font = font(900, 52);
   ctx.fillStyle = WHITE;
-  ctx.textAlign = playerImg ? 'left' : 'center';
-  ctx.fillText(name, playerImg ? 50 : 540, 400);
-
-  ctx.font = font(800, 48);
-  ctx.fillStyle = labelColor;
-  ctx.fillText(odds, playerImg ? 50 : 540, 480);
   ctx.textAlign = 'left';
+  ctx.fillText(name, 50, 350);
+
+  ctx.font = font(800, 44);
+  ctx.fillStyle = labelColor;
+  ctx.fillText(odds, 50, 420);
 
   if (reason) {
-    ctx.font = font(500, 20);
+    ctx.font = font(500, 18);
     ctx.fillStyle = DIM;
-    wrapText(ctx, reason, 80, 560, playerImg ? 580 : 920, 30, 4);
+    wrapText(ctx, reason, 50, 480, img ? 560 : 980, 26, 5);
   }
 
   drawFooter(ctx, 1080, 1080, labelColor);
@@ -302,13 +343,12 @@ async function generateWinner(params) {
   const tournament = params.tournament || '';
   const score = params.score || '';
 
-  const photo = params.photo || '';
   const c = createCanvas(1080, 1080);
   const ctx = c.getContext('2d');
   drawGradientBg(ctx, 1080, 1080);
 
-  const playerImg = await fetchImage(photo);
-  if (playerImg) drawPlayerPhoto(ctx, playerImg, 1080, 1080, GOLD);
+  const img = await fetchImage(params.photo || '');
+  if (img) drawPlayer(ctx, img, 1080, 1080);
 
   // Gold glow
   const glow = ctx.createLinearGradient(0, 200, 0, 600);
@@ -318,26 +358,24 @@ async function generateWinner(params) {
   ctx.fillRect(0, 200, 1080, 400);
 
   drawAccent(ctx, 1080, 1080, GOLD);
-  drawLogo(ctx, 50, 65, 26);
+  drawLogo(ctx, 50, 60, 24);
 
-  ctx.font = font(700, 20);
+  ctx.font = font(700, 18);
   ctx.fillStyle = GOLD;
-  ctx.textAlign = 'center';
-  ctx.letterSpacing = '8px';
-  ctx.fillText('W I N N E R', 540, 310);
-
-  ctx.font = font(900, 56);
-  ctx.fillStyle = WHITE;
-  ctx.fillText(name, 540, 420);
-
-  ctx.font = font(900, 68);
-  ctx.fillStyle = GREEN;
-  ctx.fillText(score, 540, 530);
-
-  ctx.font = font(600, 22);
-  ctx.fillStyle = DIM;
-  ctx.fillText(tournament, 540, 600);
   ctx.textAlign = 'left';
+  ctx.fillText('W I N N E R', 50, 300);
+
+  ctx.font = font(900, 52);
+  ctx.fillStyle = WHITE;
+  ctx.fillText(name, 50, 380);
+
+  ctx.font = font(900, 64);
+  ctx.fillStyle = GREEN;
+  ctx.fillText(score, 50, 470);
+
+  ctx.font = font(600, 20);
+  ctx.fillStyle = DIM;
+  ctx.fillText(tournament, 50, 520);
 
   drawFooter(ctx, 1080, 1080, GOLD);
   return c.toBuffer('image/png');
@@ -353,28 +391,31 @@ async function generateStat(params) {
   const c = createCanvas(1080, 1080);
   const ctx = c.getContext('2d');
   drawGradientBg(ctx, 1080, 1080);
+
+  const img = await fetchImage(params.photo || '');
+  if (img) drawPlayer(ctx, img, 1080, 1080);
+
   drawAccent(ctx, 1080, 1080, GREEN);
-  drawLogo(ctx, 50, 65, 26);
+  drawLogo(ctx, 50, 60, 24);
 
-  ctx.font = font(900, 110);
+  ctx.font = font(900, 100);
   ctx.fillStyle = WHITE;
-  ctx.textAlign = 'center';
-  ctx.fillText(number, 540, 400);
+  ctx.textAlign = 'left';
+  ctx.fillText(number, 50, 380);
 
-  ctx.font = font(600, 22);
+  ctx.font = font(600, 20);
   ctx.fillStyle = DIM;
-  ctx.fillText(label, 540, 450);
+  ctx.fillText(label, 50, 420);
 
-  ctx.font = font(800, 28);
+  ctx.font = font(800, 26);
   ctx.fillStyle = WHITE;
-  ctx.fillText(player, 540, 530);
+  ctx.fillText(player, 50, 490);
 
   if (context) {
-    ctx.font = font(600, 16);
+    ctx.font = font(600, 15);
     ctx.fillStyle = GRAY;
-    ctx.fillText(context, 540, 575);
+    ctx.fillText(context, 50, 525);
   }
-  ctx.textAlign = 'left';
 
   drawFooter(ctx, 1080, 1080, GREEN);
   return c.toBuffer('image/png');
@@ -394,41 +435,40 @@ async function generateLeaderboard(params) {
   const ctx = c.getContext('2d');
   drawGradientBg(ctx, 1080, h);
   drawAccent(ctx, 1080, h, GREEN);
-  drawLogo(ctx, 50, 60, 26);
+  drawLogo(ctx, 50, 55, 24);
 
   ctx.font = font(700, 14);
   ctx.fillStyle = GREEN;
-  ctx.fillText(title, 50, 105);
+  ctx.textAlign = 'left';
+  ctx.fillText(title, 50, 100);
 
   if (subtitle) {
-    ctx.font = font(800, 24);
+    ctx.font = font(800, 22);
     ctx.fillStyle = WHITE;
-    ctx.fillText(subtitle, 50, 140);
+    ctx.fillText(subtitle, 50, 130);
   }
 
   players.forEach((p, i) => {
-    const y = 185 + i * 52;
+    const y = 175 + i * 52;
     if (i === 0) {
       ctx.fillStyle = GREEN + '15';
-      roundRect(ctx, 30, y - 18, 1020, 46, 8);
+      ctx.beginPath();
+      ctx.roundRect(30, y - 18, 1020, 46, 8);
       ctx.fill();
     }
-
+    ctx.textAlign = 'left';
     ctx.font = font(700, 16);
     ctx.fillStyle = i === 0 ? GOLD : GRAY;
     ctx.fillText(p.pos || String(i + 1), 50, y + 10);
-
     ctx.font = font(i === 0 ? 800 : 600, 18);
     ctx.fillStyle = WHITE;
     ctx.fillText(p.name, 100, y + 10);
-
     const sc = !p.score ? GRAY : p.score.startsWith('+') ? RED : p.score === 'E' ? GRAY : '#2DD4A0';
     ctx.font = font(800, 20);
     ctx.fillStyle = sc;
     ctx.textAlign = 'right';
     ctx.fillText(p.score, 1030, y + 10);
     ctx.textAlign = 'left';
-
     if (i < players.length - 1) {
       ctx.fillStyle = WHITE + '08';
       ctx.fillRect(40, y + 30, 1000, 1);
