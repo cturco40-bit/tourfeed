@@ -110,7 +110,7 @@
         }
 
         list.innerHTML = drafts.map(d => {
-          const time = new Date(d.created).toLocaleString();
+          const time = new Date(d.created_at).toLocaleString();
           // Extract twitter URL from draft text for preview
           const tweetUrlMatch = d.body.match(/https?:\/\/twitter\.com\/\w+\/status\/\d+/);
           const tweetEmbed = tweetUrlMatch

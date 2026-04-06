@@ -825,7 +825,7 @@ async function fetchNews() {
     // Pre-generate articles only when News tab is active (saves API costs)
     if (currentTab === 2) {
       (async () => {
-        const limit = Math.min(8, newsData.length);
+        const limit = Math.min(3, newsData.length);
         for (let i = 0; i < limit; i += 3) {
           await Promise.allSettled([
             generateArticle(i),
@@ -972,7 +972,7 @@ async function fetchESPNSchedule() {
     for (const tour of tours) {
       if (!tour.sport) continue;
       try {
-        const res = await fetch(`https://site.api.espn.com/apis/site/v2/sports/${tour.sport}/scoreboard?dates=2026`);
+        const res = await fetch(`https://site.api.espn.com/apis/site/v2/sports/${tour.sport}/scoreboard?dates=${new Date().getFullYear()}`);
         if (!res.ok) continue;
         const data = await res.json();
         (data.events || []).forEach(ev => {
@@ -1914,6 +1914,17 @@ async function fetchTourInsights(tourId, sport) {
   } catch(e) { insightsCache[tourId] = null; return null; }
 }
 
+// Fetch betting articles from Supabase
+let bettingArticles = null;
+async function fetchBettingArticles() {
+  if (bettingArticles) return bettingArticles;
+  try {
+    const { data } = await sb.from('articles').select('*').in('tag', ['BETTING', 'ANALYSIS', 'PREVIEW']).order('published_at', { ascending: false }).limit(5);
+    bettingArticles = data || [];
+  } catch(e) { bettingArticles = []; }
+  return bettingArticles;
+}
+
 function renderInsights() {
   const parseScore = (s) => { if (!s || s === 'E') return 0; return parseInt(s) || 0; };
   const toOdds = (pct) => pct >= 50 ? '-' + Math.round(pct / (100 - pct) * 100) : '+' + Math.round((100 - pct) / pct * 100);
@@ -1922,13 +1933,50 @@ function renderInsights() {
     return Math.max(0.5, Math.exp(-0.55 * back) * 30 * mult);
   };
 
+  // Fetch betting articles in background
+  if (!bettingArticles) { fetchBettingArticles().then(() => renderApp()); }
+
   // Render picks card for one tournament
   function renderTourPicks(t, tourLabel, color) {
     if (!t || !t.players || t.players.length === 0) return '';
-    const isActive = t.state === 'in' || t.state === 'post' || t.stateName === 'STATUS_FINAL';
+    const isCompleted = t.stateName === 'STATUS_FINAL' || t.state === 'post';
+    const isActive = t.state === 'in' || isCompleted;
     const leader = t.players[0];
     const leaderNum = parseScore(leader.score);
     const tied = t.players.filter(p => p.score === leader.score);
+
+    let html = '<div style="padding:14px;background:var(--card-bg);border:1px solid var(--card-border);border-radius:10px;margin-bottom:12px">';
+    html += '<div style="display:flex;align-items:center;margin-bottom:10px">';
+    html += '<div style="font-size:10px;font-weight:700;letter-spacing:2px;color:' + color + '">' + tourLabel + '</div>';
+    html += '<span style="font-size:10px;color:var(--text-muted);margin-left:auto">' + (isActive ? 'R' + t.round + ' · ' + t.statusText : t.statusText) + '</span>';
+    html += '</div>';
+    html += '<div style="font-size:15px;font-weight:800;color:var(--text);margin-bottom:4px">' + t.name + '</div>';
+    if (t.course) html += '<div style="font-size:11px;color:var(--text-muted);margin-bottom:12px">' + t.course + '</div>';
+
+    // If tournament is completed, show summary instead of live picks/odds
+    if (isCompleted) {
+      html += '<div style="padding:10px 12px;background:rgba(45,212,160,0.08);border-radius:8px;margin-bottom:10px">';
+      html += '<div style="font-size:10px;font-weight:700;letter-spacing:1.5px;color:var(--s-green);margin-bottom:6px">TOURNAMENT COMPLETE</div>';
+      if (tied.length > 1) {
+        html += '<div style="font-size:13px;color:var(--text)">Tied at ' + leader.score + ': ' + tied.map(p => '<span style="font-weight:700">' + p.fullName + '</span>').join(', ') + '</div>';
+      } else {
+        html += '<div style="font-size:13px;color:var(--text)">Winner: <span style="font-weight:700">' + leader.fullName + '</span> (' + leader.score + ')</div>';
+      }
+      html += '</div>';
+
+      // Final top 5 leaderboard
+      html += '<div style="font-size:10px;font-weight:700;letter-spacing:1px;color:var(--g700);margin-bottom:6px">FINAL LEADERBOARD</div>';
+      t.players.slice(0, 5).forEach((p, i) => {
+        html += '<div style="display:flex;align-items:center;padding:6px 0;' + (i < 4 ? 'border-bottom:1px solid var(--card-border)' : '') + '">';
+        html += '<div style="width:24px;font-size:12px;font-weight:700;color:var(--text-muted)">' + (i + 1) + '</div>';
+        html += '<div style="flex:1;font-size:13px;font-weight:600;color:var(--text)">' + p.fullName + '</div>';
+        html += '<div style="font-size:12px;font-weight:700;color:var(--text)">' + p.score + '</div>';
+        html += '</div>';
+      });
+
+      html += '</div>';
+      return html;
+    }
 
     // Calculate win probabilities
     const withProb = t.players.map(p => {
@@ -1946,14 +1994,6 @@ function renderInsights() {
       .sort((a,b) => (parseScore(a.today) || 0) - (parseScore(b.today) || 0))[0];
     const hotToday = odds.filter(p => p.today && p.today !== '-' && parseScore(p.today) <= -3)
       .sort((a,b) => parseScore(a.today) - parseScore(b.today))[0];
-
-    let html = '<div style="padding:14px;background:var(--card-bg);border:1px solid var(--card-border);border-radius:10px;margin-bottom:12px">';
-    html += '<div style="display:flex;align-items:center;margin-bottom:10px">';
-    html += '<div style="font-size:10px;font-weight:700;letter-spacing:2px;color:' + color + '">' + tourLabel + '</div>';
-    html += '<span style="font-size:10px;color:var(--text-muted);margin-left:auto">' + (isActive ? 'R' + t.round + ' · ' + t.statusText : t.statusText) + '</span>';
-    html += '</div>';
-    html += '<div style="font-size:15px;font-weight:800;color:var(--text);margin-bottom:4px">' + t.name + '</div>';
-    if (t.course) html += '<div style="font-size:11px;color:var(--text-muted);margin-bottom:12px">' + t.course + '</div>';
 
     // Leader
     html += '<div style="font-size:12px;color:var(--text-muted);margin-bottom:8px">';
@@ -2135,6 +2175,32 @@ function renderInsights() {
       });
     }
   }
+
+  // Published betting articles from Supabase
+  if (bettingArticles && bettingArticles.length > 0) {
+    html += '<div style="margin-top:16px;margin-bottom:12px">';
+    html += '<div style="font-size:10px;font-weight:700;letter-spacing:2px;color:var(--gold);margin-bottom:10px">BETTING ANALYSIS</div>';
+    bettingArticles.forEach(a => {
+      const slug = a.slug || '';
+      html += '<div onclick="' + (slug ? "window.location.href='/article/" + slug + "'" : '') + '" style="padding:12px;background:var(--card-bg);border-bottom:1px solid var(--card-border);cursor:pointer">';
+      html += '<span class="tag" style="color:var(--gold);background:rgba(212,168,83,0.12);font-size:9px">' + (a.tag || 'BETTING') + '</span>';
+      html += '<div style="font-size:14px;font-weight:700;color:var(--text);margin-top:6px">' + esc(a.title || '') + '</div>';
+      html += '<div style="font-size:11px;color:var(--text-muted);margin-top:4px">' + esc((a.summary || '').slice(0, 120)) + '</div>';
+      html += '</div>';
+    });
+    html += '</div>';
+  }
+
+  // Season betting record (placeholder — will populate from Supabase)
+  html += '<div style="padding:14px;background:var(--card-bg);border:1px solid var(--card-border);border-radius:10px;margin-bottom:12px">';
+  html += '<div style="font-size:10px;font-weight:700;letter-spacing:2px;color:var(--green);margin-bottom:8px">SEASON RECORD</div>';
+  html += '<div style="display:flex;gap:16px;justify-content:center">';
+  html += '<div style="text-align:center"><div style="font-size:20px;font-weight:800;color:var(--text)">--</div><div style="font-size:9px;color:var(--text-muted)">WINS</div></div>';
+  html += '<div style="text-align:center"><div style="font-size:20px;font-weight:800;color:var(--text)">--</div><div style="font-size:9px;color:var(--text-muted)">LOSSES</div></div>';
+  html += '<div style="text-align:center"><div style="font-size:20px;font-weight:800;color:var(--text)">--</div><div style="font-size:9px;color:var(--text-muted)">ROI</div></div>';
+  html += '</div>';
+  html += '<div style="font-size:10px;color:var(--text-muted);text-align:center;margin-top:8px">Record tracking begins with Masters 2026</div>';
+  html += '</div>';
 
   html += '<div class="disclaimer" style="margin-top:16px">All picks are model-generated for entertainment only. Please gamble responsibly. If you or someone you know has a gambling problem, call 1-800-GAMBLER.</div>';
 

@@ -1,10 +1,13 @@
 // Scrape ALL golf sources, generate tweets from the freshest content
 
 async function postDraft(text, source) {
+  // Generate a branded image for the tweet
+  const headline = text.slice(0, 60);
+  const imageUrl = `https://tourfeed.co/.netlify/functions/generate-image?type=headline&tag=HOT+TAKE&headline=${encodeURIComponent(headline)}`;
   const res = await fetch('https://tourfeed.co/.netlify/functions/draft-tweet', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ text: text.slice(0, 280), source }),
+    body: JSON.stringify({ text: text.slice(0, 280), source, image_url: imageUrl }),
   });
   return res.ok ? await res.json() : null;
 }
