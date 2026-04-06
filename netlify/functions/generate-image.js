@@ -1,6 +1,5 @@
-// TourFeed Image Generator
-// Player headshot cutouts on branded background — like Foreplay/TSN/BR
-// ESPN headshots are transparent PNGs perfect for compositing
+// TourFeed Image Generator — Foreplay/TSN style
+// Real player photos with bold text overlays, branded
 
 const { createCanvas, GlobalFonts, loadImage } = require('@napi-rs/canvas');
 const fs = require('fs');
@@ -15,16 +14,16 @@ if (!fs.existsSync(fontPath)) {
 GlobalFonts.registerFromPath(fontPath, 'DM Sans');
 
 const NAVY = '#1B2538';
-const NAVY_D = '#0F1923';
+const NAVY_D = '#0a1018';
 const GREEN = '#2D8F6F';
 const GOLD = '#D4A853';
 const WHITE = '#FFFFFF';
 const GRAY = '#868E96';
-const RED = '#FF6B6B';
+const RED = '#E63946';
 
 function font(w, s) { return `${w} ${s}px "DM Sans"`; }
 
-// Verified ESPN headshot IDs — every one visually confirmed
+// Verified ESPN headshot IDs
 const PLAYER_IDS = {
   'tiger':462,'woods':462,'tiger woods':462,
   'rory':3448,'mcilroy':3448,'rory mcilroy':3448,
@@ -50,20 +49,19 @@ const PLAYER_IDS = {
   'homa':8973,'max homa':8973,
   'cameron smith':9131,'cam smith':9131,
   'fitzpatrick':9037,'matt fitzpatrick':9037,
-  'sam burns':9938,
-  'wyndham clark':11119,
-  'tom kim':4602673,
-  'sungjae':11382,'sungjae im':11382,
+  'sam burns':9938, 'wyndham clark':11119,
+  'tom kim':4602673, 'sungjae':11382,
   'reed':6011,'patrick reed':6011,
+  'phil':1037,'mickelson':1037,'phil mickelson':1037,
+  'jason day':3044, 'day':3044,
+  'rose':1129,'justin rose':1129,
 };
 
-// Find up to 2 player IDs mentioned in text
 function findPlayers(text) {
   const lower = (text || '').toLowerCase();
   const found = [];
   const used = new Set();
-  // Check longer names first to avoid partial matches
-  const sorted = Object.entries(PLAYER_IDS).sort((a,b) => b[0].length - a[0].length);
+  const sorted = Object.entries(PLAYER_IDS).sort((a, b) => b[0].length - a[0].length);
   for (const [name, id] of sorted) {
     if (lower.includes(name) && !used.has(id)) {
       found.push(id);
@@ -75,7 +73,7 @@ function findPlayers(text) {
 }
 
 function headshotUrl(id) {
-  return `https://a.espncdn.com/i/headshots/golf/players/full/${id}.png`;
+  return 'https://a.espncdn.com/i/headshots/golf/players/full/' + id + '.png';
 }
 
 async function fetchImg(url) {
@@ -89,12 +87,33 @@ async function fetchImg(url) {
   } catch (e) { return null; }
 }
 
-function tagColor(tag) {
-  const t = (tag || '').toUpperCase();
-  if (t === 'RECAP' || t === 'PREVIEW') return GREEN;
-  if (t === 'BETTING' || t === 'ANALYSIS') return GOLD;
-  if (t === 'BREAKING' || t === 'INJURY') return RED;
-  return GREEN;
+// Auto-fit text — returns array of {text, y} for each line
+function measureFit(ctx, text, maxW, maxH, startSize, weight) {
+  let sz = startSize;
+  while (sz > 14) {
+    ctx.font = font(weight, sz);
+    const lh = Math.round(sz * 1.2);
+    const lines = [];
+    let line = '';
+    for (const w of (text || '').split(' ')) {
+      const test = line + (line ? ' ' : '') + w;
+      if (ctx.measureText(test).width > maxW && line) { lines.push(line); line = w; }
+      else line = test;
+    }
+    if (line) lines.push(line);
+    if (lines.length * lh <= maxH) return { lines, sz, lh };
+    sz -= 2;
+  }
+  ctx.font = font(weight, 14);
+  const lines = [];
+  let line = '';
+  for (const w of (text || '').split(' ')) {
+    const test = line + (line ? ' ' : '') + w;
+    if (ctx.measureText(test).width > maxW && line) { lines.push(line); line = w; }
+    else line = test;
+  }
+  if (line) lines.push(line);
+  return { lines, sz: 14, lh: 18 };
 }
 
 function drawLogo(ctx, x, y, size) {
@@ -104,233 +123,273 @@ function drawLogo(ctx, x, y, size) {
   ctx.fillText('TOUR', x, y);
   const tw = ctx.measureText('TOUR').width;
   ctx.fillStyle = GOLD;
-  ctx.fillText('FEED', x + tw + 3, y);
+  ctx.fillText('FEED', x + tw + 2, y);
+  return tw + ctx.measureText('FEED').width + 2;
 }
 
-// Auto-shrink text to fit
-function drawText(ctx, text, x, y, maxW, maxH, startSize, weight) {
-  let sz = startSize;
-  while (sz > 16) {
-    ctx.font = font(weight, sz);
-    const lh = Math.round(sz * 1.3);
-    const lines = [];
-    let line = '';
-    for (const w of (text || '').split(' ')) {
-      const test = line + (line ? ' ' : '') + w;
-      if (ctx.measureText(test).width > maxW && line) { lines.push(line); line = w; }
-      else line = test;
-    }
-    if (line) lines.push(line);
-    if (lines.length * lh <= maxH) {
-      lines.forEach((l, i) => ctx.fillText(l, x, y + i * lh));
-      return y + lines.length * lh;
-    }
-    sz -= 2;
-  }
-  ctx.font = font(weight, 16);
-  let line = '', cy = y;
-  for (const w of (text || '').split(' ')) {
-    const test = line + (line ? ' ' : '') + w;
-    if (ctx.measureText(test).width > maxW && line) { ctx.fillText(line, x, cy); cy += 20; line = w; }
-    else line = test;
-  }
-  if (line) { ctx.fillText(line, x, cy); cy += 20; }
-  return cy;
-}
-
-// ━━━ BUILD IMAGE ━━━
-async function buildImage(w, h, opts) {
-  const { tag, headline, quote, attribution, photo } = opts;
-  const tc = tagColor(tag);
+// ━━━ BREAKING NEWS STYLE ━━━
+// Player photo top half, red BREAKING banner, bold headline bottom
+async function buildBreaking(w, h, headline, playerImg) {
   const c = createCanvas(w, h);
   const ctx = c.getContext('2d');
 
-  // 1. Branded gradient background
-  const bg = ctx.createLinearGradient(0, 0, w, h);
-  bg.addColorStop(0, NAVY);
-  bg.addColorStop(0.6, NAVY_D);
-  bg.addColorStop(1, '#0a1018');
-  ctx.fillStyle = bg;
+  // Background
+  ctx.fillStyle = NAVY_D;
   ctx.fillRect(0, 0, w, h);
 
-  // 2. Accent elements
-  ctx.fillStyle = tc;
-  ctx.fillRect(0, 0, w, 4); // top bar
-  ctx.globalAlpha = 0.08;
-  ctx.fillRect(0, h * 0.15, w, h * 0.5); // subtle color wash
+  // Player photo — top portion, large
+  const photoH = h * 0.5;
+  if (playerImg) {
+    const scale = Math.max(w / playerImg.width, photoH / playerImg.height);
+    const sw = playerImg.width * scale;
+    const sh = playerImg.height * scale;
+    ctx.drawImage(playerImg, (w - sw) / 2, (photoH - sh) / 2, sw, sh);
+    // Bottom fade on photo
+    const fade = ctx.createLinearGradient(0, photoH - 80, 0, photoH);
+    fade.addColorStop(0, 'transparent');
+    fade.addColorStop(1, NAVY_D);
+    ctx.fillStyle = fade;
+    ctx.fillRect(0, photoH - 80, w, 80);
+  }
+
+  // TOURFEED logo top-left
+  drawLogo(ctx, 30, 38, 20);
+
+  // Red BREAKING NEWS banner
+  const bannerY = photoH - 20;
+  ctx.fillStyle = RED;
+  ctx.fillRect(w * 0.1, bannerY, w * 0.8, 40);
+  ctx.font = font(900, 16);
+  ctx.fillStyle = WHITE;
+  ctx.textAlign = 'center';
+  ctx.fillText('BREAKING NEWS', w / 2, bannerY + 27);
+  ctx.textAlign = 'left';
+
+  // Headline — big bold, bottom half
+  const textY = bannerY + 60;
+  const textW = w - 80;
+  const maxTextH = h - textY - 60;
+  const fit = measureFit(ctx, headline.toUpperCase(), textW, maxTextH, 42, 900);
+  ctx.fillStyle = WHITE;
+  ctx.font = font(900, fit.sz);
+  fit.lines.forEach((line, i) => ctx.fillText(line, 40, textY + i * fit.lh));
+
+  // Footer line
+  ctx.fillStyle = GRAY + '40';
+  ctx.fillRect(40, h - 50, w - 80, 1);
+  drawLogo(ctx, 40, h - 22, 12);
+
+  return c.toBuffer('image/png');
+}
+
+// ━━━ QUOTE STYLE ━━━
+// Player photo top, quote marks + text bottom, attribution
+async function buildQuote(w, h, quote, attribution, context, playerImg) {
+  const c = createCanvas(w, h);
+  const ctx = c.getContext('2d');
+
+  ctx.fillStyle = NAVY_D;
+  ctx.fillRect(0, 0, w, h);
+
+  // Player photo — top 40%
+  const photoH = h * 0.4;
+  if (playerImg) {
+    const scale = Math.max(w / playerImg.width, photoH / playerImg.height) * 1.2;
+    const sw = playerImg.width * scale;
+    const sh = playerImg.height * scale;
+    ctx.drawImage(playerImg, (w - sw) / 2, (photoH - sh) / 2 - 20, sw, sh);
+    // Heavy fade so text below is always readable
+    const fade = ctx.createLinearGradient(0, photoH - 140, 0, photoH + 30);
+    fade.addColorStop(0, 'transparent');
+    fade.addColorStop(0.5, NAVY_D + 'AA');
+    fade.addColorStop(1, NAVY_D);
+    ctx.fillStyle = fade;
+    ctx.fillRect(0, photoH - 140, w, 170);
+  }
+
+  drawLogo(ctx, 30, 38, 20);
+
+  // Quote marks
+  ctx.font = font(900, 80);
+  ctx.fillStyle = GREEN;
+  ctx.globalAlpha = 0.5;
+  ctx.textAlign = 'left';
+  ctx.fillText('\u201C\u201D', 30, photoH + 20);
   ctx.globalAlpha = 1;
 
-  // 3. Player headshot(s) — find from text content
-  const text = (headline || '') + ' ' + (quote || '');
-  const playerIds = findPlayers(text);
+  // Quote text — big bold
+  const textY = photoH + 40;
+  const textW = w - 80;
+  const maxH = h - textY - 100;
+  const fit = measureFit(ctx, quote.toUpperCase(), textW, maxH, 36, 900);
+  ctx.fillStyle = WHITE;
+  ctx.font = font(900, fit.sz);
+  let endY = textY;
+  fit.lines.forEach((line, i) => { ctx.fillText(line, 40, textY + i * fit.lh); endY = textY + (i + 1) * fit.lh; });
 
-  // Also accept direct photo URL param (for external photos)
-  let hasPlayer = false;
-  if (photo) {
-    const img = await fetchImg(photo);
-    if (img) {
-      drawSinglePlayer(ctx, img, w, h);
-      hasPlayer = true;
+  // Attribution line
+  if (attribution) {
+    ctx.fillStyle = GRAY + '40';
+    ctx.fillRect(40, endY + 10, w - 80, 1);
+    ctx.font = font(700, 14);
+    ctx.fillStyle = WHITE;
+    ctx.fillText(attribution.toUpperCase(), 40, endY + 32);
+    if (context) {
+      ctx.font = font(500, 12);
+      ctx.fillStyle = GRAY;
+      ctx.fillText(context.toUpperCase(), 40, endY + 50);
     }
-  } else if (playerIds.length >= 2) {
-    const [img1, img2] = await Promise.all([
-      fetchImg(headshotUrl(playerIds[0])),
-      fetchImg(headshotUrl(playerIds[1])),
-    ]);
-    if (img1 && img2) { drawDualPlayer(ctx, img1, img2, w, h); hasPlayer = true; }
-    else if (img1) { drawSinglePlayer(ctx, img1, w, h); hasPlayer = true; }
-    else if (img2) { drawSinglePlayer(ctx, img2, w, h); hasPlayer = true; }
-  } else if (playerIds.length === 1) {
-    const img = await fetchImg(headshotUrl(playerIds[0]));
-    if (img) { drawSinglePlayer(ctx, img, w, h); hasPlayer = true; }
   }
 
-  // 4. Logo + tag
-  drawLogo(ctx, 40, h < 700 ? 38 : 52, h < 700 ? 18 : 22);
+  drawLogo(ctx, 40, h - 22, 12);
+  return c.toBuffer('image/png');
+}
+
+// ━━━ HEADLINE / ARTICLE STYLE ━━━
+// Player photo top 55%, headline bottom, tag pill
+async function buildHeadline(w, h, tag, headline, playerImg) {
+  const c = createCanvas(w, h);
+  const ctx = c.getContext('2d');
+  const tc = tag === 'BETTING' || tag === 'ANALYSIS' ? GOLD : tag === 'BREAKING' ? RED : GREEN;
+
+  ctx.fillStyle = NAVY_D;
+  ctx.fillRect(0, 0, w, h);
+
+  // Player/editorial photo — top portion
+  const photoH = h * (h < 700 ? 0.45 : 0.55);
+  if (playerImg) {
+    const scale = Math.max(w / playerImg.width, photoH / playerImg.height);
+    const sw = playerImg.width * scale;
+    const sh = playerImg.height * scale;
+    ctx.drawImage(playerImg, (w - sw) / 2, (photoH - sh) / 2, sw, sh);
+    const fade = ctx.createLinearGradient(0, photoH - 100, 0, photoH + 20);
+    fade.addColorStop(0, 'transparent');
+    fade.addColorStop(1, NAVY_D);
+    ctx.fillStyle = fade;
+    ctx.fillRect(0, photoH - 100, w, 120);
+  }
+
+  // Top accent
+  ctx.fillStyle = tc;
+  ctx.fillRect(0, 0, w, 3);
+  drawLogo(ctx, 30, h < 700 ? 34 : 42, h < 700 ? 16 : 20);
+
+  // Headline — bottom portion, ALL CAPS, bold
+  const textY = photoH + 10;
+  const textW = w - 80;
+  const maxH = h - textY - 60;
+  const fit = measureFit(ctx, headline.toUpperCase(), textW, maxH, h < 700 ? 30 : 40, 900);
+  ctx.fillStyle = WHITE;
+  ctx.font = font(900, fit.sz);
+  fit.lines.forEach((line, i) => ctx.fillText(line, 40, textY + i * fit.lh));
+
+  // Tag + footer
+  const tagY = h - 50;
+  ctx.fillStyle = GRAY + '40';
+  ctx.fillRect(40, tagY, w - 80, 1);
   if (tag) {
-    const tagY = h < 700 ? 60 : 80;
     ctx.font = font(700, 11);
-    const tw = ctx.measureText(tag.toUpperCase()).width;
     ctx.fillStyle = tc;
-    ctx.globalAlpha = 0.3;
-    ctx.beginPath();
-    ctx.roundRect(40, tagY, tw + 20, 24, 5);
-    ctx.fill();
-    ctx.globalAlpha = 1;
-    ctx.fillStyle = tc;
-    ctx.textAlign = 'left';
-    ctx.fillText(tag.toUpperCase(), 50, tagY + 16);
+    ctx.fillText(tag, 40, tagY + 20);
   }
-
-  // 5. Text — always on left side, player always on right
-  const textX = 40;
-  const textW = hasPlayer ? Math.min(w * 0.55, w - 80) : w - 80;
-  const isQuote = !!quote;
-
-  if (isQuote) {
-    // Quote mark
-    ctx.font = font(900, 70);
-    ctx.fillStyle = tc;
-    ctx.globalAlpha = 0.4;
-    ctx.textAlign = 'left';
-    ctx.fillText('\u201C', 30, h < 700 ? h * 0.3 : h * 0.25);
-    ctx.globalAlpha = 1;
-
-    // Quote text
-    ctx.fillStyle = WHITE;
-    const startY = h < 700 ? h * 0.3 + 10 : h * 0.27;
-    const maxH = h < 700 ? h * 0.5 : h * 0.5;
-    const endY = drawText(ctx, quote, textX, startY, textW, maxH, h < 700 ? 30 : 38, 700);
-
-    if (attribution) {
-      ctx.font = font(700, 15);
-      ctx.fillStyle = GOLD;
-      ctx.fillText('\u2014 ' + attribution, textX, endY + 14);
-    }
-  } else {
-    // Headline
-    ctx.fillStyle = WHITE;
-    ctx.textAlign = 'left';
-    const startY = h < 700 ? h * 0.3 : h * 0.28;
-    const maxH = h < 700 ? h * 0.48 : h * 0.5;
-    drawText(ctx, headline, textX, startY, textW, maxH, h < 700 ? 32 : 44, 800);
-  }
-
-  // 6. Footer
-  drawLogo(ctx, 40, h - 22, 13);
+  drawLogo(ctx, 40, h - 18, 11);
   ctx.font = font(600, 10);
   ctx.fillStyle = GRAY;
   ctx.textAlign = 'right';
-  ctx.fillText('tourfeed.co', w - 40, h - 22);
+  ctx.fillText('tourfeed.co', w - 40, h - 18);
   ctx.textAlign = 'left';
 
   return c.toBuffer('image/png');
 }
 
-// Single player — right side, large, with gradient fade into background
-function drawSinglePlayer(ctx, img, w, h) {
-  const scale = (h * 0.85) / img.height;
-  const iw = img.width * scale;
-  const ih = img.height * scale;
-  // Position: right-aligned, bottom-aligned
-  const x = w - iw * 0.85;
-  const y = h - ih;
+// ━━━ WINNER / CHAMPION STYLE ━━━
+// Big player photo, "CHAMPION" text, tournament name
+async function buildWinner(w, h, name, tournament, score, playerImg) {
+  const c = createCanvas(w, h);
+  const ctx = c.getContext('2d');
 
-  ctx.globalAlpha = 0.9;
-  ctx.drawImage(img, x, y, iw, ih);
-  ctx.globalAlpha = 1;
-
-  // Fade left edge into background — protects text zone
-  const fade = ctx.createLinearGradient(x - 20, 0, x + iw * 0.35, 0);
-  fade.addColorStop(0, NAVY_D);
-  fade.addColorStop(0.6, NAVY_D + 'CC');
-  fade.addColorStop(1, 'transparent');
-  ctx.fillStyle = fade;
-  ctx.fillRect(x - 20, 0, iw * 0.5, h);
-
-  // Bottom + top fade
-  const bf = ctx.createLinearGradient(0, h - 80, 0, h);
-  bf.addColorStop(0, 'transparent');
-  bf.addColorStop(1, NAVY_D);
-  ctx.fillStyle = bf;
-  ctx.fillRect(x, h - 80, iw, 80);
-
-  const tf = ctx.createLinearGradient(0, 0, 0, 70);
-  tf.addColorStop(0, NAVY_D);
-  tf.addColorStop(1, 'transparent');
-  ctx.fillStyle = tf;
-  ctx.fillRect(x, 0, iw, 70);
-}
-
-// Two players — left and right edges
-function drawDualPlayer(ctx, img1, img2, w, h) {
-  // Player 1 — left edge
-  const s1 = (h * 0.65) / img1.height;
-  ctx.globalAlpha = 0.7;
-  ctx.drawImage(img1, -img1.width * s1 * 0.3, h - img1.height * s1, img1.width * s1, img1.height * s1);
-  ctx.globalAlpha = 1;
-
-  // Player 2 — right edge
-  const s2 = (h * 0.65) / img2.height;
-  const x2 = w - img2.width * s2 * 0.7;
-  ctx.globalAlpha = 0.7;
-  ctx.drawImage(img2, x2, h - img2.height * s2, img2.width * s2, img2.height * s2);
-  ctx.globalAlpha = 1;
-
-  // Center overlay for text
-  const cg = ctx.createLinearGradient(w * 0.15, 0, w * 0.85, 0);
-  cg.addColorStop(0, 'transparent');
-  cg.addColorStop(0.25, NAVY_D + 'EE');
-  cg.addColorStop(0.5, NAVY_D + 'F8');
-  cg.addColorStop(0.75, NAVY_D + 'EE');
-  cg.addColorStop(1, 'transparent');
-  ctx.fillStyle = cg;
+  ctx.fillStyle = NAVY_D;
   ctx.fillRect(0, 0, w, h);
 
-  // Bottom fade
-  const bf = ctx.createLinearGradient(0, h - 100, 0, h);
-  bf.addColorStop(0, 'transparent');
-  bf.addColorStop(1, NAVY_D);
-  ctx.fillStyle = bf;
-  ctx.fillRect(0, h - 100, w, 100);
+  // Player photo — fills most of the image
+  const photoH = h * 0.6;
+  if (playerImg) {
+    const scale = Math.max(w / playerImg.width, photoH / playerImg.height);
+    const sw = playerImg.width * scale;
+    const sh = playerImg.height * scale;
+    ctx.drawImage(playerImg, (w - sw) / 2, 0, sw, sh);
+    const fade = ctx.createLinearGradient(0, photoH - 120, 0, photoH + 30);
+    fade.addColorStop(0, 'transparent');
+    fade.addColorStop(1, NAVY_D);
+    ctx.fillStyle = fade;
+    ctx.fillRect(0, photoH - 120, w, 150);
+  }
+
+  ctx.fillStyle = GOLD;
+  ctx.fillRect(0, 0, w, 4);
+  drawLogo(ctx, 30, 38, 20);
+
+  // Player name script-style
+  ctx.font = font(500, 28);
+  ctx.fillStyle = GOLD;
+  ctx.textAlign = 'center';
+  ctx.fillText(name, w / 2, photoH + 20);
+
+  // CHAMPION huge
+  ctx.font = font(900, 64);
+  ctx.fillStyle = WHITE;
+  ctx.fillText('CHAMPION', w / 2, photoH + 90);
+
+  // Tournament
+  ctx.font = font(700, 16);
+  ctx.fillStyle = GRAY;
+  ctx.fillText(tournament.toUpperCase(), w / 2, photoH + 120);
+
+  if (score) {
+    ctx.font = font(900, 24);
+    ctx.fillStyle = GREEN;
+    ctx.fillText(score, w / 2, photoH + 155);
+  }
+
+  ctx.textAlign = 'left';
+  drawLogo(ctx, 40, h - 22, 12);
+  return c.toBuffer('image/png');
 }
 
+// ━━━ HANDLER ━━━
 exports.handler = async (event) => {
   const p = event.queryStringParameters || {};
   const type = p.type || 'headline';
+  const tag = (p.tag || '').toUpperCase();
+  const headline = p.headline || '';
+  const quote = p.quote || '';
+  const attribution = p.attribution || '';
+  const context = p.context || '';
 
   let w = 1080, h = 1080;
   if (type === 'article_header') { w = 1200; h = 630; }
 
-  const opts = {
-    tag: p.tag || (type === 'hot_take' ? 'HOT TAKE' : 'NEWS'),
-    headline: type === 'hot_take' ? null : (p.headline || ''),
-    quote: type === 'hot_take' ? (p.quote || p.headline || '') : null,
-    attribution: p.attribution || '',
-    photo: p.photo || '',
-  };
+  // Get player photo(s) — from text or explicit photo param
+  const text = headline + ' ' + quote;
+  const playerIds = findPlayers(text);
+  let mainImg = null;
 
-  const buf = await buildImage(w, h, opts);
+  if (p.photo) {
+    mainImg = await fetchImg(p.photo);
+  } else if (playerIds.length > 0) {
+    mainImg = await fetchImg(headshotUrl(playerIds[0]));
+  }
+
+  let buf;
+  if (type === 'hot_take') {
+    buf = await buildQuote(w, h, quote || headline, attribution, context, mainImg);
+  } else if (tag === 'BREAKING' || tag === 'INJURY') {
+    buf = await buildBreaking(w, h, headline, mainImg);
+  } else if (type === 'winner') {
+    buf = await buildWinner(w, h, p.name || '', p.tournament || '', p.score || '', mainImg);
+  } else {
+    buf = await buildHeadline(w, h, tag, headline, mainImg);
+  }
 
   return {
     statusCode: 200,
