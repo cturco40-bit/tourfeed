@@ -113,7 +113,9 @@ exports.handler = async (event) => {
 
   try {
     // 1. Get latest tournament
-    const tournaments = await sb('tournaments?select=*&status=neq.scheduled&order=start_date.desc&limit=1');
+    // Always prioritize PGA Tour, then others
+    let tournaments = await sb('tournaments?select=*&tour_id=eq.pga&status=neq.scheduled&order=start_date.desc&limit=1');
+    if (!tournaments.length) tournaments = await sb('tournaments?select=*&status=neq.scheduled&order=start_date.desc&limit=1');
     if (!tournaments.length) {
       return { statusCode: 200, headers, body: JSON.stringify({ message: 'No tournaments found' }) };
     }
