@@ -1723,7 +1723,31 @@ function renderInsights() {
     html += '</div>';
 
     // Pre-Tournament Favorites Table
-    html += '<div style="font-size:10px;font-weight:800;letter-spacing:2px;color:var(--gold);margin-bottom:8px">PRE-TOURNAMENT FAVORITES</div>';
+    // Try to load real odds from Supabase (fetched by fetch-odds function)
+    if (!window._realOdds) {
+      window._realOdds = 'loading';
+      sb.from('player_odds').select('*').order('best_odds', {ascending:true}).limit(15).then(function(res) {
+        if (res.data && res.data.length > 0) { window._realOdds = res.data; renderApp(); }
+        else { window._realOdds = null; }
+      }).catch(function() { window._realOdds = null; });
+    }
+
+    html += '<div style="font-size:10px;font-weight:800;letter-spacing:2px;color:var(--gold);margin-bottom:8px">PRE-TOURNAMENT ODDS</div>';
+
+    // Use real odds if available, otherwise fall back to hardcoded
+    if (window._realOdds && window._realOdds !== 'loading' && window._realOdds.length > 0) {
+      window._realOdds.slice(0, 10).forEach(function(o, i) {
+        var odds = o.best_odds > 0 ? '+' + o.best_odds : '' + o.best_odds;
+        html += '<div style="background:var(--card);border:1px solid var(--border);border-radius:4px;padding:10px 14px;margin-bottom:4px;display:flex;align-items:center">';
+        html += '<div style="width:24px;font-size:12px;font-weight:700;color:' + (i===0?'var(--gold)':'var(--muted)') + '">' + (i+1) + '</div>';
+        html += '<div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:' + (i<3?'800':'600') + ';color:var(--text)">' + o.player_name + '</div>';
+        html += '<div style="font-size:9px;color:var(--muted)">Best odds via ' + (o.best_book || 'Sportsbook') + '</div></div>';
+        html += '<div style="text-align:right;flex-shrink:0"><div style="font-size:16px;font-weight:900;color:var(--green)">' + odds + '</div>';
+        html += '<div style="font-size:9px;color:var(--muted)">' + (o.implied_probability || 0).toFixed(1) + '%</div></div>';
+        html += '</div>';
+      });
+      html += '<div style="font-size:9px;color:var(--muted);margin-top:4px;font-style:italic">Odds via DraftKings, FanDuel, BetMGM &middot; Updated ' + (window._realOdds[0]?.updated_at ? timeAgo(window._realOdds[0].updated_at) : 'recently') + '</div>';
+    } else {
     var preFavs = [
       {pos:1,name:'Scottie Scheffler',odds:'+500',label:'FAVORITE',lc:'var(--gold)',note:'World #1. Two-time Masters champion. Won the Open Championship last year.'},
       {pos:2,name:'Rory McIlroy',odds:'+700',label:'DEFENDING',lc:'var(--green)',note:'Defending champion. Completed the career Grand Slam here last year.'},
@@ -1747,6 +1771,8 @@ function renderInsights() {
       html += '<div style="font-size:9px;color:var(--muted)">' + imp + '%</div></div>';
       html += '</div>';
     });
+
+    } // end else (hardcoded fallback)
 
     // Key Storylines
     html += '<div style="font-size:10px;font-weight:800;letter-spacing:2px;color:var(--muted);margin:16px 0 8px">KEY STORYLINES</div>';
