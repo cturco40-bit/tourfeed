@@ -299,7 +299,7 @@ const SB_URL = 'https://yumahmnoltvbiadjefxw.supabase.co';
 const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl1bWFobW5vbHR2YmlhZGplZnh3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUzOTY0NDAsImV4cCI6MjA5MDk3MjQ0MH0.FAXp2t0zaHlm1W7aaut72btMilrYPy33XO3p8MfyYlo';
 const sb = supabase.createClient(SB_URL, SB_KEY);
 
-const TABS = ['Home','Scores','News','Insights','Blog','Standings','Schedule'];
+const TABS = ['Home','Scores','News','Picks','Blog','Standings','Schedule'];
 let currentTab = 0;
 let expandedCard = null;
 let lbSearch = '';
@@ -325,6 +325,15 @@ let scoresError = null;
 let scorecardCache = {};
 let lastFetchTime = null;
 let scoresView = 'leaderboard';
+
+function getSiteState() {
+  if (TOURNAMENT && PLAYERS.length > 0) {
+    if (TOURNAMENT.state === 'in' || TOURNAMENT.stateName === 'STATUS_IN_PROGRESS') return 'live';
+    if (TOURNAMENT.state === 'post' || TOURNAMENT.stateName === 'STATUS_FINAL') return 'post';
+    if (TOURNAMENT.state === 'pre') return 'pre';
+  }
+  return 'between';
+}
 
 // ============================================
 // UTILITY FUNCTIONS
@@ -862,8 +871,8 @@ function renderScoreTicker() {
   var inner = document.getElementById('scoreTickerInner');
   if (!ticker || !inner) return;
   var active = PLAYERS ? PLAYERS.filter(function(p) { return p.status === 'active'; }) : [];
-  var isLive = TOURNAMENT && active.length > 0 && TOURNAMENT.state === 'in';
-  if (!isLive) { ticker.style.display = 'none'; return; }
+  var sState = getSiteState();
+  if (sState !== 'live') { ticker.style.display = 'none'; return; }
   ticker.style.display = 'block';
   var items = '';
   items += '<span class="ticker-live-badge">LIVE</span>';
@@ -909,7 +918,7 @@ function subscribeInline(inputId) {
   localStorage.setItem('tf-subscribed', '1');
   input.parentElement.innerHTML = '<div style="font-family:Playfair Display,Georgia,serif;font-size:15px;font-weight:700;color:#fff;padding:8px 0">You\'re in. Welcome to TourFeed.</div>';
 }
-setTimeout(showPopup, 12000);
+// Popup only opens when SUBSCRIBE button is clicked — no auto-open
 
 // ============================================
 // SHARE
@@ -1094,8 +1103,9 @@ function renderHome() {
   try {
   let html = '';
 
-  // Live tournament hero or coming up
-  if (TOURNAMENT && PLAYERS.length > 0) {
+  // Live tournament hero or Masters countdown
+  var state = getSiteState();
+  if (state === 'live') {
     const active = PLAYERS.filter(function(p) { return p.status === 'active'; });
     const leader = active[0];
     const tied = leader ? active.filter(function(p) { return p.score === leader.score; }) : [];
@@ -1127,20 +1137,14 @@ function renderHome() {
     html += '<button onclick="switchTab(1)" style="background:#D4A853;border:none;color:var(--green);font-size:12px;font-weight:700;padding:8px 16px;border-radius:4px;margin-top:10px;cursor:pointer;font-family:inherit">Full Leaderboard &rarr;</button>';
     html += '</div>';
   } else {
-    // Coming up
-    html += '<div style="background:var(--card);border:1px solid var(--border);border-radius:4px;padding:20px;margin:16px 0;text-align:center">';
-    html += '<div style="font-family:Playfair Display,Georgia,serif;font-size:10px;font-weight:700;letter-spacing:3px;color:var(--gold);margin-bottom:8px">COMING UP</div>';
-    if (scheduleData.length > 0) {
-      const now = Date.now();
-      const next = scheduleData.find(function(e) { return e.startDate && new Date(e.startDate).getTime() > now; });
-      if (next) {
-        const d = new Date(next.startDate);
-        const daysUntil = Math.ceil((d.getTime() - now) / 86400000);
-        html += '<div style="font-family:Playfair Display,Georgia,serif;font-size:20px;font-weight:800;color:var(--text)">' + esc(next.event) + '</div>';
-        html += '<div style="font-size:12px;color:var(--muted);margin-top:4px">' + esc(next.course) + '</div>';
-        html += '<div style="font-family:Playfair Display,Georgia,serif;font-size:28px;font-weight:900;color:var(--gold);margin-top:10px">' + daysUntil + ' DAY' + (daysUntil !== 1 ? 'S' : '') + '</div>';
-      }
-    }
+    // Masters Countdown Hero
+    html += '<div style="background:var(--green);border-radius:4px;padding:24px;margin:16px 0;border-bottom:3px solid #D4A853">';
+    html += '<div style="font-family:\'Playfair Display\',Georgia,serif;font-size:26px;font-weight:900;color:#fff;margin-bottom:6px">The Masters</div>';
+    html += '<div style="font-size:12px;color:rgba(255,255,255,0.7);margin-bottom:12px">Augusta National Golf Club &mdash; Augusta, Georgia</div>';
+    html += '<div style="font-size:13px;color:#D4A853;font-weight:700;margin-bottom:4px">Round 1 begins Thursday, April 9 at 8:00 AM ET</div>';
+    html += '<div style="font-size:11px;color:rgba(255,255,255,0.6);margin-bottom:4px">Par 3 Contest: Wednesday, April 8 at 12:00 PM ET</div>';
+    html += '<div style="font-size:11px;color:rgba(255,255,255,0.6);margin-bottom:12px">91 players &middot; $22M purse &middot; The green jacket awaits</div>';
+    html += '<div style="font-size:10px;color:rgba(255,255,255,0.5)">Watch: ESPN (Thu-Fri) &middot; CBS (Sat-Sun)</div>';
     html += '</div>';
   }
 
@@ -1679,24 +1683,55 @@ function renderInsights() {
   });
   html += '</div>';
 
-  // MODE B: NO LIVE TOURNAMENT
+  // ━━ MODE B: NO LIVE TOURNAMENT — MASTERS WEEK CONTENT ━━
   if (!isLive) {
-    if (!scheduleFetched) fetchESPNSchedule();
-    if (scheduleData.length > 0) {
-      var nowB = Date.now();
-      var nextEv = scheduleData.find(function(e) { return e.startDate && new Date(e.startDate).getTime() > nowB; });
-      if (nextEv) {
-        var ndB = new Date(nextEv.startDate);
-        var daysB = Math.ceil((ndB.getTime() - nowB) / 86400000);
-        var isMajB = /masters|pga championship|u\.?s\.?\s*open|open championship|the open/i.test(nextEv.event);
-        html += '<div style="border:1px solid ' + (isMajB ? '#D4A853' : 'var(--border)') + ';border-radius:4px;padding:16px;margin-bottom:14px">';
-        html += '<div style="font-size:10px;font-weight:800;letter-spacing:2px;color:' + (isMajB ? 'var(--gold)' : 'var(--green)') + ';margin-bottom:6px">NEXT EVENT</div>';
-        html += '<div style="font-family:Playfair Display,Georgia,serif;font-size:18px;font-weight:900;color:var(--text)">' + esc(nextEv.event) + '</div>';
-        html += '<div style="font-size:11px;color:var(--muted);margin-top:3px">' + esc(nextEv.course) + ' &middot; ' + daysB + ' day' + (daysB !== 1 ? 's' : '') + ' &middot; ' + (nextEv.purse || '') + '</div>';
-        html += '</div>';
-      }
-    }
-    html += '<div style="text-align:center;padding:16px;font-size:13px;color:var(--muted);background:var(--card);border:1px solid var(--border);border-radius:4px;margin-bottom:14px">Early picks and full betting preview coming soon.<br>Live odds, props, and matchups activate during tournament play.</div>';
+    // Masters Preview Header
+    html += '<div style="border-left:3px solid var(--green);background:var(--card);border:1px solid var(--border);border-radius:4px;padding:16px;margin-bottom:14px">';
+    html += '<div style="font-family:\'Playfair Display\',Georgia,serif;font-size:18px;font-weight:800;color:var(--text)">The Masters &mdash; April 9-12, 2026</div>';
+    html += '<div style="font-size:11px;color:var(--muted);margin-top:4px">Augusta National Golf Club &middot; Par 72 &middot; 7,545 yards &middot; $22M purse</div>';
+    html += '<div style="font-size:11px;color:var(--dim);margin-top:4px">Defending Champion: Rory McIlroy &middot; Favorite: Scottie Scheffler</div>';
+    html += '<div style="font-size:10px;color:var(--muted);margin-top:8px;font-style:italic">Live odds, picks, and props activate Thursday when Round 1 begins</div>';
+    html += '</div>';
+
+    // Pre-Tournament Favorites Table
+    html += '<div style="font-size:10px;font-weight:800;letter-spacing:2px;color:var(--gold);margin-bottom:8px">PRE-TOURNAMENT FAVORITES</div>';
+    var preFavs = [
+      {pos:1,name:'Scottie Scheffler',odds:'+500',note:'2x Masters champion, won Open Championship'},
+      {pos:2,name:'Rory McIlroy',odds:'+700',note:'Defending champion, career Grand Slam holder'},
+      {pos:3,name:'Xander Schauffele',odds:'+1000',note:'2024 PGA + Open champion'},
+      {pos:4,name:'Bryson DeChambeau',odds:'+1400',note:'Back-to-back LIV wins, 2x US Open champion'},
+      {pos:5,name:'Jon Rahm',odds:'+1600',note:'2023 Masters champion, LIV Golf'},
+      {pos:6,name:'Collin Morikawa',odds:'+2000',note:'Playing through back injury'},
+      {pos:7,name:'Ludvig Aberg',odds:'+2000',note:'First Masters appearance'},
+      {pos:8,name:'Viktor Hovland',odds:'+2500',note:'0 majors, elite talent'},
+      {pos:9,name:'Patrick Cantlay',odds:'+2800',note:'8 PGA Tour wins'},
+      {pos:10,name:'Tommy Fleetwood',odds:'+3000',note:'Ryder Cup regular'},
+    ];
+    preFavs.forEach(function(f) {
+      var imp = (100 / (parseInt(f.odds.replace('+','')) + 100) * 100).toFixed(1);
+      html += '<div style="background:var(--card);border:1px solid var(--border);border-radius:4px;padding:10px 14px;margin-bottom:4px;display:flex;align-items:center">';
+      html += '<div style="width:24px;font-size:12px;font-weight:700;color:' + (f.pos===1?'var(--gold)':'var(--muted)') + '">' + f.pos + '</div>';
+      html += '<div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:' + (f.pos<=3?'800':'600') + ';color:var(--text)">' + f.name + '</div>';
+      html += '<div style="font-size:10px;color:var(--muted)">' + f.note + '</div></div>';
+      html += '<div style="font-size:10px;color:var(--muted);margin-right:10px">' + imp + '%</div>';
+      html += '<div style="font-size:16px;font-weight:900;color:var(--green)">' + f.odds + '</div>';
+      html += '</div>';
+    });
+
+    // Key Storylines
+    html += '<div style="font-size:10px;font-weight:800;letter-spacing:2px;color:var(--muted);margin:16px 0 8px">KEY STORYLINES</div>';
+    var stories = [
+      {title:'Can Rory Defend?',body:'McIlroy won his first green jacket last year to complete the career Grand Slam. Only Tiger, Jack, and Nick Faldo have successfully defended at Augusta in the modern era.'},
+      {title:'Scheffler\'s Augusta Record',body:'Two Masters wins (2022, 2024), plus the Open Championship. He is the most dominant player in golf but arrives with a 9-day-old newborn.'},
+      {title:'No Tiger, No Phil',body:'First Masters without either since 1994. Tiger is recovering from his March car accident. Mickelson withdrew for family health reasons. End of an era at Augusta.'},
+      {title:'LIV at Augusta',body:'Bryson DeChambeau arrives red-hot off consecutive LIV wins. Rahm is a past champion. Ten LIV players in the field. The tour war plays out on the biggest stage.'},
+    ];
+    stories.forEach(function(s) {
+      html += '<div style="background:var(--card);border:1px solid var(--border);border-radius:4px;padding:14px;margin-bottom:6px">';
+      html += '<div style="font-family:\'Playfair Display\',Georgia,serif;font-size:14px;font-weight:700;color:var(--text);margin-bottom:4px">' + s.title + '</div>';
+      html += '<div style="font-size:12px;color:var(--dim);line-height:1.6">' + s.body + '</div>';
+      html += '</div>';
+    });
   }
 
   // DISCLAIMER
