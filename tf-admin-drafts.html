@@ -88,7 +88,7 @@
 </head>
 <body>
   <div class="login" id="loginScreen">
-    <div style="font-size:22px;font-weight:900;margin-bottom:24px;letter-spacing:3px"><span style="color:#1A472A">TOUR</span><span style="color:#D4A853">FEED</span></div>
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:24px"><div style="position:relative;width:14px;height:32px"><div style="position:absolute;left:6px;top:0;width:2px;height:32px;background:#1A472A"></div><div style="position:absolute;left:8px;top:0;width:12px;height:8px;background:#D4A853;border-radius:0 3px 3px 0"></div><div style="position:absolute;left:1px;bottom:0;width:10px;height:2px;background:#1A472A"></div></div><div style="font-size:22px;font-weight:900;letter-spacing:3px"><span style="color:#1A472A">TOUR</span><span style="color:#D4A853">FEED</span></div></div>
     <input type="password" id="passInput" placeholder="Access code" onkeydown="if(event.key==='Enter')doLogin()">
     <button onclick="doLogin()">Access Drafts</button>
   </div>
@@ -286,7 +286,7 @@ async function loadDrafts() {
         content +
         '<textarea class="draft-edit" id="edit-' + d.id + '" rows="4">' + (d.body||'') + '</textarea>' +
         '<div class="draft-actions" id="actions-' + d.id + '">' +
-          '<button class="btn-action btn-approve" onclick="approveDraft(' + d.id + ')">Approve</button>' +
+          '<button class="btn-action btn-approve" onclick="approveDraft(' + d.id + ')">' + (isInstagram ? 'Mark Posted' : 'Approve') + '</button>' +
           '<button class="btn-action btn-edit" onclick="document.getElementById(\'edit-'+d.id+'\').classList.toggle(\'show\')">Edit</button>' +
           '<button class="btn-action btn-reject" onclick="rejectDraft(' + d.id + ')">Reject</button>' +
           '<button class="btn-add-img" onclick="openImageEditor(' + d.id + ')">' + (d.image_url ? 'Replace Image' : '+ Image') + '</button>' +
@@ -309,6 +309,23 @@ async function batchApprove() {
   setTimeout(loadDrafts, 500);
 }
 
+async function markPosted(id) {
+  // For Instagram — just mark as published, no Twitter posting
+  var el = document.getElementById('draft-' + id);
+  var actions = document.getElementById('actions-' + id);
+  actions.innerHTML = '<div class="status status-info">Marking as posted...</div>';
+  markHandled(id);
+  try {
+    await fetch(SB_URL + '/rest/v1/content_drafts?id=eq.' + id, {
+      method: 'PATCH',
+      headers: { 'apikey': SB_SERVICE, 'Authorization': 'Bearer ' + SB_SERVICE, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: 'published', published_at: new Date().toISOString() }),
+    });
+    actions.innerHTML = '<div class="status status-ok">Posted!</div>';
+    el.style.opacity = '0.3'; el.style.pointerEvents = 'none';
+  } catch(e) { actions.innerHTML = '<div class="status status-err">' + e.message + '</div>'; }
+}
+
 async function approveDraft(id, batch) {
   var el = document.getElementById('draft-' + id);
   var ta = document.getElementById('edit-' + id);
@@ -316,6 +333,9 @@ async function approveDraft(id, batch) {
   var actions = document.getElementById('actions-' + id);
   var draft = loadedDrafts[id] || {};
   var isArticle = draft.type && draft.type.includes('article');
+  var isInstagram = draft.type === 'instagram';
+  // Instagram: use markPosted instead
+  if (isInstagram) { return markPosted(id); }
   if (!isArticle && text.length > 280) { if(!batch) actions.innerHTML='<div class="status status-err">Over 280 chars</div>'; return; }
   if (!batch) actions.innerHTML = '<div class="status status-info">Publishing...</div>';
   markHandled(id);
