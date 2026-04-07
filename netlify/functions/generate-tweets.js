@@ -122,10 +122,14 @@ exports.handler = async (event) => {
     });
 
     // Get existing drafts to avoid dupes
+    // Only check last 10 drafts for dedup — not the entire history
     let recentTexts = [];
     try {
       const dRes = await fetch('https://tourfeed.co/.netlify/functions/draft-tweet');
-      if (dRes.ok) recentTexts = ((await dRes.json()).drafts || []).map(d => d.text.toLowerCase());
+      if (dRes.ok) {
+        const drafts = (await dRes.json()).drafts || [];
+        recentTexts = drafts.slice(0, 10).map(d => (d.body || d.text || '').toLowerCase());
+      }
     } catch(e) {}
 
     // Player facts for accurate context
@@ -224,9 +228,10 @@ ${context}`,
       if (/don't have|can't see|I cannot|data limitation|broken leaderboard|no idea who|unknown.*winner|unnamed|mystery.*champion/i.test(tweet)) continue;
       // Dedup against existing drafts
       const words = tweet.toLowerCase().replace(/[^a-z0-9\s]/g, '').split(/\s+/).filter(w => w.length > 3);
+      // Only flag as dupe if 70%+ words match (was 50% — too aggressive)
       let isDupe = recentTexts.some(r => {
         const overlap = words.filter(w => r.includes(w)).length;
-        return overlap >= words.length * 0.5;
+        return overlap >= words.length * 0.7;
       });
       if (isDupe) continue;
 
