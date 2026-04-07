@@ -265,6 +265,17 @@ ${context}`,
       }
     }
 
+    // Notification
+    if (drafted.length > 0) {
+      try {
+        await fetch('https://ntfy.sh/tourfeed-alerts', {
+          method: 'POST',
+          headers: { 'Title': 'New Tweets Ready', 'Priority': '3' },
+          body: drafted.length + ' tweet' + (drafted.length > 1 ? 's' : '') + ' ready for review',
+        });
+      } catch(e) {}
+    }
+
     return { statusCode: 200, headers, body: JSON.stringify({
       success: true,
       drafted: drafted.length,

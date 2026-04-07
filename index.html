@@ -1538,83 +1538,15 @@ function renderInsights() {
       var daysUntil = Math.ceil((d.getTime() - now) / 86400000);
       var daysLabel = daysUntil === 0 ? 'TODAY' : daysUntil === 1 ? 'TOMORROW' : daysUntil + ' DAYS';
       var isMajor = /masters|pga championship|u\.?s\.?\s*open|open championship|the open/i.test(ev.event);
-      var picks = getFullPreviewPicks(ev.event, isMajor);
-      var evKey = 'ev_' + evIdx;
-
       html += '<div class="insight-card" style="' + (isMajor ? 'border:1px solid rgba(212,168,83,0.25);' : '') + '">';
-      // Header
       html += '<div style="display:flex;align-items:center;margin-bottom:6px">';
-      html += '<div style="font-size:10px;font-weight:700;letter-spacing:2px;color:' + (isMajor ? 'var(--gold)' : 'var(--green)') + '">' + (isMajor ? 'MAJOR PREVIEW' : 'PREVIEW') + '</div>';
+      html += '<div style="font-size:10px;font-weight:700;letter-spacing:2px;color:' + (isMajor ? 'var(--gold)' : 'var(--green)') + '">' + (isMajor ? 'MAJOR' : 'UPCOMING') + '</div>';
       html += '<span style="font-size:10px;font-weight:700;color:var(--text-muted);margin-left:auto;background:rgba(255,255,255,0.05);padding:2px 8px;border-radius:4px">' + daysLabel + '</span></div>';
       html += '<div style="font-size:18px;font-weight:900;color:var(--text);margin-bottom:4px">' + esc(ev.event) + '</div>';
       html += '<div style="font-size:11px;color:var(--text-muted);margin-bottom:2px">' + esc(ev.course) + '</div>';
-      html += '<div style="font-size:11px;color:var(--text-muted);margin-bottom:14px">' + dateStr + (ev.purse ? ' &middot; ' + ev.purse : '') + (ev.tv ? ' &middot; ' + ev.tv : '') + '</div>';
-
-      // OUTRIGHT PICKS
-      html += sectionHeader('OUTRIGHT WINNER PICKS', evKey + '_out');
-      if (isSectionOpen(evKey + '_out') && picks.outrights) {
-        picks.outrights.forEach(function(p) { html += pickRow(p.label, p.name, p.odds, p.reason, p.conf, p.units); });
-      }
-
-      // TOP 5 / TOP 10
-      if (picks.top5 || picks.top10) {
-        html += sectionHeader('TOP 5 / TOP 10 PICKS', evKey + '_placement');
-        if (isSectionOpen(evKey + '_placement')) {
-          if (picks.top5) { picks.top5.forEach(function(p) { html += pickRow('TOP 5', p.name, p.odds, p.reason); }); }
-          if (picks.top10) { picks.top10.forEach(function(p) { html += pickRow('TOP 10', p.name, p.odds, p.reason); }); }
-        }
-      }
-
-      // FIRST ROUND LEADER
-      if (picks.frl) {
-        html += sectionHeader('FIRST ROUND LEADER', evKey + '_frl');
-        if (isSectionOpen(evKey + '_frl')) {
-          picks.frl.forEach(function(p) { html += pickRow('FRL', p.name, p.odds, p.reason); });
-        }
-      }
-
-      // HEAD-TO-HEAD MATCHUPS
-      if (picks.matchups) {
-        html += sectionHeader('HEAD-TO-HEAD MATCHUPS', evKey + '_h2h');
-        if (isSectionOpen(evKey + '_h2h')) {
-          picks.matchups.forEach(function(m) {
-            html += '<div style="padding:10px 12px;background:rgba(255,255,255,0.02);border-radius:8px;margin-bottom:6px;border-left:3px solid var(--green)">';
-            html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px"><div style="font-size:12px;color:var(--text-muted)">' + m.a + ' vs ' + m.b + '</div><div style="font-size:13px;font-weight:800;color:var(--green)">' + m.odds + '</div></div>';
-            html += '<div style="font-size:13px;font-weight:700;color:var(--text)">Pick: ' + m.pick + '</div>';
-            html += '<div style="font-size:10px;color:var(--text-muted);margin-top:2px">' + m.reason + '</div></div>';
-          });
-        }
-      }
-
-      // LONGSHOT
-      if (picks.longshot) {
-        html += sectionHeader('LONGSHOT OF THE WEEK', evKey + '_long');
-        if (isSectionOpen(evKey + '_long')) {
-          html += pickRow('LONGSHOT', picks.longshot.name, picks.longshot.odds, picks.longshot.reason, null, null);
-        }
-      }
-
-      // PROP BETS
-      if (picks.props) {
-        html += sectionHeader('PROP BETS', evKey + '_props');
-        if (isSectionOpen(evKey + '_props')) {
-          picks.props.forEach(function(p) {
-            html += '<div style="padding:8px 12px;background:rgba(255,255,255,0.02);border-radius:8px;margin-bottom:4px;display:flex;align-items:center">';
-            html += '<div style="flex:1"><div style="font-size:12px;font-weight:600;color:var(--text)">' + p.prop + '</div><div style="font-size:10px;color:var(--text-muted);margin-top:2px">' + p.reason + '</div></div>';
-            html += '<div style="text-align:right;flex-shrink:0"><div style="font-size:12px;font-weight:800;color:var(--green)">' + p.pick + '</div><div style="font-size:10px;color:var(--text-muted)">' + p.odds + '</div></div></div>';
-          });
-        }
-      }
-
-      // PARLAY
-      if (picks.parlay) {
-        html += '<div style="margin-top:10px;padding:12px;background:linear-gradient(135deg,rgba(45,143,111,0.1),rgba(212,168,83,0.08));border-radius:10px;border:1px solid rgba(45,143,111,0.2)">';
-        html += '<div style="font-size:10px;font-weight:700;letter-spacing:2px;color:var(--gold);margin-bottom:6px">PARLAY BUILDER</div>';
-        html += '<div style="font-size:13px;font-weight:700;color:var(--text)">' + picks.parlay.legs + '</div>';
-        html += '<div style="display:flex;align-items:center;gap:8px;margin-top:4px"><div style="font-size:16px;font-weight:900;color:var(--green)">' + picks.parlay.odds + '</div><div style="font-size:10px;color:var(--text-muted)">' + picks.parlay.reason + '</div></div></div>';
-      }
-
-      html += '</div>'; // end insight-card
+      html += '<div style="font-size:11px;color:var(--text-muted);margin-bottom:10px">' + dateStr + (ev.purse ? ' &middot; ' + ev.purse : '') + (ev.tv ? ' &middot; ' + ev.tv : '') + '</div>';
+      html += '<div style="font-size:12px;color:var(--text-muted)">Full betting preview, picks, and analysis available in our published articles below.</div>';
+      html += '</div>';
     });
   }
 

@@ -199,6 +199,18 @@ Rules:
     results.push({ success: true, key, type: config.type, title: article.title });
     } // end for loop
 
+    // Send notification
+    var generated = results.filter(function(r) { return r.success; });
+    if (generated.length > 0) {
+      try {
+        await fetch('https://ntfy.sh/tourfeed-alerts', {
+          method: 'POST',
+          headers: { 'Title': 'New Articles Ready', 'Priority': '3' },
+          body: generated.length + ' new article' + (generated.length > 1 ? 's' : '') + ': ' + generated.map(function(r) { return r.title; }).join(' | '),
+        });
+      } catch(e) {}
+    }
+
     return { statusCode: 200, headers, body: JSON.stringify({ results }) };
 
   } catch (err) {
