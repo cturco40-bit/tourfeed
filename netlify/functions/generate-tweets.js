@@ -28,12 +28,28 @@ async function uploadTweetImage(text) {
 
 async function postDraft(text, source) {
   const imageUrl = await uploadTweetImage(text);
-  const res = await fetch('https://tourfeed.co/.netlify/functions/draft-tweet', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ text: text.slice(0, 280), source, image_url: imageUrl }),
-  });
-  return res.ok ? await res.json() : null;
+  // Post directly to Supabase — skip draft-tweet function's extra dedup layers
+  try {
+    const res = await fetch(SB_URL + '/rest/v1/content_drafts', {
+      method: 'POST',
+      headers: {
+        'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl1bWFobW5vbHR2YmlhZGplZnh3Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NTM5NjQ0MCwiZXhwIjoyMDkwOTcyNDQwfQ.VXcPybKl1c3uJAO59im8hb0zQjEmdwd4e6WGAakC-qs',
+        'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl1bWFobW5vbHR2YmlhZGplZnh3Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NTM5NjQ0MCwiZXhwIjoyMDkwOTcyNDQwfQ.VXcPybKl1c3uJAO59im8hb0zQjEmdwd4e6WGAakC-qs',
+        'Content-Type': 'application/json',
+        'Prefer': 'return=representation',
+      },
+      body: JSON.stringify({
+        type: 'tweet_reaction',
+        body: text.slice(0, 280),
+        source_event: source,
+        image_url: imageUrl,
+        status: 'pending',
+        created_at: new Date().toISOString(),
+      }),
+    });
+    if (res.ok) return { success: true };
+    return null;
+  } catch(e) { return null; }
 }
 
 // Scrape RSS feed
