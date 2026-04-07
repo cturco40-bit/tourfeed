@@ -1120,33 +1120,61 @@ function renderHome() {
     html += '</div>';
   }
 
-  // Top Stories
-  html += '<div style="padding:14px;background:var(--card-bg);border:1px solid var(--card-border);border-radius:10px;margin-bottom:12px">';
-  html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">';
-  html += '<div style="font-size:10px;font-weight:700;letter-spacing:2px;color:var(--green)">LATEST</div>';
-  html += '<button onclick="switchTab(2)" style="background:none;border:none;color:var(--green);font-size:11px;font-weight:700;cursor:pointer;font-family:inherit">All News &rarr;</button>';
-  html += '</div>';
+  // All published articles combined and sorted by date
+  var allArticles = newsArticles.concat(blogArticles).concat(bettingArticles);
+  allArticles.sort(function(a,b) { return new Date(b.published_at || 0) - new Date(a.published_at || 0); });
 
-  if (newsArticles.length > 0) {
-    newsArticles.slice(0, 5).forEach(function(n, i) {
-      const tc = tagColor(n.tag);
-      html += '<div onclick="openArticleDetail(this._article)" style="padding:8px 0;cursor:pointer;' + (i < 4 ? 'border-bottom:1px solid var(--card-border)' : '') + '">';
-      html += '<div style="display:flex;align-items:flex-start;gap:10px"><div style="flex:1">';
-      html += '<span class="tag" style="color:' + tc + ';background:' + tc + '15;font-size:9px;margin-bottom:4px;display:inline-block">' + esc(n.tag || 'NEWS') + '</span>';
-      html += '<div style="font-size:13px;font-weight:700;color:var(--text);line-height:1.3;margin-top:3px">' + esc(n.title) + '</div>';
-      html += '<div style="font-size:10px;color:var(--text-muted);margin-top:3px">' + timeAgo(n.published_at) + '</div>';
-      html += '</div>';
-      if (n.header_image) html += '<img src="' + esc(n.header_image) + '" style="width:60px;height:42px;object-fit:cover;border-radius:4px;flex-shrink:0" alt="" onerror="this.style.display=\'none\'">';
-      html += '</div></div>';
-    });
-  } else {
-    html += '<div style="font-size:13px;color:var(--text-muted);padding:10px 0">Loading headlines...</div>';
+  // Featured article — the most recent one, shown large
+  if (allArticles.length > 0) {
+    var featured = allArticles[0];
+    var ftc = tagColor(featured.tag);
+    html += '<div onclick="openArticleDetail(this._article)" style="cursor:pointer;background:var(--card-bg);border:1px solid var(--card-border);border-radius:12px;overflow:hidden;margin-bottom:12px">';
+    if (featured.header_image) html += '<img src="' + esc(featured.header_image) + '" style="width:100%;height:180px;object-fit:cover" alt="" onerror="this.style.display=\'none\'">';
+    html += '<div style="padding:14px">';
+    html += '<span class="tag" style="color:' + ftc + ';background:' + ftc + '15">' + esc(featured.tag || 'NEWS') + '</span>';
+    html += '<div style="font-size:17px;font-weight:800;color:var(--text);line-height:1.3;margin-top:6px">' + esc(featured.title) + '</div>';
+    var fExcerpt = (featured.summary || (featured.body ? featured.body.replace(/<[^>]+>/g, '').slice(0, 150) : '')).slice(0, 150);
+    html += '<div style="font-size:12px;color:var(--text-muted);margin-top:6px;line-height:1.5">' + esc(fExcerpt) + '...</div>';
+    html += '<div style="font-size:10px;color:var(--g700);margin-top:8px">By TourFeed Staff &middot; ' + timeAgo(featured.published_at) + ' &middot; ' + readTime(featured.body) + '</div>';
+    html += '</div></div>';
   }
-  html += '</div>';
+
+  // Latest stories — next 5 articles
+  if (allArticles.length > 1) {
+    html += '<div style="margin-bottom:12px">';
+    html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">';
+    html += '<div style="font-size:10px;font-weight:700;letter-spacing:2px;color:var(--green)">LATEST</div>';
+    html += '<button onclick="switchTab(2)" style="background:none;border:none;color:var(--green);font-size:11px;font-weight:700;cursor:pointer;font-family:inherit">All News &rarr;</button>';
+    html += '</div>';
+    allArticles.slice(1, 6).forEach(function(a) { html += renderArticleCard(a); });
+    html += '</div>';
+  }
+
+  // Betting picks section
+  if (bettingArticles.length > 0) {
+    html += '<div style="padding:14px;background:rgba(212,168,83,0.05);border:1px solid rgba(212,168,83,0.15);border-radius:10px;margin-bottom:12px">';
+    html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">';
+    html += '<div style="font-size:10px;font-weight:700;letter-spacing:2px;color:var(--gold)">BETTING & PICKS</div>';
+    html += '<button onclick="switchTab(3)" style="background:none;border:none;color:var(--gold);font-size:11px;font-weight:700;cursor:pointer;font-family:inherit">All Picks &rarr;</button>';
+    html += '</div>';
+    bettingArticles.slice(0, 2).forEach(function(a) { html += renderArticleCard(a); });
+    html += '</div>';
+  }
+
+  // Blog / analysis section
+  if (blogArticles.length > 0) {
+    html += '<div style="margin-bottom:12px">';
+    html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">';
+    html += '<div style="font-size:10px;font-weight:700;letter-spacing:2px;color:var(--green)">ANALYSIS & PREVIEWS</div>';
+    html += '<button onclick="switchTab(4)" style="background:none;border:none;color:var(--green);font-size:11px;font-weight:700;cursor:pointer;font-family:inherit">All Blog &rarr;</button>';
+    html += '</div>';
+    blogArticles.slice(0, 3).forEach(function(a) { html += renderArticleCard(a); });
+    html += '</div>';
+  }
 
   // Quick links
   html += '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px">';
-  [['Scores',1,'Leaderboard'],['Insights',3,'Picks & Odds'],['Schedule',6,'Full Calendar']].forEach(function(item) {
+  [['Scores',1,'Leaderboard'],['Insights',3,'Picks & Odds'],['Schedule',6,'Calendar']].forEach(function(item) {
     html += '<div onclick="switchTab(' + item[1] + ')" style="padding:14px;background:var(--card-bg);border:1px solid var(--card-border);border-radius:10px;text-align:center;cursor:pointer">';
     html += '<div style="font-size:13px;font-weight:800;color:var(--text)">' + item[0] + '</div>';
     html += '<div style="font-size:10px;color:var(--text-muted);margin-top:2px">' + item[2] + '</div>';
@@ -1154,25 +1182,25 @@ function renderHome() {
   });
   html += '</div>';
 
-  // Upcoming events
+  // Upcoming event
   if (scheduleData.length > 0) {
-    const now = Date.now();
-    const upcoming = scheduleData.filter(function(e) { return e.startDate && new Date(e.startDate).getTime() > now; }).slice(0, 3);
-    if (upcoming.length > 0) {
-      html += '<div style="padding:14px;background:var(--card-bg);border:1px solid var(--card-border);border-radius:10px;margin-bottom:12px">';
-      html += '<div style="font-size:10px;font-weight:700;letter-spacing:2px;color:var(--gold);margin-bottom:10px">UPCOMING</div>';
-      upcoming.forEach(function(e, i) {
-        const d = new Date(e.startDate);
-        const dateStr = d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
-        const daysUntil = Math.ceil((d.getTime() - now) / 86400000);
-        html += '<div style="display:flex;align-items:center;padding:8px 0;' + (i < upcoming.length - 1 ? 'border-bottom:1px solid var(--card-border)' : '') + '">';
-        html += '<div style="flex:1"><div style="font-size:13px;font-weight:700;color:var(--text)">' + esc(e.event) + (e.major ? ' <span class="tag" style="color:var(--gold);background:rgba(212,168,83,0.12);font-size:8px;margin-left:4px">MAJOR</span>' : '') + '</div>';
-        html += '<div style="font-size:11px;color:var(--text-muted)">' + esc(e.course) + '</div></div>';
-        html += '<div style="text-align:right;flex-shrink:0"><div style="font-size:12px;font-weight:700;color:var(--green)">' + dateStr + '</div>';
-        html += '<div style="font-size:10px;color:var(--text-muted)">' + (daysUntil === 0 ? 'TODAY' : daysUntil === 1 ? 'TOMORROW' : daysUntil + ' days') + '</div></div></div>';
-      });
+    var now2 = Date.now();
+    var next = scheduleData.find(function(e) { return e.startDate && new Date(e.startDate).getTime() > now2; });
+    if (next) {
+      var nd = new Date(next.startDate);
+      var nDays = Math.ceil((nd.getTime() - now2) / 86400000);
+      html += '<div style="padding:14px;background:var(--card-bg);border:1px solid var(--card-border);border-radius:10px;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between">';
+      html += '<div><div style="font-size:10px;font-weight:700;letter-spacing:2px;color:var(--gold);margin-bottom:4px">NEXT UP</div>';
+      html += '<div style="font-size:14px;font-weight:800;color:var(--text)">' + esc(next.event) + '</div>';
+      html += '<div style="font-size:11px;color:var(--text-muted)">' + esc(next.course) + '</div></div>';
+      html += '<div style="text-align:right"><div style="font-size:22px;font-weight:900;color:var(--gold)">' + nDays + '</div><div style="font-size:9px;color:var(--text-muted)">DAY' + (nDays !== 1 ? 'S' : '') + '</div></div>';
       html += '</div>';
     }
+  }
+
+  // Email CTA
+  if (!localStorage.getItem('tf-subscribed')) {
+    html += '<div class="email-cta"><div class="email-cta-title">Get TourFeed in your inbox</div><div class="email-cta-sub">Scores, recaps, and betting picks. Free, no spam.</div><div class="email-cta-form"><input type="email" id="homeEmail" placeholder="Your email"><button onclick="subscribeInline(\'homeEmail\')">Subscribe</button></div></div>';
   }
 
   return html;
