@@ -913,65 +913,84 @@ function shareTwitter(title, slug) {
 function openArticleDetail(article) {
   currentArticle = article;
   if (article.slug) history.pushState(null, '', '/article/' + article.slug);
+  document.title = (article.title || 'Article') + ' | TourFeed';
   renderApp();
   window.scrollTo(0, 0);
 }
 
 function closeArticleDetail() {
   currentArticle = null;
+  document.title = 'TourFeed \u2014 Live Golf Scores, Recaps & Betting Insights';
   history.pushState(null, '', '/');
   renderApp();
   window.scrollTo(0, 0);
 }
 
 function renderArticleDetail(a) {
-  const tc = tagColor(a.tag);
-  const rt = readTime(a.body);
-  const dateStr = a.published_at ? new Date(a.published_at).toLocaleDateString('en-US', {month:'long', day:'numeric', year:'numeric'}) : '';
-  const backLabel = currentTab === 2 ? 'News' : currentTab === 3 ? 'Insights' : currentTab === 4 ? 'Blog' : 'Back';
+  var tc = tagColor(a.tag);
+  var rt = readTime(a.body);
+  var dateStr = a.published_at ? new Date(a.published_at).toLocaleDateString('en-US', {month:'long', day:'numeric', year:'numeric'}) : '';
+  var backLabel = currentTab === 2 ? 'News' : currentTab === 3 ? 'Insights' : currentTab === 4 ? 'Blog' : 'Back';
+  var tagText = esc(a.tag || 'NEWS');
 
-  let html = '<div class="article-detail">';
-  html += '<button onclick="closeArticleDetail()" style="background:none;border:none;color:var(--green);font-size:13px;font-weight:700;cursor:pointer;padding:8px 0;font-family:inherit">&larr; ' + backLabel + '</button>';
+  var html = '<div class="article-detail" style="max-width:680px;margin:0 auto">';
 
+  // Back button
+  html += '<button onclick="closeArticleDetail()" style="background:none;border:none;color:var(--green);font-size:13px;font-weight:700;cursor:pointer;padding:10px 0;font-family:inherit;display:flex;align-items:center;gap:4px">&larr; ' + backLabel + '</button>';
+
+  // Header image or gradient placeholder
   if (a.header_image) {
-    html += '<img src="' + esc(a.header_image) + '" class="article-detail-img" alt="" onerror="this.style.display=\'none\'">';
+    html += '<div style="position:relative;margin-bottom:20px">';
+    html += '<img src="' + esc(a.header_image) + '" class="article-detail-img" alt="" onerror="this.parentElement.innerHTML=\'<div style=\\\'background:linear-gradient(135deg,var(--navy-l),var(--green-d));border-radius:12px;padding:30px;margin-bottom:20px\\\'>< span class=\\\'tag\\\' style=\\\'color:' + tc + ';background:' + tc + '15\\\'>' + tagText + '</span></div>\'">';
+    html += '<span class="tag" style="position:absolute;bottom:12px;left:12px;color:' + tc + ';background:' + tc + '15;backdrop-filter:blur(4px)">' + tagText + '</span>';
+    html += '</div>';
+  } else {
+    html += '<div style="background:linear-gradient(135deg,var(--navy-l),var(--green-d));border-radius:12px;padding:28px;margin-bottom:20px;border-left:4px solid ' + tc + '">';
+    html += '<span class="tag" style="color:' + tc + ';background:' + tc + '15">' + tagText + '</span>';
+    html += '<div style="font-size:9px;color:var(--g700);margin-top:8px;letter-spacing:1px;font-weight:700">TOUR<span style="color:var(--gold)">FEED</span></div>';
+    html += '</div>';
   }
 
-  html += '<div class="article-detail-title">' + esc(a.title) + '</div>';
-  html += '<div class="article-detail-meta">';
-  html += '<span style="font-weight:600">By TourFeed Staff</span>';
+  // Headline
+  html += '<h1 style="font-size:26px;font-weight:900;line-height:1.25;color:var(--text);margin-bottom:12px">' + esc(a.title) + '</h1>';
+
+  // Meta line
+  html += '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:12px;color:var(--text-muted);margin-bottom:20px;padding-bottom:16px;border-bottom:1px solid var(--card-border)">';
+  html += '<span class="tag" style="color:' + tc + ';background:' + tc + '15">' + tagText + '</span>';
+  html += '<span style="font-weight:600;color:var(--text-dim)">By TourFeed Staff</span>';
   if (dateStr) html += '<span>' + dateStr + '</span>';
   html += '<span>' + rt + '</span>';
   html += '</div>';
 
-  html += '<div class="article-detail-body">' + (a.body || '<p>' + esc(a.summary || '') + '</p>') + '</div>';
+  // Article body
+  html += '<div style="line-height:1.85;font-size:16px;color:var(--text-dim);max-width:640px">' + (a.body || '<p>' + esc(a.summary || '') + '</p>') + '</div>';
 
   // Share buttons
-  html += '<div class="share-row">';
-  html += '<button class="share-btn" onclick="shareTwitter(\'' + esc(a.title).replace(/'/g,"\\'") + '\',\'' + esc(a.slug || '') + '\')">Share on X</button>';
-  html += '<button class="share-btn" onclick="shareArticle(\'' + esc(a.title).replace(/'/g,"\\'") + '\',\'' + esc(a.slug || '') + '\')">Copy Link</button>';
+  var safeTitle = esc(a.title).replace(/'/g, '');
+  var safeSlug = esc(a.slug || '');
+  html += '<div style="display:flex;gap:8px;margin:24px 0">';
+  html += '<button class="share-btn" onclick="shareTwitter(\'' + safeTitle + '\',\'' + safeSlug + '\')">Share on X</button>';
+  html += '<button class="share-btn" onclick="shareArticle(\'' + safeTitle + '\',\'' + safeSlug + '\')">Copy Link</button>';
   html += '</div>';
 
   // Email CTA
   if (!localStorage.getItem('tf-subscribed')) {
-    html += '<div class="email-cta">';
+    html += '<div class="email-cta" style="margin:24px 0">';
     html += '<div class="email-cta-title">Get TourFeed in your inbox</div>';
-    html += '<div class="email-cta-sub">Scores, recaps, and betting insights. Free, no spam.</div>';
+    html += '<div class="email-cta-sub">Scores, recaps, and betting picks. Free, no spam.</div>';
     html += '<div class="email-cta-form">';
     html += '<input type="email" id="inlineEmail" placeholder="Your email">';
     html += '<button onclick="subscribeInline(\'inlineEmail\')">Subscribe</button>';
     html += '</div></div>';
   }
 
-  // Related articles
-  const allArticles = (currentTab === 4 ? blogArticles : currentTab === 3 ? bettingArticles : newsArticles);
-  const related = allArticles.filter(function(r) { return r.id !== a.id && r.title !== a.title; }).slice(0, 3);
+  // Related articles — pull from all articles, not just current tab
+  var allForRelated = newsArticles.concat(blogArticles).concat(bettingArticles);
+  var related = allForRelated.filter(function(r) { return r.id !== a.id && r.title !== a.title; }).slice(0, 3);
   if (related.length > 0) {
-    html += '<div class="related-section">';
-    html += '<div class="related-title">MORE FROM TOURFEED</div>';
-    related.forEach(function(r) {
-      html += renderArticleCard(r);
-    });
+    html += '<div style="margin-top:24px;padding-top:20px;border-top:1px solid var(--card-border)">';
+    html += '<div style="font-size:11px;font-weight:700;letter-spacing:2px;color:var(--g700);margin-bottom:12px">MORE FROM TOURFEED</div>';
+    related.forEach(function(r) { html += renderArticleCard(r); });
     html += '</div>';
   }
 
