@@ -303,7 +303,7 @@ const BEEHIIV_PUB_ID = '006010d0-e5a4-4c06-a561-fe15d30ff577';
 const BEEHIIV_API_KEY = 'FFX0nTO2KQfAwyguOSbJcuqf2ZojJCTqvV6KeSXmOcn8DRhzfkYL0jZTKg6Kn2ci';
 const sb = supabase.createClient(SB_URL, SB_KEY);
 
-const TABS = ['Home','Scores','News','Picks','Blog','Standings','Schedule'];
+const TABS = ['Home','Scores','News','Picks','Standings','Schedule'];
 let currentTab = 0;
 let expandedCard = null;
 let lbSearch = '';
@@ -858,9 +858,9 @@ function switchTab(i) {
   newsShowCount = 10;
   blogShowCount = 10;
   renderNav();
-  if (i === 2 || i === 3 || i === 4 || i === 0) fetchAllArticles();
-  if (i === 5 && !standingsFetched[standingsFilter]) fetchESPNStandings(standingsFilter);
-  if (i === 6 || i === 3 || i === 0) { if (!scheduleFetched) fetchESPNSchedule(); }
+  if (i === 0 || i === 2 || i === 3) fetchAllArticles();
+  if (i === 4 && !standingsFetched[standingsFilter]) fetchESPNStandings(standingsFilter);
+  if (i === 5 || i === 3 || i === 0) { if (!scheduleFetched) fetchESPNSchedule(); }
   renderApp();
   // Update URL
   if (i === 0) history.pushState(null, '', '/');
@@ -1233,8 +1233,8 @@ function renderHome() {
   html += '<span>TOP STORIES</span>';
   html += '<button onclick="switchTab(2)" style="background:none;border:none;color:#D4A853;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;text-transform:none;letter-spacing:0">All News &rarr;</button>';
   html += '</div>';
-  if (newsArticles.length > 0) {
-    newsArticles.slice(0, 5).forEach(function(a) { html += renderArticleRow(a); });
+  if (allArticles.length > 1) {
+    allArticles.slice(1, 6).forEach(function(a) { html += renderArticleRow(a); });
   } else {
     html += '<div style="font-size:13px;color:var(--muted);padding:16px 0;font-style:italic">Masters coverage begins Thursday.</div>';
   }
@@ -1452,14 +1452,18 @@ function renderNews() {
     return '<div style="text-align:center;padding:60px 20px"><div style="font-family:Playfair Display,Georgia,serif;font-size:15px;font-weight:700;color:var(--dim)">Loading news...</div></div>';
   }
 
-  if (newsArticles.length === 0) {
-    return '<div style="text-align:center;padding:40px 20px"><div style="font-family:Playfair Display,Georgia,serif;font-size:15px;font-weight:700;color:var(--dim)">No news yet</div><div style="font-size:12px;color:var(--muted);margin-top:6px">Articles will appear here once published</div></div>';
+  // Combine ALL articles sorted by date
+  var allNews = newsArticles.concat(blogArticles).concat(bettingArticles);
+  allNews.sort(function(a,b) { return new Date(b.published_at || 0) - new Date(a.published_at || 0); });
+
+  if (allNews.length === 0) {
+    return '<div style="text-align:center;padding:40px 20px"><div style="font-family:Playfair Display,Georgia,serif;font-size:15px;font-weight:700;color:var(--dim)">No articles yet</div><div style="font-size:12px;color:var(--muted);margin-top:6px;font-style:italic">Original Masters coverage is on its way.</div></div>';
   }
 
-  let html = '<div class="section-label">News &amp; Recaps</div>';
-  const visible = newsArticles.slice(0, newsShowCount);
+  let html = '<div class="section-label">All Articles</div>';
+  const visible = allNews.slice(0, newsShowCount);
   visible.forEach(function(a) { html += renderArticleRow(a); });
-  if (newsShowCount < newsArticles.length) {
+  if (newsShowCount < allNews.length) {
     html += '<button class="load-more" onclick="newsShowCount+=10;renderApp()">Load More</button>';
   }
 
@@ -1979,26 +1983,7 @@ function renderInsights() {
 // ============================================
 // RENDER BLOG TAB — same as News but for analysis/preview
 // ============================================
-function renderBlog() {
-  if (currentArticle) return renderArticleDetail(currentArticle);
-
-  if (!articlesLoaded) {
-    fetchAllArticles();
-    return '<div style="text-align:center;padding:60px 20px"><div style="font-family:Playfair Display,Georgia,serif;font-size:15px;font-weight:700;color:var(--dim)">Loading articles...</div></div>';
-  }
-
-  if (blogArticles.length === 0) {
-    return '<div style="text-align:center;padding:40px 20px"><div style="font-family:Playfair Display,Georgia,serif;font-size:15px;font-weight:700;color:var(--dim)">No blog posts yet</div><div style="font-size:12px;color:var(--muted);margin-top:6px">Previews, analysis, and power rankings will appear here</div></div>';
-  }
-
-  let html = '<div class="section-label">Analysis &amp; Previews</div>';
-  const visible = blogArticles.slice(0, blogShowCount);
-  visible.forEach(function(a) { html += renderArticleRow(a); });
-  if (blogShowCount < blogArticles.length) {
-    html += '<button class="load-more" onclick="blogShowCount+=10;renderApp()">Load More</button>';
-  }
-  return html;
-}
+// Blog tab removed — all articles now show in News tab
 
 // ============================================
 // RENDER STANDINGS
@@ -2084,9 +2069,8 @@ function _doRender() {
       case 1: html += renderScores(); break;
       case 2: html += renderNews(); break;
       case 3: html += renderInsights(); break;
-      case 4: html += renderBlog(); break;
-      case 5: html += renderStandings(); break;
-      case 6: html += renderSchedule(); break;
+      case 4: html += renderStandings(); break;
+      case 5: html += renderSchedule(); break;
     }
   }
 
