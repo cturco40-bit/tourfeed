@@ -171,7 +171,7 @@ Rules:
       messages: [
         {
           role: 'user',
-          content: `Write an original TourFeed article based on these extracted facts:\n\n${factsText}\n\nReturn ONLY valid JSON, no markdown fences:\n{"title":"clickbait headline","body":"article HTML with <p> tags","tweets":["tweet reaction 1","tweet reaction 2"]}`,
+          content: `Write an original TourFeed article based on these extracted facts:\n\n${factsText}\n\nTWEET RULES:\n- Each tweet must use a DIFFERENT sentence structure. Vary between questions, declarations, comparisons, one-word reactions, hot takes.\n- NEVER repeat the pattern "[thing happened]. That's either [A] or [B]."\n- NEVER state unverified legal claims (arrested, suspended, charged) unless the source facts explicitly confirm it. If unsure, skip.\n- Max 2 tweets. Make them genuinely different angles on the story.\n\nReturn ONLY valid JSON, no markdown fences:\n{"title":"clickbait headline","body":"article HTML with <p> tags","tweets":["tweet 1","tweet 2"]}`,
         },
       ],
     }),
@@ -293,84 +293,105 @@ exports.handler = async (event) => {
     const unique = deduplicateItems(allItems);
     console.log(`Fetched ${allItems.length} items, ${unique.length} unique`);
 
-    // 2. Get existing content hashes from Supabase
+    // 2. Get existing content hashes
     const existingHashes = await sb('content_hashes?select=hash', 'GET');
     const hashSet = new Set(existingHashes.map(h => h.hash));
 
-    // 3. Filter to only new items
+    // 3. Get existing topic keys from last 48 hours
+    const twoDaysAgo = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
+    const existingTopics = await sb('content_topics?created_at=gte.' + twoDaysAgo + '&select=topic_key');
+    const topicSet = new Set(existingTopics.map(t => t.topic_key));
+
+    // 4. Check recent drafts for source headline overlap
+    const recentDrafts = await sb('content_drafts?created_at=gte.' + twoDaysAgo + '&select=source_event,body');
+    const recentSourceWords = recentDrafts.map(d => ((d.source_event || '') + ' ' + (d.body || '')).toLowerCase());
+
+    // 5. Extract topic key from headline
+    function extractTopicKey(title) {
+      const t = (title || '').toLowerCase();
+      const players = ['scheffler','mcilroy','rory','tiger','woods','schauffele','rahm','koepka','morikawa','hovland','fleetwood','spieth','fowler','reed','spaun','aberg','theegala','homa','lowry','thomas','phil','mickelson','dechambeau','bryson','matsuyama','woodland','cantlay'];
+      const events = ['withdraw','injury','win','champion','arrest','dui','suspended','masters','open','pga','trade','return','caddie','baby','newborn','retire','record'];
+      let player = '', event = '';
+      for (const p of players) { if (t.includes(p)) { player = p; break; } }
+      for (const e of events) { if (t.includes(e)) { event = e; break; } }
+      return player + '-' + (event || 'news');
+    }
+
+    // 6. Check if headline keywords overlap with recent drafts
+    function isAlreadyCovered(title) {
+      const words = title.toLowerCase().replace(/[^a-z0-9\s]/g, '').split(/\s+/).filter(w => w.length > 4);
+      return recentSourceWords.some(r => {
+        const overlap = words.filter(w => r.includes(w)).length;
+        return overlap >= words.length * 0.5;
+      });
+    }
+
+    // 7. Filter to truly new items — triple check
     const newItems = unique.filter(item => {
       const h = hashText(item.title);
-      return !hashSet.has(h);
+      if (hashSet.has(h)) return false;
+      const topicKey = extractTopicKey(item.title);
+      if (topicSet.has(topicKey)) return false;
+      if (isAlreadyCovered(item.title)) return false;
+      return true;
     });
 
-    console.log(`${newItems.length} new items to process`);
+    console.log(`${newItems.length} genuinely new items (after hash + topic + draft dedup)`);
 
-    // Limit to 2 per run to stay within Netlify 10s timeout
+    // MAX 2 articles per run (each generates up to 2 tweets = max 6 drafts total)
     const toProcess = newItems.slice(0, 2);
     const results = [];
+    let totalTweetsThisRun = 0;
 
-    // 4. For each new item: extract facts, generate article, store draft
     for (const item of toProcess) {
       const contentHash = hashText(item.title);
+      const topicKey = extractTopicKey(item.title);
 
       try {
-        // Extract key facts
         const facts = extractFacts(item.title, item.desc);
-        console.log(`Processing: "${item.title}" from ${item.source}`);
 
-        // Generate original article via Claude Haiku
         const article = await generateArticle(facts, ANTHROPIC_API_KEY);
-        if (!article) {
-          console.error(`Failed to generate article for: "${item.title}"`);
-          continue;
-        }
+        if (!article) { continue; }
 
-        // Store article draft in content_drafts
         const articleTitle = article.title || 'Breaking Golf News';
         const articleImage = await uploadImage('BREAKING', articleTitle);
-        const articleDraft = await sb('content_drafts', 'POST', {
+        await sb('content_drafts', 'POST', {
           type: 'article_news',
           title: articleTitle,
           body: article.body || '',
           image_url: articleImage,
-          source_headline: item.title,
-          source_name: item.source,
+          source_event: item.title,
           status: 'pending',
           created_at: new Date().toISOString(),
         });
 
-        // Store tweet drafts
+        // MAX 5 tweets total per run, MAX 2 per article
         const tweets = article.tweets || [];
-        for (const tweet of tweets.slice(0, 2)) {
-          if (tweet && tweet.length > 10) {
-            await sb('content_drafts', 'POST', {
-              type: 'tweet_content',
-              title: article.title || 'Golf News Tweet',
-              body: tweet,
-              source_headline: item.title,
-              source_name: item.source,
-              status: 'pending',
-              created_at: new Date().toISOString(),
-            });
-          }
+        let tweetCount = 0;
+        for (const tweet of tweets) {
+          if (totalTweetsThisRun >= 5) break;
+          if (tweetCount >= 2) break;
+          if (!tweet || tweet.length < 15) continue;
+          // Skip tweets with unverified legal claims
+          if (/arrested|charged|indicted|convicted|guilty/i.test(tweet) && !/source|report|according/i.test(item.title)) continue;
+          await sb('content_drafts', 'POST', {
+            type: 'tweet_content',
+            body: tweet,
+            source_event: topicKey,
+            status: 'pending',
+            created_at: new Date().toISOString(),
+          });
+          tweetCount++;
+          totalTweetsThisRun++;
         }
 
-        // Store content hash so we don't reprocess
-        await sb('content_hashes', 'POST', {
-          hash: contentHash,
-          source: item.source,
-          title: item.title.slice(0, 200),
-          created_at: new Date().toISOString(),
-        });
+        // Record hash + topic so future runs skip
+        await sb('content_hashes', 'POST', { hash: contentHash, source: item.source, created_at: new Date().toISOString() });
+        await sb('content_topics', 'POST', { topic_key: topicKey, player_name: topicKey.split('-')[0], event_type: topicKey.split('-')[1], created_at: new Date().toISOString() }).catch(function(){});
 
-        results.push({
-          source: item.source,
-          original: item.title,
-          generated: article.title,
-          tweets: tweets.length,
-        });
+        results.push({ source: item.source, original: item.title, generated: articleTitle, tweets: tweetCount });
       } catch (itemErr) {
-        console.error(`Error processing "${item.title}":`, itemErr.message);
+        console.error(`Error: "${item.title}":`, itemErr.message);
       }
     }
 
