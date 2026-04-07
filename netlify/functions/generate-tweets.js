@@ -1,4 +1,6 @@
 // Scrape ALL golf sources, generate tweets from the freshest content
+const SB_URL = 'https://yumahmnoltvbiadjefxw.supabase.co';
+const SB_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl1bWFobW5vbHR2YmlhZGplZnh3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUzOTY0NDAsImV4cCI6MjA5MDk3MjQ0MH0.FAXp2t0zaHlm1W7aaut72btMilrYPy33XO3p8MfyYlo';
 
 // Well-known players for headshot matching (name → ESPN ID)
 async function uploadTweetImage(text) {
@@ -122,13 +124,14 @@ exports.handler = async (event) => {
     });
 
     // Get existing drafts to avoid dupes
-    // Only check last 10 drafts for dedup — not the entire history
+    // Only check recent TWEET drafts for dedup — skip articles (they contain too many common words)
     let recentTexts = [];
     try {
-      const dRes = await fetch('https://tourfeed.co/.netlify/functions/draft-tweet');
+      const dRes = await fetch(SB_URL + '/rest/v1/content_drafts?type=like.tweet*&status=eq.pending&order=created_at.desc&limit=15&select=body', {
+        headers: { 'apikey': SB_ANON }
+      });
       if (dRes.ok) {
-        const drafts = (await dRes.json()).drafts || [];
-        recentTexts = drafts.slice(0, 10).map(d => (d.body || d.text || '').toLowerCase());
+        recentTexts = (await dRes.json()).map(d => (d.body || '').toLowerCase());
       }
     } catch(e) {}
 
