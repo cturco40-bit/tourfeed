@@ -1219,8 +1219,10 @@ function renderHome() {
   html += '<span>TOP STORIES</span>';
   html += '<button onclick="switchTab(2)" style="background:none;border:none;color:#D4A853;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;text-transform:none;letter-spacing:0">All News &rarr;</button>';
   html += '</div>';
-  if (allArticles.length > 1) {
-    allArticles.slice(1, 6).forEach(function(a) { html += renderArticleRow(a); });
+  if (newsArticles.length > 0) {
+    newsArticles.slice(0, 5).forEach(function(a) { html += renderArticleRow(a); });
+  } else {
+    html += '<div style="font-size:13px;color:var(--muted);padding:16px 0;font-style:italic">Masters coverage begins Thursday.</div>';
   }
   html += '</div>';
 
