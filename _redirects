@@ -1,5 +1,12 @@
 /privacy  /privacy.html  200
 /terms    /terms.html    200
+/api/fetch-scores     /.netlify/functions/fetch-scores-v2  200
+/api/news-detector    /.netlify/functions/news-detector  200
+/api/generate-tweets  /.netlify/functions/generate-tweets  200
+/api/publish          /.netlify/functions/publish-approved  200
+/api/blog-scheduler   /.netlify/functions/blog-scheduler  200
+/api/fetch-odds       /.netlify/functions/fetch-odds  200
+/api/generate-content /.netlify/functions/generate-content-v2  200
 /tf-admin-drafts  /tf-admin-drafts.html  200
 /article/*  /index.html  200
 /*        /index.html    200
