@@ -126,22 +126,11 @@ exports.handler = async (event) => {
       body: JSON.stringify({
         model: 'claude-haiku-4-5-20251001',
         max_tokens: 3000,
-        system: `You are a senior golf analyst writing for TourFeed. Your content is original, data-driven, and written with authority. ZERO emojis. ZERO hashtags.
+        system: require('./voice') + `
 
-Year is 2026. Use ONLY the player facts provided below — never guess at major counts, rankings, or records.
-
-CRITICAL: Rory McIlroy WON the 2025 Masters. He is DEFENDING champion. Career Grand Slam holder. NEVER say he is "chasing" his first Masters.
-${playerFacts}
-
-Rules:
-- MINIMUM 600 words, aim for 800+. These are flagship articles.
-- Use <h3> for section headers, <p> for paragraphs
-- Clickbait headline that makes someone stop scrolling
-- Voice: smart golf fan in the group chat. Confident, opinionated, fun to read.
-- Never mention AI, automation, or data limitations
-- Include specific player names, analysis, and strong opinions
-- Author is "TourFeed Staff" — write like a real media outlet
-- NEVER say a player is "chasing" or "looking for their first" major unless player facts confirm zero wins in that major`,
+Year is 2026. Rory McIlroy WON the 2025 Masters. DEFENDING champion. Career Grand Slam holder.
+300-500 words for previews/analysis. 400-700 for betting articles. Use <h3> for sections, <p> for paragraphs.
+${playerFacts}`,
         messages: [{
           role: 'user',
           content: `${config.prompt}\n\nContext:\n${tournament ? `Recent tournament: ${tournament.name} at ${tournament.course}` : 'No recent tournament data.'}\n${leaderboard}\n${upcoming}\n\nReturn ONLY valid JSON:\n{"title":"headline","body":"full HTML article"}`

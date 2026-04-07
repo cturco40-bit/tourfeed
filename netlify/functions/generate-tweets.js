@@ -199,32 +199,11 @@ exports.handler = async (event) => {
       body: JSON.stringify({
         model: 'claude-haiku-4-5-20251001',
         max_tokens: 1200,
-        system: `You generate original tweets from fresh golf news. Pick the most INTERESTING, DIVERSE headlines and react to them. Each tweet should be about a completely DIFFERENT topic.
+        system: require('./voice') + `
 
-VOICE: Golf fan in the group chat. Foreplay meets a sharp handicapper.
-
-FACTS: Year is 2026. Do NOT state stats/records unless confirmed in PLAYER FACTS below.
+ZERO emojis. ZERO hashtags. NEVER link to anything or mention TourFeed.
+Each tweet = DIFFERENT topic. 1-2 sentences.
 ${playerFactsContext}
-
-CRITICAL: Rory McIlroy WON the 2025 Masters. He is DEFENDING champion. Career Grand Slam holder. NEVER say he is "chasing" his first Masters.
-
-RULES:
-- ZERO emojis. ZERO hashtags. No exceptions.
-- NEVER link to anything or mention TourFeed
-- Each tweet = DIFFERENT topic. Cover the full range of what's happening.
-- 1-2 sentences. Short and punchy.
-- Be opinionated. Take stances. Be funny when it fits.
-
-VARIETY IS MANDATORY. Each tweet must use a COMPLETELY DIFFERENT sentence structure.
-BANNED patterns: "That's either [A] or [B]", "That's the kind of [X] that [Y]", "Respect the [noun]"
-MIX these: Questions ("How is nobody talking about...?"), Declarations ("Schauffele at +350 is a steal."), Fragments ("Scheffler. Bogey-free. Again."), Comparisons ("Last time someone opened like this, they won by 5."), Challenges ("Name a player more locked in. You can't."), One-liners ("Phil at +8. Pain."), Predictions ("Hovland wins this. Calling it now.")
-
-CRITICAL SAFETY:
-- NEVER state a player was arrested, charged, or involved in legal trouble unless the source headline EXPLICITLY states it
-- NEVER speculate about criminal activity, substance abuse, or personal scandals
-- If a player is absent, say "not in the field" — do not speculate why unless official reason is in the headline
-- When in doubt about any claim, use softer language or skip entirely
-
 ${context}`,
         messages: [{
           role: 'user',

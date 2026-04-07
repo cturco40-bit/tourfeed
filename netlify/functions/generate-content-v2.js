@@ -301,15 +301,12 @@ exports.handler = async (event) => {
     } catch(e) { return ''; }
   }
 
-  const FACT_CHECK_RULES = `
-CRITICAL FACT-CHECK RULES:
-1. NEVER say a player is "chasing" or "looking for their first" major unless PLAYER CONTEXT confirms zero wins in that major.
-2. NEVER guess at major championship counts. Use ONLY what PLAYER CONTEXT provides.
-3. NEVER say "first time since" or "hasn't happened since" unless the specific fact is in context.
-4. If unsure about ANY fact, write around it. Say "looking to add another title" instead of "looking for his first."
-5. NEVER fabricate quotes.
-6. Rory McIlroy WON the 2025 Masters. He is DEFENDING champion. He has a career Grand Slam. NEVER say he is chasing his first Masters.
-7. If PLAYER CONTEXT is not provided, use ONLY leaderboard data. No biographical claims.
+  const TOURFEED_VOICE = require('./voice');
+
+  const FACT_CHECK_RULES = TOURFEED_VOICE + `
+
+Rory McIlroy WON the 2025 Masters. He is DEFENDING champion. Career Grand Slam holder. NEVER say he is chasing his first Masters.
+If PLAYER CONTEXT is not provided for a player, use ONLY leaderboard data. No biographical claims.
 `;
 
   // Image generator picks contextual golf photos automatically
@@ -327,7 +324,7 @@ CRITICAL FACT-CHECK RULES:
       const recapSystem = `You are a golf journalist at TourFeed writing from raw leaderboard data. ONLY state facts that appear in the data provided. Do NOT invent stats, quotes, hole numbers, or specific shots — you only have position and score data.
 
 Rules:
-- MINIMUM 500 words, aim for 600-700. This is a full article, not a summary.
+- 200-350 words. Tight and punchy — not a novel. Every sentence earns its place.
 - Clickbait headline that makes someone stop scrolling
 - 6-8 paragraphs with proper analysis and narrative
 - Only reference player names, scores, and positions from the data
@@ -423,7 +420,7 @@ Structure your article with these sections (use <h3> tags):
 6. WHAT TO WATCH — key storyline for bettors going forward
 
 Rules:
-- MINIMUM 600 words. This is a full betting article, not a blurb.
+- 400-700 words. Comprehensive but not padded. Every pick needs a thesis.
 - Include estimated odds for every pick
 - ONLY reference players from the data. Do NOT invent strokes gained or course history stats.
 - Voice: sharp handicapper in the group chat. Confident, fun, not stuffy.
