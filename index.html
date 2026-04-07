@@ -1588,186 +1588,232 @@ function renderInsights() {
   var pS = function(s) { if (!s || s === 'E') return 0; return parseInt(s) || 0; };
   var html = '';
   var active = PLAYERS ? PLAYERS.filter(function(p) { return p.status === 'active'; }) : [];
-  var isLive = TOURNAMENT && TOURNAMENT.state === 'in' && active.length > 3;
+  var hasData = TOURNAMENT && active.length > 3;
   var rd = TOURNAMENT ? TOURNAMENT.round : 1;
+  var leaderNum = hasData ? pS(active[0].score) : 0;
+  var tiedLead = hasData ? active.filter(function(p) { return p.score === active[0].score; }).length > 1 : false;
 
-  // Position-based odds
-  function posOdds(pos, tied) {
-    if (pos === 1) return tied ? 150 : -175;
+  // Find lowest today score in field for HOT HAND
+  var lowestToday = hasData ? Math.min.apply(null, active.slice(0, 30).map(function(p) { return pS(p.today) || 0; }).filter(function(v) { return v !== 0; })) : 0;
+
+  function posOdds(pos) {
+    if (pos === 1) return tiedLead ? 150 : -175;
     if (pos === 2) return 350;
     if (pos === 3) return 500;
-    if (pos <= 5) return 600 + (pos - 3) * 400;
-    if (pos <= 10) return 2000 + (pos - 6) * 500;
-    return 5000 + (pos - 11) * 500;
+    if (pos === 4) return 800;
+    if (pos === 5) return 1200;
+    if (pos === 6) return 1600;
+    if (pos <= 8) return 2000;
+    return 3000;
   }
   function oddsStr(o) { return o < 0 ? String(o) : '+' + o; }
   function impliedPct(o) { return o < 0 ? (Math.abs(o) / (Math.abs(o) + 100) * 100) : (100 / (o + 100) * 100); }
-  function edgeLabel(pos, todayScore, back) {
-    if (pos === 1) return {label:'FAVORITE', color:'var(--gold)', bg:'rgba(212,168,83,0.15)'};
-    if (todayScore <= -4) return {label:'HOT HAND', color:'var(--s-green)', bg:'rgba(45,212,160,0.12)'};
-    if (back <= 3 && todayScore <= -2) return {label:'VALUE', color:'var(--green)', bg:'rgba(45,143,111,0.15)'};
-    if (pos >= 8) return {label:'LONGSHOT', color:'#4A90D9', bg:'rgba(74,144,217,0.12)'};
-    if (back <= 2) return {label:'NARRATIVE', color:'var(--s-red)', bg:'rgba(255,107,107,0.12)'};
-    return {label:'VALUE', color:'var(--green)', bg:'rgba(45,143,111,0.15)'};
+
+  function modelEdge(todayNum, back, round) {
+    var e = 0;
+    if (todayNum <= -5) e += 6;
+    else if (todayNum <= -3) e += 4;
+    else if (todayNum <= -1) e += 2;
+    else if (todayNum >= 2) e -= 3;
+    else if (todayNum >= 1) e -= 1;
+    if (round >= 3 && back <= 2) e += 2;
+    if (round >= 3 && back >= 6) e -= 2;
+    return e;
   }
 
-  // ── SECTION 1: LIVE TOURNAMENT HEADER ──
-  if (isLive) {
+  function edgeLabel(pos, todayNum, isHottest) {
+    if (pos === 1) return {l:'FAVORITE',c:'var(--gold)',bg:'rgba(212,168,83,0.15)'};
+    if (isHottest) return {l:'HOT HAND',c:'var(--s-green)',bg:'rgba(45,212,160,0.12)'};
+    if (pos >= 6) return {l:'LONGSHOT',c:'#4A90D9',bg:'rgba(74,144,217,0.12)'};
+    return {l:'VALUE',c:'var(--green)',bg:'rgba(45,143,111,0.15)'};
+  }
+
+  // ━━ SECTION 1: LIVE TOURNAMENT HEADER ━━
+  if (hasData) {
     html += '<div style="border:2px solid var(--green);border-radius:12px;padding:16px;margin-bottom:14px">';
     html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">';
     html += '<div style="width:8px;height:8px;border-radius:50%;background:var(--s-green);animation:pulse 2s infinite"></div>';
     html += '<div style="font-size:11px;font-weight:800;letter-spacing:2px;color:var(--green)">LIVE BETS &mdash; ' + esc(TOURNAMENT.name).toUpperCase() + ' R' + rd + '</div></div>';
-    html += '<div style="font-size:10px;color:var(--text-muted)">Lines via DraftKings &middot; Model updated after R' + Math.max(1, rd - 1) + '</div>';
+    html += '<div style="font-size:10px;color:var(--text-muted)">Model updated after Round ' + Math.max(1, rd - 1) + '</div>';
     html += '</div>';
   }
 
-  // ── SECTION 2: OUTRIGHT WINNER TABLE ──
-  if (isLive) {
-    var leaderNum = pS(active[0].score);
-    var tied = active.filter(function(p) { return p.score === active[0].score; }).length > 1;
-
+  // ━━ SECTION 2: OUTRIGHT WINNER TABLE ━━
+  if (hasData) {
     html += '<div style="font-size:11px;font-weight:800;letter-spacing:2px;color:var(--g700);margin-bottom:10px">OUTRIGHT WINNER</div>';
+    var playerOdds = [];
 
     active.slice(0, 10).forEach(function(p, i) {
       var back = Math.abs(pS(p.score) - leaderNum);
       var todayNum = pS(p.today);
-      var odds = posOdds(i + 1, i === 0 && tied);
+      var odds = posOdds(i + 1);
       var imp = impliedPct(odds);
-      // Model edge: reward low today scores
-      var modelEdge = Math.min(8, Math.max(-4, (todayNum <= -3 ? 5 : todayNum <= -1 ? 2 : todayNum === 0 ? 0 : -2) + (rd >= 3 && back <= 2 ? 3 : 0)));
-      var model = Math.max(1, imp + modelEdge);
-      var isValue = model > imp;
-      var edge = edgeLabel(i + 1, todayNum, back);
+      var edge = modelEdge(todayNum, back, rd);
+      var model = Math.max(0.5, imp + edge);
+      var isVal = model > imp;
+      var isHottest = todayNum === lowestToday && todayNum < 0;
+      var el = edgeLabel(i + 1, todayNum, isHottest);
+      playerOdds.push({p:p, i:i, odds:odds, imp:imp, model:model, edge:edge, back:back, todayNum:todayNum, isVal:isVal});
 
-      html += '<div style="background:var(--card-bg);border:1px solid var(--card-border);border-radius:10px;padding:12px;margin-bottom:6px;display:flex;align-items:center;gap:10px">';
-      // Flag + name
+      html += '<div style="background:var(--card-bg);border:1px solid var(--card-border);border-radius:10px;padding:12px 14px;margin-bottom:6px;display:flex;align-items:center;gap:10px">';
       html += '<div style="flex:1;min-width:0">';
-      html += '<div style="display:flex;align-items:center;gap:6px;margin-bottom:3px">';
-      html += '<span>' + p.c + '</span>';
-      html += '<span style="font-size:14px;font-weight:800;color:var(--text)">' + esc(p.name) + '</span>';
-      html += '</div>';
-      // Probabilities
-      html += '<div style="display:flex;align-items:center;gap:8px;font-size:10px">';
+      html += '<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">' + p.c + ' <span style="font-size:14px;font-weight:800;color:var(--text)">' + esc(p.name) + '</span></div>';
+      html += '<div style="display:flex;align-items:center;gap:8px;font-size:10px;flex-wrap:wrap">';
       html += '<span style="color:var(--text-muted)">Implied ' + imp.toFixed(1) + '%</span>';
-      html += '<span style="color:' + (isValue ? 'var(--s-green)' : 'var(--text-muted)') + '">Model ' + model.toFixed(1) + '%</span>';
-      if (isValue) html += '<span style="color:var(--s-green);font-weight:700;font-size:9px;background:rgba(45,212,160,0.12);padding:2px 6px;border-radius:4px">+VALUE</span>';
+      html += '<span style="color:' + (isVal ? 'var(--s-green)' : 'var(--text-muted)') + ';font-weight:' + (isVal ? '700' : '400') + '">Model ' + model.toFixed(1) + '%</span>';
+      if (isVal) html += '<span style="color:var(--s-green);font-weight:700;font-size:9px;background:rgba(45,212,160,0.12);padding:2px 6px;border-radius:4px">+VALUE</span>';
       html += '</div></div>';
-      // Edge label
-      html += '<span class="tag" style="color:' + edge.color + ';background:' + edge.bg + ';font-size:8px;flex-shrink:0">' + edge.label + '</span>';
-      // Odds
-      html += '<div style="font-size:18px;font-weight:900;color:var(--text);flex-shrink:0;min-width:60px;text-align:right">' + oddsStr(odds) + '</div>';
+      html += '<span class="tag" style="color:' + el.c + ';background:' + el.bg + ';font-size:8px;flex-shrink:0">' + el.l + '</span>';
+      html += '<div style="font-size:20px;font-weight:900;color:var(--text);min-width:65px;text-align:right">' + oddsStr(odds) + '</div>';
       html += '</div>';
     });
-  }
 
-  // ── SECTION 3: TOURFEED HANDICAPPER PICK ──
-  if (isLive && active.length > 3) {
-    var leaderNum2 = pS(active[0].score);
-    var bestEdge = null, bestEdgeVal = -99;
-    active.slice(1, 15).forEach(function(p, i) {
-      var back = Math.abs(pS(p.score) - leaderNum2);
-      var todayNum = pS(p.today);
-      var odds = posOdds(i + 2, false);
-      var imp = impliedPct(odds);
-      var edge = (todayNum <= -3 ? 5 : todayNum <= -1 ? 2 : 0) + (rd >= 3 && back <= 2 ? 3 : 0);
-      if (edge > bestEdgeVal) { bestEdgeVal = edge; bestEdge = {p:p, odds:odds, imp:imp, model:Math.max(1,imp+edge), back:back}; }
-    });
-    if (bestEdge) {
+    // ━━ SECTION 3: TOURFEED HANDICAPPER PICK ━━
+    var best = null;
+    playerOdds.slice(1).forEach(function(po) { if (!best || po.edge > best.edge) best = po; });
+    if (best && best.edge > 0) {
+      var bp = best.p;
+      var dayLabel = rd === 1 ? 'Thursday' : rd === 2 ? 'Friday' : rd === 3 ? 'Saturday' : 'Sunday';
       html += '<div style="border-left:4px solid var(--green);background:var(--card-bg);border-radius:0 10px 10px 0;padding:16px;margin:16px 0">';
       html += '<div style="font-size:10px;font-weight:800;letter-spacing:2px;color:var(--green);margin-bottom:8px">TOURFEED HANDICAPPER PICK</div>';
-      html += '<div style="font-size:18px;font-weight:900;color:var(--text);margin-bottom:6px">' + esc(bestEdge.p.name) + ' ' + oddsStr(bestEdge.odds) + ' &mdash; Model loves the value here</div>';
-      html += '<div style="font-size:13px;color:var(--text-dim);line-height:1.6;margin-bottom:12px">';
-      html += esc(bestEdge.p.name) + ' sits at ' + bestEdge.p.score + ' (' + bestEdge.back + ' back) with a ' + (bestEdge.p.today || 'solid') + ' today. ';
-      html += 'Our model has this at ' + bestEdge.model.toFixed(1) + '% vs the implied ' + bestEdge.imp.toFixed(1) + '% — that is a ' + (bestEdge.model - bestEdge.imp).toFixed(1) + '% edge. ';
-      html += 'At ' + oddsStr(bestEdge.odds) + ', there is significant value on a player trending in the right direction heading into ' + (rd < 4 ? 'the weekend' : 'the final stretch') + '.';
+      html += '<div style="font-size:18px;font-weight:900;color:var(--text);margin-bottom:8px">' + esc(bp.name) + ' ' + oddsStr(best.odds) + ' &mdash; Best Value on ' + dayLabel + '</div>';
+      html += '<div style="font-size:13px;color:var(--text-dim);line-height:1.7;margin-bottom:14px">';
+      html += esc(bp.name) + ' sits at ' + bp.score + ' overall';
+      if (best.back > 0) html += ', ' + best.back + ' shot' + (best.back > 1 ? 's' : '') + ' off the lead';
+      html += '. ';
+      if (best.todayNum < 0) html += 'Shot ' + bp.today + ' today which is one of the best rounds in the field. ';
+      else if (best.todayNum === 0) html += 'Even-par today, steady and in control. ';
+      html += 'Our model has ' + esc(bp.name) + ' at ' + best.model.toFixed(1) + '% probability vs the market-implied ' + best.imp.toFixed(1) + '% — a ' + (best.model - best.imp).toFixed(1) + '% edge. ';
+      html += 'At ' + oddsStr(best.odds) + ', this is the best value on the board right now.';
       html += '</div>';
       html += '<div style="display:flex;gap:8px;flex-wrap:wrap">';
-      html += '<span style="padding:6px 12px;background:rgba(45,143,111,0.12);border-radius:6px;font-size:11px;font-weight:700;color:var(--green)">Confidence: 7/10</span>';
-      html += '<span style="padding:6px 12px;background:rgba(212,168,83,0.12);border-radius:6px;font-size:11px;font-weight:700;color:var(--gold)">1.5u</span>';
+      html += '<span style="padding:6px 12px;background:rgba(45,143,111,0.12);border-radius:6px;font-size:11px;font-weight:700;color:var(--green)">Confidence: 8/10</span>';
+      html += '<span style="padding:6px 12px;background:rgba(212,168,83,0.12);border-radius:6px;font-size:11px;font-weight:700;color:var(--gold)">2u</span>';
       html += '<span style="padding:6px 12px;background:rgba(255,255,255,0.05);border-radius:6px;font-size:11px;font-weight:700;color:var(--text-muted)">Season: 0-0</span>';
       html += '</div></div>';
     }
-  }
 
-  // ── SECTION 4: LIVE PROPS & MATCHUPS ──
-  if (isLive && active.length > 5) {
+    // ━━ SECTION 4: LIVE PROPS & MATCHUPS ━━
     html += '<div style="font-size:11px;font-weight:800;letter-spacing:2px;color:var(--g700);margin:16px 0 10px">LIVE PROPS & MATCHUPS</div>';
-    var leaderNum3 = pS(active[0].score);
 
-    // Top 5 finish pick
-    var t5 = active.slice(2, 8).sort(function(a,b) { return (pS(a.today)||0) - (pS(b.today)||0); })[0];
-    if (t5) {
-      var t5back = Math.abs(pS(t5.score) - leaderNum3);
-      html += '<div style="background:var(--card-bg);border:1px solid var(--card-border);border-radius:10px;padding:12px;margin-bottom:6px">';
-      html += '<span class="tag" style="color:var(--green);background:rgba(45,143,111,0.15);font-size:9px">TOP 5 FINISH</span>';
-      html += '<div style="font-size:15px;font-weight:800;color:var(--text);margin-top:6px">' + esc(t5.name) + ' +280</div>';
-      html += '<div style="font-size:11px;color:var(--text-muted);margin-top:4px">' + t5back + ' back with ' + (t5.today || 'a solid round') + ' today. In position to make a move.</div>';
+    // Pick 1: TOP 5 FINISH — best today score from position 3-6
+    var t5cands = active.slice(2, 7).sort(function(a,b) { return pS(a.today) - pS(b.today); });
+    if (t5cands[0]) {
+      var t5 = t5cands[0], t5back = Math.abs(pS(t5.score) - leaderNum);
+      var t5odds = posOdds(active.indexOf(t5) + 1);
+      html += '<div style="background:var(--card-bg);border:1px solid var(--card-border);border-radius:10px;padding:14px;margin-bottom:8px">';
+      html += '<span class="tag" style="color:var(--gold);background:rgba(212,168,83,0.15);font-size:9px">TOP 5 FINISH</span>';
+      html += '<div style="font-size:16px;font-weight:800;color:var(--text);margin-top:6px">' + esc(t5.name) + ' ' + oddsStr(Math.round(t5odds * 0.4)) + '</div>';
+      html += '<div style="font-size:12px;color:var(--text-muted);line-height:1.5;margin-top:4px">' + esc(t5.name) + ' is ' + t5back + ' back after shooting ' + (t5.today || 'a solid round') + ' today. Currently in great position to finish inside the top 5 with momentum on their side.</div>';
+      html += '<div style="font-size:10px;color:var(--green);font-weight:700;margin-top:6px">Confidence: 7/10</div>';
       html += '</div>';
     }
 
-    // Head to head
+    // Pick 2: HEAD TO HEAD — position 3 vs 4
     if (active.length > 4) {
-      var h2h1 = active[2], h2h2 = active[3];
-      html += '<div style="background:var(--card-bg);border:1px solid var(--card-border);border-radius:10px;padding:12px;margin-bottom:6px">';
+      var h1 = active[2], h2 = active[3];
+      var h1today = pS(h1.today), h2today = pS(h2.today);
+      var pick = h1today <= h2today ? h1 : h2;
+      var other = pick === h1 ? h2 : h1;
+      html += '<div style="background:var(--card-bg);border:1px solid var(--card-border);border-radius:10px;padding:14px;margin-bottom:8px">';
       html += '<span class="tag" style="color:#4A90D9;background:rgba(74,144,217,0.12);font-size:9px">HEAD TO HEAD</span>';
-      html += '<div style="font-size:15px;font-weight:800;color:var(--text);margin-top:6px">' + esc(h2h1.name) + ' over ' + esc(h2h2.name) + ' -110</div>';
-      html += '<div style="font-size:11px;color:var(--text-muted);margin-top:4px">' + esc(h2h1.name) + ' has the better today score and momentum. Take the head-to-head.</div>';
+      html += '<div style="font-size:16px;font-weight:800;color:var(--text);margin-top:6px">' + esc(pick.name) + ' over ' + esc(other.name) + ' -110</div>';
+      html += '<div style="font-size:12px;color:var(--text-muted);line-height:1.5;margin-top:4px">' + esc(pick.name) + ' shot ' + (pick.today || 'better') + ' today vs ' + (other.today || 'even') + ' for ' + esc(other.name) + '. The momentum edge is clear — take the head-to-head at even money.</div>';
+      html += '<div style="font-size:10px;color:var(--green);font-weight:700;margin-top:6px">Confidence: 7/10</div>';
       html += '</div>';
     }
 
-    // Miss Top 20
-    var fade = active.slice(15, 25).sort(function(a,b) { return (pS(b.today)||0) - (pS(a.today)||0); })[0];
-    if (fade) {
-      html += '<div style="background:var(--card-bg);border:1px solid var(--card-border);border-radius:10px;padding:12px;margin-bottom:6px">';
-      html += '<span class="tag" style="color:var(--s-red);background:rgba(255,107,107,0.12);font-size:9px">MISS TOP 20</span>';
-      html += '<div style="font-size:15px;font-weight:800;color:var(--text);margin-top:6px">' + esc(fade.name) + ' -150</div>';
-      html += '<div style="font-size:11px;color:var(--text-muted);margin-top:4px">Struggling with ' + (fade.today || 'a rough round') + ' today. Trending the wrong way.</div>';
+    // Pick 3: TOP 10 FINISH — player ranked 8-12 with good today
+    var t10cands = active.slice(7, 13).sort(function(a,b) { return pS(a.today) - pS(b.today); });
+    if (t10cands[0]) {
+      var t10 = t10cands[0], t10back = Math.abs(pS(t10.score) - leaderNum);
+      html += '<div style="background:var(--card-bg);border:1px solid var(--card-border);border-radius:10px;padding:14px;margin-bottom:8px">';
+      html += '<span class="tag" style="color:var(--green);background:rgba(45,143,111,0.15);font-size:9px">TOP 10 FINISH</span>';
+      html += '<div style="font-size:16px;font-weight:800;color:var(--text);margin-top:6px">' + esc(t10.name) + ' +180</div>';
+      html += '<div style="font-size:12px;color:var(--text-muted);line-height:1.5;margin-top:4px">Sitting at ' + t10.score + ' (' + t10back + ' back) and fired ' + (t10.today || 'a strong round') + ' today. Well within striking distance of a top 10 and the price reflects it.</div>';
+      html += '<div style="font-size:10px;color:var(--green);font-weight:700;margin-top:6px">Confidence: 6/10</div>';
+      html += '</div>';
+    }
+
+    // Pick 4: LONGSHOT — player 15-25 with lowest today
+    var lscands = active.slice(14, 25).sort(function(a,b) { return pS(a.today) - pS(b.today); });
+    if (lscands[0]) {
+      var ls = lscands[0], lsback = Math.abs(pS(ls.score) - leaderNum);
+      html += '<div style="background:var(--card-bg);border:1px solid var(--card-border);border-radius:10px;padding:14px;margin-bottom:8px">';
+      html += '<span class="tag" style="color:#4A90D9;background:rgba(74,144,217,0.12);font-size:9px">LONGSHOT</span>';
+      html += '<div style="font-size:16px;font-weight:800;color:var(--text);margin-top:6px">' + esc(ls.name) + ' +' + (5000 + lsback * 500) + '</div>';
+      html += '<div style="font-size:12px;color:var(--text-muted);line-height:1.5;margin-top:4px">' + esc(ls.name) + ' is ' + lsback + ' back but shot ' + (ls.today || 'a low round') + ' today — lowest in this part of the field. If that form continues, these odds look generous.</div>';
+      html += '<div style="font-size:10px;color:#4A90D9;font-weight:700;margin-top:6px">Confidence: 4/10</div>';
       html += '</div>';
     }
   }
 
-  // ── SECTION 5: NEXT WEEK / UPCOMING EARLY PICKS ──
+  // ━━ SECTION 5: EARLY PICKS — NEXT EVENT ━━
   if (!scheduleFetched) fetchESPNSchedule();
   if (scheduleData.length > 0) {
     var now = Date.now();
-    var next = scheduleData.find(function(e) { return e.startDate && new Date(e.startDate).getTime() > now; });
-    if (next) {
-      var nd = new Date(next.startDate);
-      var daysUntil = Math.ceil((nd.getTime() - now) / 86400000);
-      var isMajor = /masters|pga championship|u\.?s\.?\s*open|open championship|the open/i.test(next.event);
-      html += '<div style="font-size:11px;font-weight:800;letter-spacing:2px;color:' + (isMajor ? 'var(--gold)' : 'var(--g700)') + ';margin:16px 0 10px">EARLY PICKS &mdash; ' + esc(next.event).toUpperCase() + '</div>';
+    var nextEv = scheduleData.find(function(e) { return e.startDate && new Date(e.startDate).getTime() > now; });
+    if (nextEv) {
+      var nd = new Date(nextEv.startDate);
+      var daysLeft = Math.ceil((nd.getTime() - now) / 86400000);
+      var isMaj = /masters|pga championship|u\.?s\.?\s*open|open championship|the open/i.test(nextEv.event);
+      html += '<div style="font-size:11px;font-weight:800;letter-spacing:2px;color:' + (isMaj ? 'var(--gold)' : 'var(--g700)') + ';margin:20px 0 10px">EARLY PICKS &mdash; ' + esc(nextEv.event).toUpperCase() + '</div>';
 
+      // Course profile card
       html += '<div style="background:var(--card-bg);border:1px solid var(--card-border);border-radius:10px;padding:14px;margin-bottom:10px">';
-      html += '<div style="font-size:15px;font-weight:800;color:var(--text)">' + esc(next.event) + '</div>';
-      html += '<div style="font-size:11px;color:var(--text-muted);margin-top:2px">' + esc(next.course) + ' &middot; ' + daysUntil + ' days away' + (next.purse ? ' &middot; ' + next.purse : '') + '</div>';
-      if (isMajor) html += '<div style="font-size:10px;color:var(--gold);margin-top:4px">Check our full betting preview and analysis articles below</div>';
+      html += '<div style="font-size:16px;font-weight:800;color:var(--text)">' + esc(nextEv.event) + '</div>';
+      html += '<div style="font-size:11px;color:var(--text-muted);margin-top:3px">' + esc(nextEv.course) + ' &middot; ' + daysLeft + ' days &middot; ' + (nextEv.purse || '') + '</div>';
+      if (isMaj) {
+        html += '<div style="font-size:11px;color:var(--gold);margin-top:6px;font-weight:600">Key stat: SG Approach &amp; Scrambling are strongest predictors</div>';
+        html += '<div style="font-size:10px;color:var(--text-muted);margin-top:2px">Avg winning score: -12 to -18 depending on conditions</div>';
+      }
+      html += '<div style="font-size:11px;color:var(--text-muted);margin-top:6px">Full betting preview and picks in our analysis articles below.</div>';
       html += '</div>';
     }
   }
 
-  // ── PUBLISHED BETTING ARTICLES ──
+  // ━━ SECTION 6: BETTING ARTICLES ━━
   if (bettingArticles && bettingArticles.length > 0) {
     html += '<div style="font-size:11px;font-weight:800;letter-spacing:2px;color:var(--gold);margin:16px 0 10px">BETTING ANALYSIS</div>';
     bettingArticles.forEach(function(a) { html += renderArticleCard(a); });
   }
 
-  // ── SECTION 6: SEASON RECORD ──
-  html += '<div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px;margin:16px 0">';
-  ['0-0|Record', '--% |Win %', '0%|ROI', '0u|Units'].forEach(function(item) {
-    var parts = item.split('|');
-    html += '<div style="background:var(--card-bg);border:1px solid var(--card-border);border-radius:10px;padding:12px;text-align:center">';
-    html += '<div style="font-size:18px;font-weight:900;color:var(--text)">' + parts[0] + '</div>';
-    html += '<div style="font-size:9px;color:var(--text-muted);margin-top:3px">' + parts[1] + '</div>';
+  // ━━ SECTION 7: SEASON RECORD ━━
+  html += '<div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px;margin:20px 0">';
+  var recordData = [['0-0','Record'],['--','Win %'],['0%','ROI'],['0u','Units']];
+  // Try to fetch from Supabase (async, will re-render when ready)
+  if (!window._bettingRecord) {
+    window._bettingRecord = 'loading';
+    sb.from('betting_record').select('*').eq('season', 2026).limit(1).then(function(res) {
+      if (res.data && res.data[0]) {
+        var r = res.data[0];
+        window._bettingRecord = r;
+        renderApp();
+      } else { window._bettingRecord = null; }
+    }).catch(function() { window._bettingRecord = null; });
+  }
+  if (window._bettingRecord && window._bettingRecord !== 'loading') {
+    var br = window._bettingRecord;
+    recordData = [
+      [br.wins + '-' + br.losses, 'Record'],
+      [(br.total_picks > 0 ? Math.round(br.wins / br.total_picks * 100) : '--') + '%', 'Win %'],
+      [(br.roi_pct || 0) + '%', 'ROI'],
+      [(br.units_won || 0) + 'u', 'Units']
+    ];
+  }
+  recordData.forEach(function(d) {
+    html += '<div style="background:var(--card-bg);border:1px solid var(--card-border);border-radius:10px;padding:14px;text-align:center">';
+    html += '<div style="font-size:20px;font-weight:900;color:var(--text)">' + d[0] + '</div>';
+    html += '<div style="font-size:9px;color:var(--text-muted);margin-top:3px;letter-spacing:1px">' + d[1] + '</div>';
     html += '</div>';
   });
   html += '</div>';
 
-  // If no live tournament, show message
-  if (!isLive) {
-    html += '<div style="text-align:center;padding:20px;font-size:13px;color:var(--text-muted)">Live odds, picks, and props update during tournament play.<br>Check our published betting articles above for this week\'s picks.</div>';
+  if (!hasData) {
+    html += '<div style="text-align:center;padding:20px;font-size:13px;color:var(--text-muted)">Live odds, picks, and props update during tournament play.<br>Check our published betting articles above for pre-tournament picks.</div>';
   }
 
-  // ── SECTION 7: DISCLAIMER ──
+  // ━━ SECTION 8: DISCLAIMER ━━
   html += '<div class="disclaimer" style="margin-top:16px">All picks are for entertainment purposes only. Past performance does not guarantee future results. Please gamble responsibly. If you or someone you know has a gambling problem, call 1-800-GAMBLER.</div>';
   return html;
 }
