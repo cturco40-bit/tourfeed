@@ -347,7 +347,7 @@ exports.handler = async (event) => {
         const articleTitle = article.title || 'Breaking Golf News';
         const articleSlug = articleTitle.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 80);
         const articleUrl = 'https://tourfeed.co/article/' + articleSlug;
-        const articleImage = await uploadImage('BREAKING', articleTitle);
+        const articleImage = null; // Images added manually via admin editor
         await sb('content_drafts', 'POST', {
           type: 'article_news',
           title: articleTitle,

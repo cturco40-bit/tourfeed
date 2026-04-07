@@ -155,7 +155,7 @@ exports.handler = async (event) => {
       return { skipped: true, reason: topicCheck.reason };
     }
     // Generate image and save
-    const imageUrl = await generateAndUploadImage(type, title, body);
+    const imageUrl = null; // Images added manually via admin editor
     const draft = await sb('content_drafts', 'POST', {
       type, title, body,
       image_url: imageUrl,

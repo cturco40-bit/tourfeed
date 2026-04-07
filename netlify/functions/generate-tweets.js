@@ -28,7 +28,7 @@ async function uploadTweetImage(text) {
 }
 
 async function postDraft(text, source) {
-  const imageUrl = await uploadTweetImage(text);
+  const imageUrl = null; // Images added manually via admin editor
   // Post directly to Supabase — skip draft-tweet function's extra dedup layers
   try {
     const res = await fetch(SB_URL + '/rest/v1/content_drafts', {
