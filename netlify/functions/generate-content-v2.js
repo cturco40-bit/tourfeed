@@ -60,7 +60,8 @@ exports.handler = async (event) => {
 
   async function generateAndUploadImage(type, title, body) {
     try {
-      const headline = type.startsWith('tweet') ? (body || title || '').slice(0, 120) : (title || '');
+      // For tweets: only pass first 5 words for the image (shows tag + short headline)
+      const headline = type.startsWith('tweet') ? (body || title || '').split(/\s+/).slice(0, 5).join(' ') : (title || '');
       const tag = type.startsWith('tweet') ? 'HOT TAKE' :
                   type === 'article_recap' ? 'RECAP' :
                   type === 'article_betting' ? 'BETTING' :

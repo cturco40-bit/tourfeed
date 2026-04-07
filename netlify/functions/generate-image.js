@@ -195,10 +195,11 @@ function buildTweet(p) {
   ctx.fillStyle = tc.fg;
   ctx.fillText(tagText, 72, 141);
 
-  // Short headline — MAX 6 words from headline or tweet
+  // Short headline — MAX 5 words, never more than 35 chars
   var fullText = p.headline || p.quote || p.take || '';
-  var shortText = fullText.split(/\s+/).slice(0, 6).join(' ');
-  if (shortText.length > 45) shortText = shortText.slice(0, 42) + '...';
+  var shortText = fullText.split(/\s+/).slice(0, 5).join(' ');
+  if (shortText.length > 35) shortText = shortText.split(/\s+/).slice(0, 4).join(' ');
+  if (shortText.length > 35) shortText = shortText.slice(0, 32) + '...';
 
   // Headline in Playfair Display
   ctx.fillStyle = TEXT;

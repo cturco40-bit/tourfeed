@@ -5,8 +5,9 @@ const SB_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsIn
 // Well-known players for headshot matching (name → ESPN ID)
 async function uploadTweetImage(text) {
   try {
-    const headline = text.slice(0, 120);
-    const url = `https://tourfeed.co/.netlify/functions/generate-image?type=hot_take&quote=${encodeURIComponent(headline)}`;
+    // Only pass first 4-5 words for the image — image generator shows tag + short headline
+    const headline = text.split(/\s+/).slice(0, 5).join(' ');
+    const url = `https://tourfeed.co/.netlify/functions/generate-image?type=hot_take&headline=${encodeURIComponent(headline)}`;
     const res = await fetch(url);
     if (!res.ok) return null;
     const buf = Buffer.from(await res.arrayBuffer());
