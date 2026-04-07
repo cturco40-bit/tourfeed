@@ -976,7 +976,16 @@ function shareTwitter(title, slug) {
 var _articleCache = {};
 
 function clickArticle(id) {
-  if (_articleCache[id]) openArticleDetail(_articleCache[id]);
+  var art = _articleCache[id];
+  if (art) {
+    openArticleDetail(art);
+  } else {
+    // Fallback: search all loaded articles
+    var all = newsArticles.concat(blogArticles).concat(bettingArticles);
+    var match = all.find(function(a) { return String(a.id) === String(id); });
+    if (match) openArticleDetail(match);
+    else console.warn('Article not found:', id, 'Cache keys:', Object.keys(_articleCache));
+  }
 }
 
 function openArticleDetail(article) {
@@ -1140,6 +1149,7 @@ function renderScorecard(p) {
 // RENDER HOME TAB
 // ============================================
 function renderHome() {
+  if (currentArticle) return renderArticleDetail(currentArticle);
   try {
   let html = '';
 
@@ -2065,14 +2075,19 @@ function _doRender() {
   // Update score ticker
   renderScoreTicker();
 
-  switch(currentTab) {
-    case 0: html += renderHome(); break;
-    case 1: html += renderScores(); break;
-    case 2: html += renderNews(); break;
-    case 3: html += renderInsights(); break;
-    case 4: html += renderBlog(); break;
-    case 5: html += renderStandings(); break;
-    case 6: html += renderSchedule(); break;
+  // If viewing an article, show it regardless of tab
+  if (currentArticle) {
+    html += renderArticleDetail(currentArticle);
+  } else {
+    switch(currentTab) {
+      case 0: html += renderHome(); break;
+      case 1: html += renderScores(); break;
+      case 2: html += renderNews(); break;
+      case 3: html += renderInsights(); break;
+      case 4: html += renderBlog(); break;
+      case 5: html += renderStandings(); break;
+      case 6: html += renderSchedule(); break;
+    }
   }
 
   html += '</div>';
