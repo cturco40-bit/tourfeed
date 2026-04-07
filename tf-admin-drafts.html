@@ -8,85 +8,87 @@
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
   <style>
     * { margin:0; padding:0; box-sizing:border-box; }
-    body { font-family:'DM Sans',-apple-system,sans-serif; background:#111927; color:#fff; min-height:100vh; -webkit-tap-highlight-color:transparent; }
+    body { font-family:'DM Sans',-apple-system,sans-serif; background:#FAF6F0; color:#2C2416; min-height:100vh; -webkit-tap-highlight-color:transparent; }
     .login { display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:100vh; padding:20px; }
-    .login input { padding:14px 18px; border-radius:10px; border:1px solid #243044; background:#1B2538; color:#fff; font-size:16px; width:300px; font-family:inherit; outline:none; }
-    .login input:focus { border-color:#2D8F6F; }
-    .login button { margin-top:12px; padding:14px 32px; background:#2D8F6F; border:none; border-radius:10px; color:#fff; font-weight:700; font-size:16px; cursor:pointer; font-family:inherit; }
+    .login input { padding:14px 18px; border-radius:4px; border:1px solid #D8D0C4; background:#fff; color:#2C2416; font-size:16px; width:300px; font-family:inherit; outline:none; }
+    .login input:focus { border-color:#1A472A; }
+    .login button { margin-top:12px; padding:14px 32px; background:#1A472A; border:none; border-radius:4px; color:#fff; font-weight:700; font-size:16px; cursor:pointer; font-family:inherit; }
     .container { max-width:640px; margin:0 auto; padding:12px; display:none; }
 
     /* TABS */
-    .admin-tabs { display:flex; gap:4px; margin-bottom:16px; background:#1B2538; border-radius:10px; padding:4px; }
-    .tab-btn { flex:1; padding:12px; border:none; border-radius:8px; background:transparent; color:#868E96; font-size:13px; font-weight:700; cursor:pointer; font-family:inherit; text-align:center; }
-    .tab-btn.active { background:#2D8F6F; color:#fff; }
+    .admin-tabs { display:flex; gap:4px; margin-bottom:16px; background:#F0EAE0; border-radius:4px; padding:4px; border:1px solid #D8D0C4; }
+    .tab-btn { flex:1; padding:12px; border:none; border-radius:4px; background:transparent; color:#8C8478; font-size:13px; font-weight:700; cursor:pointer; font-family:inherit; text-align:center; }
+    .tab-btn.active { background:#1A472A; color:#fff; }
     .tab-content { display:none; }
     .tab-content.active { display:block; }
 
     /* DRAFT STYLES */
     .filters { display:flex; gap:6px; margin-bottom:12px; flex-wrap:wrap; }
-    .filter-pill { padding:6px 12px; border-radius:20px; border:1px solid rgba(255,255,255,0.08); background:transparent; color:#868E96; font-size:11px; font-weight:600; cursor:pointer; font-family:inherit; }
-    .filter-pill.active { background:#2D8F6F; color:#fff; border-color:#2D8F6F; }
-    .batch-bar { display:none; position:sticky; top:0; z-index:50; background:#1B2538; border:1px solid rgba(45,143,111,0.3); border-radius:10px; padding:12px 16px; margin-bottom:12px; }
+    .filter-pill { padding:6px 12px; border-radius:4px; border:1px solid #D8D0C4; background:transparent; color:#8C8478; font-size:11px; font-weight:600; cursor:pointer; font-family:inherit; }
+    .filter-pill.active { background:#1A472A; color:#fff; border-color:#1A472A; }
+    .batch-bar { display:none; position:sticky; top:0; z-index:50; background:#fff; border:1px solid #1A472A; border-radius:4px; padding:12px 16px; margin-bottom:12px; }
     .batch-bar.show { display:flex; align-items:center; justify-content:space-between; }
-    .draft { background:#1B2538; border:1px solid rgba(255,255,255,0.06); border-radius:12px; padding:16px; margin-bottom:12px; }
+    .draft { background:#fff; border:1px solid #D8D0C4; border-radius:4px; padding:16px; margin-bottom:12px; }
     .draft.rejected { opacity:0.2; pointer-events:none; }
     .draft-top { display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; }
-    .draft-type { font-size:10px; font-weight:700; letter-spacing:1.5px; color:#868E96; text-transform:uppercase; }
-    .draft-time { font-size:10px; color:#495057; }
-    .draft-select { width:22px; height:22px; border-radius:6px; border:2px solid #495057; cursor:pointer; display:flex; align-items:center; justify-content:center; flex-shrink:0; margin-right:8px; }
-    .draft-select.checked { background:#2D8F6F; border-color:#2D8F6F; }
+    .draft-type { font-size:10px; font-weight:700; letter-spacing:1.5px; color:#8C8478; text-transform:uppercase; }
+    .draft-time { font-size:10px; color:#8C8478; }
+    .draft-select { width:22px; height:22px; border-radius:4px; border:2px solid #D8D0C4; cursor:pointer; display:flex; align-items:center; justify-content:center; flex-shrink:0; margin-right:8px; }
+    .draft-select.checked { background:#1A472A; border-color:#1A472A; }
     .draft-select.checked::after { content:''; display:block; width:10px; height:6px; border-left:2px solid #fff; border-bottom:2px solid #fff; transform:rotate(-45deg); margin-top:-2px; }
-    .draft-image { width:100%; border-radius:8px; margin-bottom:10px; max-height:300px; object-fit:cover; }
-    .draft-article-title { font-size:16px; font-weight:800; color:#fff; margin-bottom:6px; line-height:1.3; }
-    .draft-article-full { font-size:13px; color:#CED4DA; line-height:1.7; max-height:400px; overflow-y:auto; padding:12px; background:#0F1923; border-radius:8px; margin-top:8px; }
+    .draft-image { width:100%; border-radius:4px; margin-bottom:10px; max-height:300px; object-fit:cover; }
+    .draft-article-title { font-size:16px; font-weight:800; color:#2C2416; margin-bottom:6px; line-height:1.3; }
+    .draft-article-full { font-size:13px; color:#5C5244; line-height:1.7; max-height:400px; overflow-y:auto; padding:12px; background:#F5EFE5; border-radius:4px; margin-top:8px; }
     .draft-article-full p { margin-bottom:10px; }
-    .tweet-preview { background:#0F1923; border:1px solid rgba(255,255,255,0.06); border-radius:12px; padding:14px; margin-bottom:10px; }
-    .tweet-body { font-size:14px; color:#CED4DA; line-height:1.6; white-space:pre-wrap; word-break:break-word; }
-    .tweet-char { font-size:11px; color:#495057; text-align:right; margin-top:4px; }
-    .tweet-char.over { color:#FF6B6B; }
-    .draft-edit { width:100%; background:#0F1923; border:1px solid rgba(255,255,255,0.06); border-radius:8px; color:#CED4DA; font-size:14px; line-height:1.6; padding:12px; font-family:inherit; resize:vertical; outline:none; display:none; }
+    .tweet-preview { background:#F5EFE5; border:1px solid #D8D0C4; border-radius:4px; padding:14px; margin-bottom:10px; }
+    .tweet-body { font-size:14px; color:#2C2416; line-height:1.6; white-space:pre-wrap; word-break:break-word; }
+    .tweet-char { font-size:11px; color:#8C8478; text-align:right; margin-top:4px; }
+    .tweet-char.over { color:#8B2020; }
+    .draft-edit { width:100%; background:#fff; border:1px solid #D8D0C4; border-radius:4px; color:#2C2416; font-size:14px; line-height:1.6; padding:12px; font-family:inherit; resize:vertical; outline:none; display:none; }
+    .draft-edit:focus { border-color:#1A472A; }
     .draft-edit.show { display:block; }
     .draft-actions { display:flex; gap:8px; margin-top:12px; flex-wrap:wrap; }
-    .btn-action { padding:12px 20px; border:none; border-radius:10px; font-weight:700; font-size:14px; cursor:pointer; font-family:inherit; min-height:48px; flex:1; }
-    .btn-approve { background:#2D8F6F; color:#fff; }
-    .btn-reject { background:transparent; border:1px solid #495057; color:#868E96; }
-    .btn-edit { background:transparent; border:1px solid #495057; color:#868E96; }
-    .btn-add-img { background:transparent; border:1px solid #D4A853; color:#D4A853; font-size:12px; padding:8px 14px; min-height:auto; flex:none; }
-    .status { padding:10px 14px; border-radius:8px; margin-top:10px; font-size:13px; font-weight:600; }
-    .status-ok { background:rgba(45,212,160,0.1); color:#2DD4A0; }
-    .status-err { background:rgba(255,107,107,0.1); color:#FF6B6B; }
-    .status-info { background:rgba(74,144,217,0.1); color:#4A90D9; }
-    .empty { text-align:center; padding:60px 20px; color:#495057; font-size:14px; }
+    .btn-action { padding:12px 20px; border:none; border-radius:4px; font-weight:700; font-size:14px; cursor:pointer; font-family:inherit; min-height:48px; flex:1; }
+    .btn-approve { background:#1A472A; color:#fff; }
+    .btn-reject { background:transparent; border:1px solid #D8D0C4; color:#8C8478; }
+    .btn-reject:hover { border-color:#8B2020; color:#8B2020; }
+    .btn-edit { background:transparent; border:1px solid #D8D0C4; color:#8C8478; }
+    .btn-add-img { background:transparent; border:1px solid #D4A853; color:#8B7335; font-size:12px; padding:8px 14px; min-height:auto; flex:none; }
+    .status { padding:10px 14px; border-radius:4px; margin-top:10px; font-size:13px; font-weight:600; }
+    .status-ok { background:rgba(26,71,42,0.08); color:#1A472A; }
+    .status-err { background:rgba(139,32,32,0.08); color:#8B2020; }
+    .status-info { background:rgba(139,115,53,0.08); color:#8B7335; }
+    .empty { text-align:center; padding:60px 20px; color:#8C8478; font-size:14px; }
 
     /* CREATE IMAGE TAB */
     .tmpl-btns { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:16px; }
-    .tmpl-btn { padding:14px; border:1px solid rgba(255,255,255,0.08); border-radius:10px; background:#1B2538; color:#CED4DA; font-size:13px; font-weight:700; cursor:pointer; font-family:inherit; text-align:center; }
-    .tmpl-btn.active { border-color:#2D8F6F; color:#fff; background:rgba(45,143,111,0.15); }
-    .upload-zone { border:2px dashed rgba(255,255,255,0.1); border-radius:12px; padding:30px; text-align:center; margin-bottom:16px; cursor:pointer; }
-    .upload-zone.has-photo { border-color:#2D8F6F; padding:8px; }
-    .upload-zone img { max-width:100%; border-radius:8px; }
+    .tmpl-btn { padding:14px; border:1px solid #D8D0C4; border-radius:4px; background:#fff; color:#5C5244; font-size:13px; font-weight:700; cursor:pointer; font-family:inherit; text-align:center; }
+    .tmpl-btn.active { border-color:#1A472A; color:#1A472A; background:rgba(26,71,42,0.06); }
+    .upload-zone { border:2px dashed #D8D0C4; border-radius:4px; padding:30px; text-align:center; margin-bottom:16px; cursor:pointer; }
+    .upload-zone.has-photo { border-color:#1A472A; padding:8px; }
+    .upload-zone img { max-width:100%; border-radius:4px; }
     .field-group { margin-bottom:12px; }
-    .field-label { font-size:11px; font-weight:700; color:#868E96; letter-spacing:1px; margin-bottom:4px; }
-    .field-input { width:100%; padding:12px 14px; background:#1B2538; border:1px solid rgba(255,255,255,0.08); border-radius:8px; color:#fff; font-size:14px; font-family:inherit; outline:none; }
-    .field-input:focus { border-color:#2D8F6F; }
+    .field-label { font-size:11px; font-weight:700; color:#8C8478; letter-spacing:1px; margin-bottom:4px; }
+    .field-input { width:100%; padding:12px 14px; background:#fff; border:1px solid #D8D0C4; border-radius:4px; color:#2C2416; font-size:14px; font-family:inherit; outline:none; }
+    .field-input:focus { border-color:#1A472A; }
     .field-textarea { min-height:80px; resize:vertical; }
-    .preview-wrap { margin:16px 0; border-radius:12px; overflow:hidden; background:#0a1018; }
+    .preview-wrap { margin:16px 0; border-radius:4px; overflow:hidden; background:#F0EAE0; }
     .preview-wrap canvas { width:100%; display:block; }
     .size-toggle { display:flex; gap:4px; margin-bottom:12px; }
-    .size-btn { flex:1; padding:8px; border:1px solid rgba(255,255,255,0.08); border-radius:8px; background:transparent; color:#868E96; font-size:11px; font-weight:700; cursor:pointer; font-family:inherit; text-align:center; }
-    .size-btn.active { border-color:#D4A853; color:#D4A853; }
+    .size-btn { flex:1; padding:8px; border:1px solid #D8D0C4; border-radius:4px; background:transparent; color:#8C8478; font-size:11px; font-weight:700; cursor:pointer; font-family:inherit; text-align:center; }
+    .size-btn.active { border-color:#8B7335; color:#8B7335; }
     .action-btns { display:flex; flex-direction:column; gap:8px; margin-top:16px; padding-bottom:30px; }
-    .action-btn { padding:16px; border:none; border-radius:12px; font-weight:700; font-size:15px; cursor:pointer; font-family:inherit; text-align:center; }
-    .action-btn-primary { background:#2D8F6F; color:#fff; }
-    .action-btn-secondary { background:#1B2538; border:1px solid rgba(255,255,255,0.08); color:#CED4DA; }
-    .action-btn-gold { background:rgba(212,168,83,0.15); border:1px solid #D4A853; color:#D4A853; }
+    .action-btn { padding:16px; border:none; border-radius:4px; font-weight:700; font-size:15px; cursor:pointer; font-family:inherit; text-align:center; }
+    .action-btn-primary { background:#1A472A; color:#fff; }
+    .action-btn-secondary { background:#fff; border:1px solid #D8D0C4; color:#5C5244; }
+    .action-btn-gold { background:rgba(139,115,53,0.1); border:1px solid #D4A853; color:#8B7335; }
     .attach-row { display:flex; gap:8px; }
-    .attach-row select { flex:1; padding:12px; background:#1B2538; border:1px solid rgba(255,255,255,0.08); border-radius:8px; color:#fff; font-family:inherit; font-size:13px; }
+    .attach-row select { flex:1; padding:12px; background:#fff; border:1px solid #D8D0C4; border-radius:4px; color:#2C2416; font-family:inherit; font-size:13px; }
   </style>
 </head>
 <body>
   <div class="login" id="loginScreen">
-    <div style="font-size:22px;font-weight:900;margin-bottom:24px"><span style="color:#fff">TOUR</span><span style="color:#D4A853">FEED</span></div>
+    <div style="font-size:22px;font-weight:900;margin-bottom:24px;letter-spacing:3px"><span style="color:#1A472A">TOUR</span><span style="color:#D4A853">FEED</span></div>
     <input type="password" id="passInput" placeholder="Access code" onkeydown="if(event.key==='Enter')doLogin()">
     <button onclick="doLogin()">Access Drafts</button>
   </div>
@@ -115,7 +117,7 @@
     <div class="tab-content" id="createTab">
       <!-- Draft context — shows when opened from a specific draft -->
       <div id="draftContext"></div>
-      <div style="font-size:10px;font-weight:700;letter-spacing:2px;color:#868E96;margin-bottom:10px">TEMPLATE</div>
+      <div style="font-size:10px;font-weight:700;letter-spacing:2px;color:#8C8478;margin-bottom:10px">TEMPLATE</div>
       <div class="tmpl-btns">
         <button class="tmpl-btn active" onclick="setTemplate('breaking')">Breaking News</button>
         <button class="tmpl-btn" onclick="setTemplate('quote')">Quote</button>
@@ -128,7 +130,7 @@
         <input type="file" id="photoInput" accept="image/*" style="display:none" onchange="handlePhoto(event)">
         <div id="uploadPrompt">
           <div style="font-size:24px;margin-bottom:8px">+</div>
-          <div style="font-size:13px;color:#868E96">Tap to upload photo</div>
+          <div style="font-size:13px;color:#8C8478">Tap to upload photo</div>
         </div>
         <img id="photoPreview" style="display:none">
       </div>
@@ -262,9 +264,9 @@ async function loadDrafts() {
       } else {
         var src = d.source_event || d.title || '';
         if (src && src !== 'generate-original' && src !== 'auto') {
-          content += '<div style="padding:6px 10px;background:#0F1923;border-left:3px solid #4A90D9;border-radius:0 6px 6px 0;margin-bottom:8px;font-size:11px"><div style="color:#4A90D9;font-weight:700;font-size:9px;letter-spacing:1px;margin-bottom:2px">REACTING TO</div><div style="color:#868E96">' + escHtml(src) + '</div></div>';
+          content += '<div style="padding:6px 10px;background:#F5EFE5;border-left:3px solid #1A472A;border-radius:0 6px 6px 0;margin-bottom:8px;font-size:11px"><div style="color:#1A472A;font-weight:700;font-size:9px;letter-spacing:1px;margin-bottom:2px">REACTING TO</div><div style="color:#8C8478">' + escHtml(src) + '</div></div>';
         }
-        content += '<div class="tweet-preview"><div style="display:flex;align-items:center;gap:8px;margin-bottom:8px"><div style="width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,#2D8F6F,#1B2538);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:900;color:#D4A853;flex-shrink:0">TF</div><div><div style="font-size:13px;font-weight:700">TourFeed</div><div style="font-size:11px;color:#495057">@TourFeedGolf</div></div></div><div class="tweet-body">' + escHtml(d.body) + '</div></div>';
+        content += '<div class="tweet-preview"><div style="display:flex;align-items:center;gap:8px;margin-bottom:8px"><div style="width:32px;height:32px;border-radius:50%;background:#1A472A;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:900;color:#D4A853;flex-shrink:0">TF</div><div><div style="font-size:13px;font-weight:700">TourFeed</div><div style="font-size:11px;color:#8C8478">@TourFeedGolf</div></div></div><div class="tweet-body">' + escHtml(d.body) + '</div></div>';
         content += '<div class="tweet-char ' + ((d.body||'').length > 280 ? 'over' : '') + '">' + (d.body||'').length + '/280</div>';
       }
 
@@ -335,14 +337,14 @@ function openImageEditor(draftId) {
   var isArticle = draft.type && draft.type.includes('article');
   var isTweet = draft.type && draft.type.includes('tweet');
   var plainBody = (draft.body || '').replace(/<[^>]+>/g, '');
-  var contextHtml = '<div style="background:#0F1923;border:1px solid rgba(255,255,255,0.06);border-radius:10px;padding:14px;margin-bottom:16px">';
-  contextHtml += '<div style="font-size:9px;font-weight:700;letter-spacing:1.5px;color:#4A90D9;margin-bottom:6px">CREATING IMAGE FOR DRAFT #' + draftId + '</div>';
+  var contextHtml = '<div style="background:#F5EFE5;border:1px solid rgba(255,255,255,0.06);border-radius:10px;padding:14px;margin-bottom:16px">';
+  contextHtml += '<div style="font-size:9px;font-weight:700;letter-spacing:1.5px;color:#1A472A;margin-bottom:6px">CREATING IMAGE FOR DRAFT #' + draftId + '</div>';
   if (draft.title) contextHtml += '<div style="font-size:15px;font-weight:800;color:#fff;margin-bottom:6px">' + escHtml(draft.title) + '</div>';
   if (draft.source_event && draft.source_event !== 'auto' && draft.source_event !== 'generate-original') {
-    contextHtml += '<div style="font-size:11px;color:#4A90D9;margin-bottom:6px">Reacting to: ' + escHtml(draft.source_event) + '</div>';
+    contextHtml += '<div style="font-size:11px;color:#1A472A;margin-bottom:6px">Reacting to: ' + escHtml(draft.source_event) + '</div>';
   }
   contextHtml += '<div style="font-size:13px;color:#CED4DA;line-height:1.5;max-height:200px;overflow-y:auto">' + escHtml(plainBody.slice(0, 500)) + (plainBody.length > 500 ? '...' : '') + '</div>';
-  contextHtml += '<div style="font-size:10px;color:#495057;margin-top:6px">' + (draft.type || '').replace(/_/g, ' ').toUpperCase() + '</div>';
+  contextHtml += '<div style="font-size:10px;color:#8C8478;margin-top:6px">' + (draft.type || '').replace(/_/g, ' ').toUpperCase() + '</div>';
   contextHtml += '</div>';
   document.getElementById('draftContext').innerHTML = contextHtml;
 
@@ -469,7 +471,7 @@ function drawWatermark(ctx, W, H) {
   ctx.globalAlpha = 0.6;
   ctx.font = '900 22px "DM Sans"';
   ctx.textAlign = 'right';
-  ctx.fillStyle = '#fff';
+  ctx.fillStyle = '#2C2416';
   var tw = ctx.measureText('TOUR').width;
   var fw = ctx.measureText('FEED').width;
   ctx.fillText('TOUR', W - 30 - fw - 2, H - 25);
@@ -481,7 +483,7 @@ function drawWatermark(ctx, W, H) {
 
 function drawLogo(ctx, x, y) {
   ctx.font = '900 28px "DM Sans"';
-  ctx.fillStyle = '#fff';
+  ctx.fillStyle = '#1A472A';
   ctx.textAlign = 'left';
   ctx.fillText('TOUR', x, y);
   ctx.fillStyle = '#D4A853';
@@ -504,7 +506,7 @@ function renderPreview() {
   ctx.clearRect(0, 0, W, H);
 
   // Background
-  ctx.fillStyle = '#111927';
+  ctx.fillStyle = '#FAF6F0';
   ctx.fillRect(0, 0, W, H);
 
   var credit = document.getElementById('creditField').value;
@@ -534,7 +536,7 @@ function renderBreaking(ctx, W, H, credit) {
   drawCredit(ctx, W, credit);
 
   // Red banner
-  ctx.fillStyle = '#E63946';
+  ctx.fillStyle = '#8B2020';
   var bW = 320;
   ctx.fillRect((W - bW)/2, photoH - 24, bW, 40);
   ctx.font = '900 18px "DM Sans"';
@@ -545,13 +547,13 @@ function renderBreaking(ctx, W, H, credit) {
 
   // Headline
   ctx.font = '900 42px "DM Sans"';
-  ctx.fillStyle = '#fff';
+  ctx.fillStyle = '#2C2416';
   ctx.textAlign = 'center';
   wrapText(ctx, headline.toUpperCase(), W/2, H * 0.62, W - 80, 52, 6);
 
   // Green line + context
   if (context) {
-    ctx.strokeStyle = '#2D8F6F'; ctx.lineWidth = 3;
+    ctx.strokeStyle = '#D4A853'; ctx.lineWidth = 3;
     ctx.beginPath(); ctx.moveTo(W*0.15, H*0.86); ctx.lineTo(W*0.85, H*0.86); ctx.stroke();
     ctx.font = '700 20px "DM Sans"'; ctx.fillStyle = '#CED4DA';
     ctx.fillText(context.toUpperCase(), W/2, H*0.91);
@@ -589,13 +591,13 @@ function renderQuote(ctx, W, H, credit) {
 
   // Quote text
   ctx.font = '900 36px "DM Sans"';
-  ctx.fillStyle = '#fff';
+  ctx.fillStyle = '#2C2416';
   var endY = wrapText(ctx, quote.toUpperCase(), W/2, photoH + 55, W - 100, 46, 6);
 
   // Line + attribution
-  ctx.strokeStyle = '#2D8F6F'; ctx.lineWidth = 3;
+  ctx.strokeStyle = '#D4A853'; ctx.lineWidth = 3;
   ctx.beginPath(); ctx.moveTo(W*0.2, endY + 10); ctx.lineTo(W*0.8, endY + 10); ctx.stroke();
-  if (player) { ctx.font = '800 22px "DM Sans"'; ctx.fillStyle = '#fff'; ctx.fillText(player.toUpperCase(), W/2, endY + 40); }
+  if (player) { ctx.font = '800 22px "DM Sans"'; ctx.fillStyle = '#2C2416'; ctx.fillText(player.toUpperCase(), W/2, endY + 40); }
   if (context) { ctx.font = '600 16px "DM Sans"'; ctx.fillStyle = '#868E96'; ctx.fillText(context.toUpperCase(), W/2, endY + 64); }
   ctx.textAlign = 'left';
   drawWatermark(ctx, W, H);
@@ -622,11 +624,11 @@ function renderChampion(ctx, W, H, credit) {
 
   ctx.textAlign = 'center';
   ctx.font = 'italic 600 48px Georgia, "DM Sans"';
-  ctx.fillStyle = '#fff';
+  ctx.fillStyle = '#2C2416';
   ctx.fillText(player, W/2, H*0.72);
 
   ctx.font = '900 90px "DM Sans"';
-  ctx.fillStyle = '#fff';
+  ctx.fillStyle = '#2C2416';
   ctx.fillText('CHAMPION', W/2, H*0.83);
 
   ctx.font = '700 24px "DM Sans"';
@@ -669,12 +671,12 @@ function renderFun(ctx, W, H, credit) {
 
   // Punchline (BIG)
   ctx.font = '900 44px "DM Sans"';
-  ctx.fillStyle = '#fff';
+  ctx.fillStyle = '#2C2416';
   var endY = wrapText(ctx, punchline.toUpperCase(), W/2, photoH + 90, W - 80, 54, 5);
 
-  ctx.strokeStyle = '#2D8F6F'; ctx.lineWidth = 3;
+  ctx.strokeStyle = '#D4A853'; ctx.lineWidth = 3;
   ctx.beginPath(); ctx.moveTo(W*0.2, endY + 10); ctx.lineTo(W*0.8, endY + 10); ctx.stroke();
-  if (player) { ctx.font = '800 20px "DM Sans"'; ctx.fillStyle = '#fff'; ctx.fillText(player.toUpperCase(), W/2, endY + 38); }
+  if (player) { ctx.font = '800 20px "DM Sans"'; ctx.fillStyle = '#2C2416'; ctx.fillText(player.toUpperCase(), W/2, endY + 38); }
   if (context) { ctx.font = '600 15px "DM Sans"'; ctx.fillStyle = '#868E96'; ctx.fillText(context.toUpperCase(), W/2, endY + 58); }
   ctx.textAlign = 'left';
   drawWatermark(ctx, W, H);
