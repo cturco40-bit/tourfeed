@@ -297,6 +297,10 @@
 // ============================================
 const SB_URL = 'https://yumahmnoltvbiadjefxw.supabase.co';
 const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl1bWFobW5vbHR2YmlhZGplZnh3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUzOTY0NDAsImV4cCI6MjA5MDk3MjQ0MH0.FAXp2t0zaHlm1W7aaut72btMilrYPy33XO3p8MfyYlo';
+
+// Beehiiv Newsletter
+const BEEHIIV_PUB_ID = ''; // Fill in from Beehiiv dashboard → Settings → API
+const BEEHIIV_API_KEY = ''; // Fill in from Beehiiv dashboard → Settings → API → Create Key
 const sb = supabase.createClient(SB_URL, SB_KEY);
 
 const TABS = ['Home','Scores','News','Picks','Blog','Standings','Schedule'];
@@ -901,22 +905,45 @@ function closePopup() {
   popupClosed = true;
   localStorage.setItem('tf-popup-closed', '1');
 }
-function subscribeEmail() {
-  const input = document.getElementById('emailInput');
-  const email = input.value;
-  if (!email || !email.includes('@')) return;
+async function doSubscribe(email, successEl, errorEl) {
+  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    if (errorEl) errorEl.textContent = 'Enter a valid email address';
+    return;
+  }
+  if (BEEHIIV_PUB_ID && BEEHIIV_API_KEY) {
+    try {
+      var res = await fetch('https://api.beehiiv.com/v2/publications/' + BEEHIIV_PUB_ID + '/subscriptions', {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + BEEHIIV_API_KEY, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email, reactivate_existing: true, send_welcome_email: true }),
+      });
+      if (!res.ok) throw new Error('Subscribe failed');
+    } catch(e) {
+      if (errorEl) errorEl.textContent = 'Something went wrong. Try again.';
+      return;
+    }
+  }
   localStorage.setItem('tf-subscribed', '1');
-  const popup = document.getElementById('emailPopup');
-  popup.innerHTML = '<div style="text-align:center;padding:12px 0"><div style="font-size:20px;margin-bottom:6px;color:var(--green)">&#10003;</div><div style="font-family:Playfair Display,Georgia,serif;font-size:16px;font-weight:700;color:var(--text)">You\'re in.</div><div style="font-size:12px;color:var(--muted);margin-top:4px">We\'ll send you the good stuff.</div></div>';
-  setTimeout(function() { popup.classList.remove('show'); }, 2500);
+  if (successEl) successEl();
+}
+
+function subscribeEmail() {
+  var input = document.getElementById('emailInput');
+  var email = input.value;
+  var popup = document.getElementById('emailPopup');
+  doSubscribe(email, function() {
+    popup.innerHTML = '<div style="text-align:center;padding:12px 0"><div style="font-size:20px;margin-bottom:6px;color:var(--green)">&#10003;</div><div style="font-family:Playfair Display,Georgia,serif;font-size:16px;font-weight:700;color:var(--text)">You\'re in.</div><div style="font-size:12px;color:var(--muted);margin-top:4px">We\'ll send you the good stuff.</div></div>';
+    setTimeout(function() { popup.classList.remove('show'); }, 2500);
+  });
 }
 function subscribeInline(inputId) {
-  const input = document.getElementById(inputId);
+  var input = document.getElementById(inputId);
   if (!input) return;
-  const email = input.value;
-  if (!email || !email.includes('@')) return;
-  localStorage.setItem('tf-subscribed', '1');
-  input.parentElement.innerHTML = '<div style="font-family:Playfair Display,Georgia,serif;font-size:15px;font-weight:700;color:#fff;padding:8px 0">You\'re in. Welcome to TourFeed.</div>';
+  var email = input.value;
+  var parent = input.parentElement;
+  doSubscribe(email, function() {
+    parent.innerHTML = '<div style="font-family:Playfair Display,Georgia,serif;font-size:15px;font-weight:700;color:#fff;padding:8px 0">You\'re in. Welcome to TourFeed.</div>';
+  });
 }
 // Popup only opens when SUBSCRIBE button is clicked — no auto-open
 
