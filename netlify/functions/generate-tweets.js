@@ -39,7 +39,7 @@ async function postDraft(text, source) {
         'Prefer': 'return=representation',
       },
       body: JSON.stringify({
-        type: 'tweet_reaction',
+        type: 'tweet_content',
         body: text.slice(0, 280),
         source_event: source,
         image_url: imageUrl,

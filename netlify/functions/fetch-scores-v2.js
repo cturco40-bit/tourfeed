@@ -67,7 +67,12 @@ function supabaseRequest(method, path, body) {
 
 function upsert(table, rows) {
   if (!rows || rows.length === 0) return Promise.resolve(null);
-  return supabaseRequest('POST', table, rows);
+  // Add on_conflict for tables with unique constraints
+  var conflict = '';
+  if (table === 'leaderboard') conflict = '?on_conflict=tournament_id,player_id';
+  else if (table === 'players') conflict = '?on_conflict=id';
+  else if (table === 'tournaments') conflict = '?on_conflict=id';
+  return supabaseRequest('POST', table + conflict, rows);
 }
 
 // ── ESPN parsing ────────────────────────────────────────────────────────────
@@ -400,7 +405,7 @@ exports.handler = async function (event, context) {
   };
 
   return {
-    statusCode: totalErrors > 0 ? 207 : 200,
+    statusCode: 200,
     headers: {
       'Content-Type': 'application/json',
       'Access-Control-Allow-Origin': '*',

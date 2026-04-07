@@ -392,7 +392,7 @@ function buildHotTake(p) {
 
   var fullText = p.take || p.quote || '';
   // If text > 80 chars, use SHORT label card (readable at thumbnail)
-  if (fullText.length > 80) {
+  if (fullText.length > 40) {
     // Determine label from context
     var label = 'HOT TAKE';
     var labelColor = GREEN;

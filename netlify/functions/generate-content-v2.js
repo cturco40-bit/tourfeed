@@ -390,7 +390,7 @@ Rules:
         const tweet = tweetsToSave[i];
         if (!tweet) continue;
         const saved = await saveDraft(
-          'tweet_reaction',
+          'tweet_content',
           tournament.name + ' R' + currentRound,
           tweet,
           tournamentId,
