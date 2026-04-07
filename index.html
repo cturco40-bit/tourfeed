@@ -972,6 +972,11 @@ function shareTwitter(title, slug) {
 // ============================================
 // ARTICLE DETAIL VIEW
 // ============================================
+function clickArticle(idx) {
+  var all = newsArticles.concat(blogArticles).concat(bettingArticles);
+  if (all[idx]) openArticleDetail(all[idx]);
+}
+
 function openArticleDetail(article) {
   currentArticle = article;
   if (article.slug) history.pushState(null, '', '/article/' + article.slug);
@@ -1057,7 +1062,8 @@ function renderArticleRow(a) {
   var tClass = tagClass(a.tag);
   var time = timeAgo(a.published_at);
 
-  var html = '<div class="article-row" onclick="openArticleDetail(this._article)" style="cursor:pointer">';
+  var artIdx = (newsArticles.concat(blogArticles).concat(bettingArticles)).findIndex(function(x) { return x.title === a.title; });
+  var html = '<div class="article-row" onclick="clickArticle(' + artIdx + ')" style="cursor:pointer">';
   html += '<div style="flex-shrink:0;padding-top:2px"><span class="tag ' + tClass + '">' + esc(a.tag || 'NEWS') + '</span></div>';
   html += '<div class="article-row-body">';
   html += '<div class="article-row-title">' + esc(a.title) + '</div>';
@@ -1194,7 +1200,8 @@ function renderHome() {
   if (allArticles.length > 0) {
     var featured = allArticles[0];
     var ftc = tagClass(featured.tag);
-    html += '<div class="home-featured" onclick="openArticleDetail(this._article)">';
+    var featIdx = newsArticles.concat(blogArticles).concat(bettingArticles).findIndex(function(x) { return x.title === featured.title; });
+    html += '<div class="home-featured" onclick="clickArticle(' + featIdx + ')">';
     html += '<div class="home-featured-tag"><span class="tag ' + ftc + '">' + esc(featured.tag || 'NEWS') + '</span></div>';
     html += '<div class="home-featured-title">' + esc(featured.title) + '</div>';
     var fExcerpt = (featured.summary || (featured.body ? featured.body.replace(/<[^>]+>/g, '').slice(0, 180) : '')).slice(0, 180);
