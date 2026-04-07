@@ -24,209 +24,216 @@
   <meta property="og:image" content="https://tourfeed.co/og-image.png">
   <meta property="og:image:width" content="1500">
   <meta property="og:image:height" content="500">
-  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%232D8F6F'/><text x='4' y='22' font-family='system-ui' font-weight='900' font-size='14' fill='white'>T</text><text x='16' y='22' font-family='system-ui' font-weight='900' font-size='14' fill='%23D4A853'>F</text></svg>">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='4' fill='%231A472A'/><text x='4' y='22' font-family='Georgia,serif' font-weight='900' font-size='14' fill='white'>T</text><text x='16' y='22' font-family='Georgia,serif' font-weight='900' font-size='14' fill='%23D4A853'>F</text></svg>">
   <link rel="manifest" href="/manifest.json">
-  <meta name="theme-color" content="#2D8F6F">
+  <meta name="theme-color" content="#1A472A">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="TourFeed">
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;0,800;0,900;1,400;1,500;1,600;1,700&display=swap" rel="stylesheet">
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
     :root {
-      --navy: #1B2538; --navy-l: #243044; --navy-d: #111927;
-      --green: #2D8F6F; --green-l: #34A37E; --green-d: #247A5D;
-      --gold: #D4A853; --gold-l: #E0BC6A;
-      --white: #FFFFFF; --bg: #111927;
-      --g100: #F1F3F5; --g300: #CED4DA; --g400: #ADB5BD;
-      --g500: #868E96; --g700: #495057; --g900: #212529;
-      --s-green: #2DD4A0; --s-red: #FF6B6B;
-      --card-bg: rgba(255,255,255,0.02); --card-border: rgba(255,255,255,0.04);
-      --text: #FFFFFF; --text-dim: #CED4DA; --text-muted: #868E96;
+      --bg: #FAF6F0;
+      --cream: #F5EFE5;
+      --card: #FFFFFF;
+      --green: #1A472A;
+      --green-light: #2D5A3B;
+      --gold: #8B7335;
+      --gold-bright: #A6893D;
+      --red: #8B2020;
+      --text: #2C2416;
+      --dim: #5C5244;
+      --muted: #8C8478;
+      --border: #D8D0C4;
+      --green-fade: rgba(26,71,42,0.06);
+      --gold-fade: rgba(139,115,53,0.1);
+      --s-green: #1A472A;
+      --s-red: #8B2020;
     }
     * { margin:0; padding:0; box-sizing:border-box; }
-    body { font-family:'DM Sans',-apple-system,sans-serif; background:var(--bg); color:var(--text); min-height:100vh; }
+    body { font-family:'DM Sans',-apple-system,system-ui,sans-serif; background:var(--bg); color:var(--text); min-height:100vh; -webkit-font-smoothing:antialiased; }
 
     /* HEADER */
-    .header { background:var(--navy); border-bottom:none; padding:14px 20px 0; position:sticky; top:0; z-index:100; display:flex; justify-content:space-between; align-items:center; }
-    .logo { display:inline-flex; align-items:center; cursor:pointer; text-decoration:none; }
-    .logo-t { font-size:20px; font-weight:900; color:#fff; letter-spacing:1.5px; }
-    .logo-f { font-size:20px; font-weight:900; color:var(--gold); letter-spacing:1.5px; }
-    .header-right { display:flex; align-items:center; gap:8px; }
+    .header { background:var(--green); border-bottom:3px solid #D4A853; padding:14px 20px; position:sticky; top:0; z-index:100; display:flex; justify-content:space-between; align-items:center; }
+    .logo { display:inline-flex; align-items:center; cursor:pointer; text-decoration:none; gap:1px; }
+    .logo-t { font-family:'Playfair Display',Georgia,serif; font-size:22px; font-weight:900; color:#fff; letter-spacing:1px; }
+    .logo-f { font-family:'Playfair Display',Georgia,serif; font-size:22px; font-weight:900; color:#D4A853; letter-spacing:1px; }
+    .header-right { display:flex; align-items:center; gap:14px; }
+    .header-tagline { font-size:10px; font-weight:600; letter-spacing:2px; color:rgba(255,255,255,0.6); text-transform:uppercase; }
+    .header-subscribe { padding:7px 16px; background:#D4A853; border:none; border-radius:4px; color:var(--green); font-size:11px; font-weight:700; cursor:pointer; font-family:inherit; letter-spacing:0.5px; text-transform:uppercase; }
+    .header-subscribe:hover { background:#E0BC6A; }
 
     /* NAV */
-    .nav { background:var(--navy); padding:0 16px; display:flex; gap:0; overflow-x:auto; -webkit-overflow-scrolling:touch; border-bottom:1px solid var(--card-border); }
+    .nav { background:var(--cream); padding:0 16px; display:flex; gap:0; overflow-x:auto; -webkit-overflow-scrolling:touch; border-bottom:1px solid var(--border); }
     .nav::-webkit-scrollbar { display:none; }
-    .nav-btn { padding:10px 14px; border-radius:0; border:none; border-bottom:2px solid transparent; background:transparent; color:var(--text-muted); font-size:12px; font-weight:600; cursor:pointer; white-space:nowrap; font-family:inherit; transition:all 0.15s; letter-spacing:0.5px; }
+    .nav-btn { padding:12px 16px; border-radius:0; border:none; border-bottom:2px solid transparent; background:transparent; color:var(--muted); font-size:12px; font-weight:600; cursor:pointer; white-space:nowrap; font-family:inherit; transition:all 0.15s; letter-spacing:0.5px; text-transform:uppercase; }
     .nav-btn:hover { color:var(--text); }
-    .nav-btn.active { color:var(--text); border-bottom-color:var(--green); font-weight:700; }
+    .nav-btn.active { color:var(--green); border-bottom-color:var(--green); font-weight:700; }
 
-    /* BROADCAST BAR */
-    .broadcast { background:linear-gradient(135deg,var(--green),var(--green-d)); padding:10px 16px; display:flex; justify-content:space-between; align-items:center; }
-    .broadcast-name { font-size:17px; font-weight:800; color:#fff; }
-    .broadcast-sub { font-size:11px; color:rgba(255,255,255,0.7); margin-top:2px; }
-    .broadcast-label { font-size:9px; color:rgba(255,255,255,0.5); font-weight:600; letter-spacing:1px; }
-    .broadcast-value { font-size:13px; font-weight:700; color:#fff; margin-top:1px; }
-
-    /* WATCH BAR */
-    .watch-bar { background:var(--navy-l); padding:8px 16px; display:flex; align-items:center; gap:8px; font-size:11px; border-bottom:1px solid var(--card-border); }
-    .watch-live { width:7px; height:7px; border-radius:50%; background:var(--s-green); animation:pulse 2s infinite; }
-    .watch-text { color:var(--text-muted); }
-    .watch-channel { color:var(--text); font-weight:700; }
-    @keyframes pulse { 0%,100%{opacity:1}50%{opacity:0.3} }
-    @keyframes spin { to { transform: rotate(360deg); } }
+    /* SCORE TICKER */
+    .score-ticker { background:#111; padding:8px 0; overflow:hidden; position:relative; border-bottom:1px solid #333; }
+    .score-ticker-inner { display:flex; gap:24px; animation:tickerScroll 30s linear infinite; white-space:nowrap; padding:0 16px; }
+    .ticker-item { display:flex; align-items:center; gap:6px; font-size:12px; color:#ccc; }
+    .ticker-name { font-weight:600; color:#fff; }
+    .ticker-score { font-weight:700; }
+    .ticker-live-badge { background:var(--red); color:#fff; font-size:9px; font-weight:700; padding:2px 6px; border-radius:2px; letter-spacing:1px; margin-right:8px; animation:pulse 2s infinite; }
+    @keyframes tickerScroll { 0%{transform:translateX(0)} 100%{transform:translateX(-50%)} }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+    @keyframes spin { to { transform:rotate(360deg); } }
 
     /* MAIN */
-    .main { max-width:720px; margin:0 auto; padding:0 20px; }
+    .main { max-width:800px; margin:0 auto; padding:0 20px; }
     .section { display:none; }
     .section.active { display:block; }
 
     /* SEARCH */
-    .search { margin:8px 0; }
-    .search input { width:100%; padding:10px 14px; background:var(--card-bg); border:1px solid var(--card-border); border-radius:8px; color:var(--text); font-size:13px; font-family:inherit; outline:none; }
+    .search { margin:10px 0; }
+    .search input { width:100%; padding:10px 14px; background:var(--card); border:1px solid var(--border); border-radius:4px; color:var(--text); font-size:13px; font-family:inherit; outline:none; }
     .search input:focus { border-color:var(--green); }
-    .search input::placeholder { color:var(--g700); }
+    .search input::placeholder { color:var(--muted); }
 
     /* LEADERBOARD */
-    .lb-header { display:flex; padding:6px 12px; font-size:9px; font-weight:700; color:var(--g700); letter-spacing:1px; }
-    .lb-row { display:flex; align-items:center; padding:8px 12px; border-radius:6px; margin-bottom:1px; cursor:pointer; transition:background 0.15s; }
-    .lb-row:hover { background:rgba(255,255,255,0.03); }
-    .lb-row.leader { background:rgba(45,143,111,0.08); }
+    .lb-header { display:flex; padding:6px 12px; font-size:9px; font-weight:700; color:var(--muted); letter-spacing:1px; text-transform:uppercase; border-bottom:1px solid var(--border); }
+    .lb-row { display:flex; align-items:center; padding:8px 12px; margin-bottom:0; cursor:pointer; transition:background 0.1s; border-bottom:1px solid rgba(216,208,196,0.4); }
+    .lb-row:hover { background:var(--green-fade); }
+    .lb-row.leader { background:var(--green-fade); }
     .lb-pos { width:28px; font-size:12px; font-weight:700; }
     .lb-player { flex:1; display:flex; align-items:center; gap:5px; }
-    .lb-name { font-size:13px; font-weight:600; color:var(--text-dim); }
+    .lb-name { font-size:13px; font-weight:600; color:var(--dim); }
     .lb-name.top { font-weight:800; color:var(--text); }
     .lb-flag { font-size:13px; }
     .lb-move { font-size:9px; font-weight:700; }
-    .lb-round { width:30px; text-align:center; font-size:11px; color:var(--text-muted); }
+    .lb-round { width:30px; text-align:center; font-size:11px; color:var(--muted); }
     .lb-today { width:56px; text-align:center; font-size:12px; font-weight:700; }
     .lb-total { width:46px; text-align:right; font-size:15px; font-weight:800; }
-    .score-under { color:var(--s-green); }
-    .score-over { color:var(--s-red); }
-    .score-even { color:var(--g400); }
+    .score-under { color:#1A6B3C; }
+    .score-over { color:var(--red); }
+    .score-even { color:var(--muted); }
 
     /* CUT LINE */
     .cut-line { display:flex; align-items:center; gap:8px; padding:8px 12px; margin:4px 0; }
-    .cut-line-bar { flex:1; height:1px; background:var(--s-red); opacity:0.3; }
-    .cut-line-text { font-size:10px; font-weight:700; color:var(--s-red); letter-spacing:2px; }
+    .cut-line-bar { flex:1; height:1px; background:var(--red); opacity:0.4; }
+    .cut-line-text { font-size:10px; font-weight:700; color:var(--red); letter-spacing:2px; }
 
     /* SCORECARD */
-    .scorecard { margin:0 0 8px; padding:12px; background:var(--card-bg); border:1px solid var(--card-border); border-radius:8px; overflow-x:auto; }
-    .scorecard-title { font-size:12px; font-weight:700; margin-bottom:8px; }
+    .scorecard { margin:0 0 8px; padding:12px; background:var(--card); border:1px solid var(--border); border-radius:4px; overflow-x:auto; }
+    .scorecard-title { font-family:'Playfair Display',Georgia,serif; font-size:13px; font-weight:700; margin-bottom:8px; color:var(--text); }
     .scorecard table { width:100%; border-collapse:collapse; font-size:11px; min-width:520px; }
     .scorecard td { padding:4px; text-align:center; }
-    .scorecard .hole-birdie { background:rgba(45,200,150,0.15); color:var(--s-green); font-weight:700; border-radius:4px; }
-    .scorecard .hole-eagle { background:#1a7f5a; color:#fff; font-weight:700; border-radius:4px; }
-    .scorecard .hole-bogey { background:rgba(224,49,49,0.15); color:var(--s-red); font-weight:700; border-radius:4px; }
-    .scorecard .hole-double { background:rgba(224,49,49,0.3); color:var(--s-red); font-weight:700; border-radius:4px; }
-    .scorecard .hole-par { color:var(--g400); font-weight:700; }
+    .scorecard .hole-birdie { background:rgba(26,71,42,0.1); color:#1A6B3C; font-weight:700; border-radius:2px; }
+    .scorecard .hole-eagle { background:var(--green); color:#fff; font-weight:700; border-radius:2px; }
+    .scorecard .hole-bogey { background:rgba(139,32,32,0.1); color:var(--red); font-weight:700; border-radius:2px; }
+    .scorecard .hole-double { background:rgba(139,32,32,0.2); color:var(--red); font-weight:700; border-radius:2px; }
+    .scorecard .hole-par { color:var(--muted); font-weight:700; }
 
-    /* ARTICLE CARDS — blog feed style */
-    .article-card { display:flex; gap:14px; padding:16px 0; border-bottom:1px solid var(--card-border); cursor:pointer; transition:all 0.15s; }
-    .article-card:hover { background:rgba(255,255,255,0.015); }
-    .article-card:last-child { border-bottom:none; }
-    .article-card-img { width:120px; height:80px; object-fit:cover; border-radius:8px; flex-shrink:0; background:var(--navy-l); }
-    .article-card-body { flex:1; min-width:0; }
-    .article-card-title { font-size:15px; font-weight:700; line-height:1.35; color:var(--text); display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
-    .article-card-title:hover { color:var(--green); }
-    .article-card-excerpt { font-size:12px; color:var(--text-muted); line-height:1.5; margin-top:4px; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
-    .article-card-meta { display:flex; align-items:center; gap:8px; margin-top:6px; font-size:10px; color:var(--g700); }
+    /* ARTICLE ROW — text only, no images */
+    .article-row { display:flex; align-items:flex-start; gap:10px; padding:14px 0; border-bottom:1px solid var(--border); cursor:pointer; transition:background 0.1s; }
+    .article-row:hover { background:var(--green-fade); margin:0 -8px; padding-left:8px; padding-right:8px; }
+    .article-row:last-child { border-bottom:none; }
+    .article-row-body { flex:1; min-width:0; }
+    .article-row-title { font-family:'Playfair Display',Georgia,serif; font-size:16px; font-weight:700; line-height:1.35; color:var(--text); }
+    .article-row-title:hover { color:var(--green); }
+    .article-row-byline { font-size:11px; color:var(--muted); margin-top:4px; }
 
     /* TAGS */
-    .tag { font-size:9px; font-weight:700; padding:3px 8px; border-radius:3px; letter-spacing:1.5px; text-transform:uppercase; display:inline-block; }
+    .tag { font-size:9px; font-weight:700; padding:3px 8px; border-radius:2px; letter-spacing:1px; text-transform:uppercase; display:inline-block; color:#fff; }
+    .tag-recap { background:var(--green); }
+    .tag-betting { background:var(--gold); }
+    .tag-breaking { background:var(--red); }
+    .tag-preview { background:var(--green-light); }
+    .tag-analysis { background:var(--gold); }
+    .tag-news { background:var(--dim); }
+    .tag-major { background:#D4A853; color:var(--green); }
+    .tag-injury { background:var(--red); }
+    .tag-default { background:var(--muted); }
 
     /* ARTICLE DETAIL */
-    .article-detail { padding:4px 0; }
-    .article-detail-img { width:100%; border-radius:12px; margin-bottom:16px; max-height:400px; object-fit:cover; }
-    .article-detail-title { font-size:24px; font-weight:900; line-height:1.25; color:var(--text); margin-bottom:10px; }
-    .article-detail-meta { display:flex; align-items:center; gap:8px; flex-wrap:wrap; font-size:12px; color:var(--text-muted); margin-bottom:20px; padding-bottom:16px; border-bottom:1px solid var(--card-border); }
-    .article-detail-body { line-height:1.85; font-size:15px; color:var(--text-dim); }
+    .article-detail { padding:4px 0; max-width:680px; margin:0 auto; }
+    .article-detail-title { font-family:'Playfair Display',Georgia,serif; font-size:28px; font-weight:800; line-height:1.25; color:var(--text); margin-bottom:12px; }
+    .article-detail-meta { display:flex; align-items:center; gap:8px; flex-wrap:wrap; font-size:12px; color:var(--muted); margin-bottom:20px; padding-bottom:16px; border-bottom:1px solid var(--border); }
+    .article-detail-body { font-family:'DM Sans',system-ui,sans-serif; line-height:1.85; font-size:16px; color:var(--dim); }
     .article-detail-body p { margin-bottom:16px; }
-    .article-detail-body h2, .article-detail-body h3 { color:var(--text); margin:24px 0 12px; }
+    .article-detail-body h2, .article-detail-body h3 { font-family:'Playfair Display',Georgia,serif; color:var(--text); margin:24px 0 12px; }
     .article-detail-body strong { color:var(--text); }
 
     /* SHARE BUTTONS */
     .share-row { display:flex; gap:8px; margin:20px 0; }
-    .share-btn { background:none; border:1px solid var(--card-border); border-radius:6px; padding:8px 14px; font-size:11px; color:var(--text-muted); cursor:pointer; font-family:inherit; font-weight:600; transition:all 0.15s; }
+    .share-btn { background:none; border:1px solid var(--border); border-radius:4px; padding:8px 14px; font-size:11px; color:var(--muted); cursor:pointer; font-family:inherit; font-weight:600; transition:all 0.15s; }
     .share-btn:hover { border-color:var(--green); color:var(--green); }
 
-    /* RELATED ARTICLES */
-    .related-section { margin-top:24px; padding-top:20px; border-top:1px solid var(--card-border); }
-    .related-title { font-size:11px; font-weight:700; letter-spacing:2px; color:var(--g700); margin-bottom:12px; }
-
     /* EMAIL CTA */
-    .email-cta { background:linear-gradient(135deg,var(--green),var(--green-d)); border-radius:12px; padding:24px; margin:24px 0; text-align:center; }
-    .email-cta-title { font-size:18px; font-weight:800; color:#fff; margin-bottom:6px; }
-    .email-cta-sub { font-size:12px; color:rgba(255,255,255,0.8); margin-bottom:14px; }
+    .email-cta { background:var(--green); border-radius:4px; padding:28px; margin:24px 0; text-align:center; }
+    .email-cta-title { font-family:'Playfair Display',Georgia,serif; font-size:20px; font-weight:800; color:#fff; margin-bottom:6px; }
+    .email-cta-sub { font-size:12px; color:rgba(255,255,255,0.7); margin-bottom:14px; }
     .email-cta-form { display:flex; gap:8px; max-width:360px; margin:0 auto; }
-    .email-cta-form input { flex:1; padding:11px 14px; background:rgba(255,255,255,0.15); border:1px solid rgba(255,255,255,0.25); border-radius:8px; color:#fff; font-size:13px; font-family:inherit; outline:none; }
-    .email-cta-form input::placeholder { color:rgba(255,255,255,0.6); }
-    .email-cta-form button { padding:11px 20px; background:#fff; border:none; border-radius:8px; color:var(--green); font-size:13px; font-weight:700; cursor:pointer; font-family:inherit; white-space:nowrap; }
+    .email-cta-form input { flex:1; padding:11px 14px; background:rgba(255,255,255,0.12); border:1px solid rgba(255,255,255,0.25); border-radius:4px; color:#fff; font-size:13px; font-family:inherit; outline:none; }
+    .email-cta-form input::placeholder { color:rgba(255,255,255,0.5); }
+    .email-cta-form button { padding:11px 20px; background:#D4A853; border:none; border-radius:4px; color:var(--green); font-size:13px; font-weight:700; cursor:pointer; font-family:inherit; white-space:nowrap; }
+    .email-cta-form button:hover { background:#E0BC6A; }
 
-    /* INSIGHTS */
-    .insight-card { background:var(--card-bg); border:1px solid var(--card-border); border-radius:10px; padding:16px; margin-bottom:12px; }
-    .insight-header { display:flex; align-items:center; margin-bottom:10px; }
-    .insight-label { font-size:10px; font-weight:700; letter-spacing:2px; }
-    .pick-row { padding:10px 12px; border-radius:8px; margin-bottom:6px; display:flex; align-items:center; }
-    .pick-row-info { flex:1; }
-    .pick-row-name { font-size:13px; font-weight:700; color:var(--text); }
-    .pick-row-detail { font-size:10px; color:var(--text-muted); margin-top:2px; }
-    .pick-row-odds { font-size:13px; font-weight:800; margin-left:8px; }
-    .odds-table-row { display:flex; align-items:center; padding:5px 0; border-bottom:1px solid var(--card-border); }
-    .odds-table-row:last-child { border-bottom:none; }
-    .odds-bar { width:50px; margin-right:6px; }
-    .odds-bar-inner { height:5px; background:var(--card-border); border-radius:3px; overflow:hidden; }
+    /* INSIGHT CARDS */
+    .insight-card { background:var(--card); border:1px solid var(--border); border-radius:4px; padding:16px; margin-bottom:12px; }
 
     /* FILTER */
     .filter-bar { display:flex; gap:4px; margin-bottom:14px; flex-wrap:wrap; padding-top:6px; }
-    .filter-btn { padding:6px 14px; border-radius:20px; border:1px solid var(--card-border); font-size:11px; font-weight:600; cursor:pointer; font-family:inherit; background:transparent; color:var(--text-muted); transition:all 0.15s; }
+    .filter-btn { padding:6px 14px; border-radius:4px; border:1px solid var(--border); font-size:11px; font-weight:600; cursor:pointer; font-family:inherit; background:var(--card); color:var(--muted); transition:all 0.15s; }
     .filter-btn:hover { border-color:var(--green); color:var(--green); }
     .filter-btn.active { background:var(--green); color:#fff; border-color:var(--green); }
 
     /* STANDINGS */
-    .standings-row { display:flex; align-items:center; padding:9px 12px; border-radius:6px; margin-bottom:1px; }
-    .standings-row.top { background:rgba(45,143,111,0.08); }
+    .standings-row { display:flex; align-items:center; padding:9px 12px; margin-bottom:0; border-bottom:1px solid rgba(216,208,196,0.4); }
+    .standings-row.top { background:var(--green-fade); }
 
     /* SCHEDULE */
-    .sched-card { background:transparent; border:none; border-bottom:1px solid var(--card-border); padding:16px 0; margin-bottom:0; }
-    .sched-card.live { background:rgba(45,143,111,0.04); padding:16px; border-radius:8px; border:none; margin-bottom:4px; }
-    .badge { font-size:9px; font-weight:700; padding:2px 7px; border-radius:4px; letter-spacing:1px; }
-    .badge-live { color:var(--s-green); background:rgba(45,200,150,0.15); }
-    .badge-major { color:var(--gold); background:rgba(212,168,83,0.15); }
+    .sched-card { background:transparent; border:none; border-bottom:1px solid var(--border); padding:16px 0; margin-bottom:0; }
+    .sched-card.live { background:var(--green-fade); padding:16px; border-radius:4px; border:1px solid var(--green); margin-bottom:4px; }
+    .badge { font-size:9px; font-weight:700; padding:2px 7px; border-radius:2px; letter-spacing:1px; }
+    .badge-live { color:#fff; background:var(--green); }
+    .badge-major { color:var(--green); background:#D4A853; }
 
     /* SECTION LABELS */
-    .section-label { font-size:11px; font-weight:700; color:var(--g700); letter-spacing:2px; margin:20px 0 10px 0; text-transform:uppercase; }
+    .section-label { font-family:'Playfair Display',Georgia,serif; font-size:13px; font-weight:700; color:var(--green); letter-spacing:2px; margin:20px 0 10px 0; text-transform:uppercase; border-bottom:1px solid var(--border); padding-bottom:8px; }
 
     /* LOAD MORE */
-    .load-more { display:block; width:100%; padding:12px; background:var(--card-bg); border:1px solid var(--card-border); border-radius:8px; color:var(--green); font-size:13px; font-weight:700; cursor:pointer; font-family:inherit; text-align:center; margin:16px 0; }
-    .load-more:hover { border-color:var(--green); }
+    .load-more { display:block; width:100%; padding:12px; background:var(--card); border:1px solid var(--border); border-radius:4px; color:var(--green); font-size:13px; font-weight:700; cursor:pointer; font-family:inherit; text-align:center; margin:16px 0; }
+    .load-more:hover { border-color:var(--green); background:var(--green-fade); }
 
     /* EMAIL POPUP */
-    .email-popup { position:fixed; bottom:-200px; left:50%; transform:translateX(-50%); width:calc(100% - 32px); max-width:480px; background:var(--navy); border:1px solid rgba(45,143,111,0.3); border-radius:14px; padding:20px; z-index:200; transition:bottom 0.5s cubic-bezier(0.16,1,0.3,1); box-shadow:0 -4px 30px rgba(0,0,0,0.4); }
+    .email-popup { position:fixed; bottom:-200px; left:50%; transform:translateX(-50%); width:calc(100% - 32px); max-width:480px; background:var(--card); border:1px solid var(--border); border-radius:4px; padding:20px; z-index:200; transition:bottom 0.5s cubic-bezier(0.16,1,0.3,1); box-shadow:0 -2px 20px rgba(0,0,0,0.08); }
     .email-popup.show { bottom:16px; }
-    .email-popup-close { position:absolute; top:10px; right:14px; background:none; border:none; color:var(--g500); font-size:18px; cursor:pointer; padding:4px; }
+    .email-popup-close { position:absolute; top:10px; right:14px; background:none; border:none; color:var(--muted); font-size:18px; cursor:pointer; padding:4px; }
 
     /* FOOTER */
-    .footer { text-align:center; padding:20px 0 32px; border-top:1px solid var(--card-border); margin-top:14px; }
-
-    /* COUNTDOWN */
-    .countdown { background:var(--navy-l); border:1px solid var(--card-border); border-radius:10px; padding:16px; text-align:center; margin:10px 0; }
-    .countdown-label { font-size:10px; color:var(--green); font-weight:700; letter-spacing:3px; }
-    .countdown-time { font-size:28px; font-weight:900; margin-top:6px; }
-    .countdown-sub { font-size:11px; color:var(--text-muted); margin-top:4px; }
+    .footer { text-align:center; padding:20px 0 32px; border-top:1px solid var(--border); margin-top:14px; }
 
     /* DISCLAIMER */
-    .disclaimer { font-size:9px; color:var(--g700); margin-top:10px; text-align:center; line-height:1.5; }
+    .disclaimer { font-size:9px; color:var(--muted); margin-top:10px; text-align:center; line-height:1.5; }
+
+    /* HOME LAYOUT */
+    .home-columns { display:grid; grid-template-columns:1fr 1fr; gap:20px; margin-bottom:16px; }
+    .home-featured { background:var(--card); border:1px solid var(--border); border-radius:4px; border-bottom:3px solid var(--red); padding:20px; margin-bottom:16px; cursor:pointer; }
+    .home-featured:hover { background:var(--green-fade); }
+    .home-featured-tag { margin-bottom:8px; }
+    .home-featured-title { font-family:'Playfair Display',Georgia,serif; font-size:22px; font-weight:800; line-height:1.3; color:var(--text); margin-bottom:8px; }
+    .home-featured-excerpt { font-size:13px; color:var(--dim); line-height:1.6; margin-bottom:10px; }
+    .home-featured-meta { font-size:10px; color:var(--muted); }
+
+    .picks-strip { background:var(--card); border:1px solid var(--border); border-radius:4px; padding:16px; margin-bottom:16px; }
+    .picks-strip-title { font-family:'Playfair Display',Georgia,serif; font-size:13px; font-weight:700; color:var(--gold); letter-spacing:2px; text-transform:uppercase; margin-bottom:12px; border-bottom:1px solid var(--gold-fade); padding-bottom:8px; }
 
     /* RESPONSIVE */
+    @media(max-width:768px) {
+      .home-columns { grid-template-columns:1fr; }
+      .header-tagline { display:none; }
+    }
     @media(max-width:600px) {
       .lb-round { display:none; }
       .lb-header .r-col { display:none; }
-      .broadcast-name { font-size:15px; }
-      .header { padding:8px 10px; }
-      .article-card-img { width:90px; height:64px; }
-      .article-card-title { font-size:14px; }
-      .article-detail-title { font-size:20px; }
+      .header { padding:10px 14px; }
+      .home-featured-title { font-size:18px; }
+      .article-detail-title { font-size:22px; }
       .email-cta-form { flex-direction:column; }
     }
   </style>
@@ -237,18 +244,18 @@
     <a class="logo" onclick="switchTab(0);return false" href="/">
       <span class="logo-t">TOUR</span><span class="logo-f">FEED</span>
     </a>
-    <div class="header-right"></div>
+    <div class="header-right">
+      <span class="header-tagline">YOUR DAILY GOLF FIX</span>
+      <button class="header-subscribe" onclick="document.getElementById('emailPopup').classList.add('show')">SUBSCRIBE</button>
+    </div>
   </div>
 
   <!-- NAV -->
   <div class="nav" id="nav"></div>
 
-  <!-- WATCH BAR -->
-  <div class="watch-bar" id="watchBar" style="display:none">
-    <div class="watch-live"></div>
-    <span class="watch-text">Now on</span>
-    <span class="watch-channel" id="watchChannel"></span>
-    <span class="watch-text" id="watchEvent"></span>
+  <!-- SCORE TICKER -->
+  <div class="score-ticker" id="scoreTicker" style="display:none">
+    <div class="score-ticker-inner" id="scoreTickerInner"></div>
   </div>
 
   <!-- MAIN CONTENT -->
@@ -257,29 +264,29 @@
   <!-- EMAIL POPUP -->
   <div class="email-popup" id="emailPopup">
     <button class="email-popup-close" onclick="closePopup()">&#10005;</button>
-    <div style="font-size:15px;font-weight:800;margin-bottom:4px">Get TourFeed in your inbox</div>
-    <div style="font-size:12px;color:var(--text-muted);margin-bottom:12px">Live scores, recaps, and betting insights delivered free.</div>
+    <div style="font-family:'Playfair Display',Georgia,serif;font-size:17px;font-weight:800;margin-bottom:4px;color:var(--text)">Get TourFeed in your inbox</div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:12px">Live scores, recaps, and betting insights delivered free.</div>
     <div style="display:flex;gap:8px">
-      <input type="email" id="emailInput" placeholder="Enter your email" style="flex:1;padding:11px 14px;background:rgba(255,255,255,0.04);border:1px solid var(--card-border);border-radius:8px;color:var(--text);font-size:13px;font-family:inherit;outline:none">
-      <button onclick="subscribeEmail()" style="padding:11px 20px;background:var(--green);border:none;border-radius:8px;color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap">Subscribe</button>
+      <input type="email" id="emailInput" placeholder="Enter your email" style="flex:1;padding:11px 14px;background:var(--cream);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:13px;font-family:inherit;outline:none">
+      <button onclick="subscribeEmail()" style="padding:11px 20px;background:var(--green);border:none;border-radius:4px;color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap">Subscribe</button>
     </div>
-    <div style="font-size:10px;color:var(--g700);margin-top:8px">No spam. Unsubscribe anytime.</div>
+    <div style="font-size:10px;color:var(--muted);margin-top:8px">No spam. Unsubscribe anytime.</div>
   </div>
 
   <!-- FOOTER -->
   <div class="main">
     <div class="footer">
-      <div class="logo" style="justify-content:center;margin-bottom:8px">
-        <span class="logo-t">TOUR</span><span class="logo-f">FEED</span>
+      <div class="logo" style="justify-content:center;margin-bottom:8px;text-decoration:none">
+        <span class="logo-t" style="color:var(--green)">TOUR</span><span class="logo-f" style="color:var(--gold)">FEED</span>
       </div>
-      <div style="font-size:10px;color:var(--g700);margin-top:6px">Live scores | Instant recaps | Betting insights</div>
-      <div style="font-size:9px;color:var(--g700);margin-top:4px">&copy; 2026 TourFeed. All rights reserved.</div>
+      <div style="font-size:10px;color:var(--muted);margin-top:6px">Live scores | Instant recaps | Betting insights</div>
+      <div style="font-size:9px;color:var(--muted);margin-top:4px">&copy; 2026 TourFeed. All rights reserved.</div>
       <div style="margin-top:8px;display:flex;justify-content:center;gap:12px">
-        <a href="https://x.com/TourFeedGolf" target="_blank" style="color:var(--text-muted);font-size:11px;text-decoration:none">X</a>
-        <a href="https://instagram.com/TourFeedGolf" target="_blank" style="color:var(--text-muted);font-size:11px;text-decoration:none">Instagram</a>
-        <a href="https://tiktok.com/@TourFeedGolf" target="_blank" style="color:var(--text-muted);font-size:11px;text-decoration:none">TikTok</a>
-        <a href="/privacy" style="color:var(--text-muted);font-size:11px;text-decoration:none">Privacy</a>
-        <a href="/terms" style="color:var(--text-muted);font-size:11px;text-decoration:none">Terms</a>
+        <a href="https://x.com/TourFeedGolf" target="_blank" style="color:var(--dim);font-size:11px;text-decoration:none">X</a>
+        <a href="https://instagram.com/TourFeedGolf" target="_blank" style="color:var(--dim);font-size:11px;text-decoration:none">Instagram</a>
+        <a href="https://tiktok.com/@TourFeedGolf" target="_blank" style="color:var(--dim);font-size:11px;text-decoration:none">TikTok</a>
+        <a href="/privacy" style="color:var(--dim);font-size:11px;text-decoration:none">Privacy</a>
+        <a href="/terms" style="color:var(--dim);font-size:11px;text-decoration:none">Terms</a>
       </div>
     </div>
   </div>
@@ -344,17 +351,30 @@ function readTime(text) {
   return Math.max(1, Math.ceil(words / 200)) + ' min read';
 }
 
+function tagClass(tag) {
+  const t = (tag || '').toUpperCase();
+  if (t === 'RECAP' || t === 'TOURNAMENT') return 'tag-recap';
+  if (t === 'BETTING') return 'tag-betting';
+  if (t === 'BREAKING') return 'tag-breaking';
+  if (t === 'PREVIEW') return 'tag-preview';
+  if (t === 'ANALYSIS') return 'tag-analysis';
+  if (t === 'MAJOR') return 'tag-major';
+  if (t === 'INJURY') return 'tag-injury';
+  if (t === 'NEWS' || t === 'TOUR NEWS') return 'tag-news';
+  return 'tag-default';
+}
+
 function tagColor(tag) {
   const t = (tag || '').toUpperCase();
   if (t === 'RECAP' || t === 'TOURNAMENT') return 'var(--green)';
   if (t === 'BETTING' || t === 'ANALYSIS') return 'var(--gold)';
-  if (t === 'PREVIEW') return 'var(--green)';
-  if (t === 'BREAKING' || t === 'INJURY') return 'var(--s-red)';
-  if (t === 'MAJOR') return 'var(--gold)';
+  if (t === 'PREVIEW') return 'var(--green-light)';
+  if (t === 'BREAKING' || t === 'INJURY') return 'var(--red)';
+  if (t === 'MAJOR') return '#D4A853';
   if (t === 'LIV GOLF') return 'var(--gold)';
-  if (t === 'LPGA') return '#E91E8C';
-  if (t === 'DP WORLD') return '#4A90D9';
-  return 'var(--text-muted)';
+  if (t === 'LPGA') return '#C44D8E';
+  if (t === 'DP WORLD') return '#3A6EA5';
+  return 'var(--muted)';
 }
 
 // ============================================
@@ -393,14 +413,14 @@ const COUNTRY_MAP = {
 };
 
 function countryFlag(input) {
-  if (!input) return '<span style="font-size:10px;color:var(--g500)">-</span>';
+  if (!input) return '<span style="font-size:10px;color:var(--muted)">-</span>';
   let code = input.trim();
   if (code.length === 2) {
     code = code.toLowerCase();
   } else {
     code = (COUNTRY_MAP[code.toLowerCase()] || '').toLowerCase();
   }
-  if (!code || code.length !== 2) return '<span style="font-size:10px;color:var(--g500)">-</span>';
+  if (!code || code.length !== 2) return '<span style="font-size:10px;color:var(--muted)">-</span>';
   return '<img src="https://flagcdn.com/20x15/' + code + '.png" width="20" height="15" style="vertical-align:middle;border-radius:2px" alt="' + code.toUpperCase() + '" onerror="this.style.display=\'none\'">';
 }
 
@@ -696,28 +716,6 @@ async function fetchAllArticles() {
       return t === 'BETTING' || t === 'ARTICLE_BETTING';
     });
 
-    // If no Supabase articles yet, also fetch ESPN news as fallback
-    if (newsArticles.length === 0) {
-      try {
-        const espnRes = await fetch('https://site.api.espn.com/apis/site/v2/sports/golf/pga/news?limit=15');
-        if (espnRes.ok) {
-          const espnData = await espnRes.json();
-          (espnData.articles || []).forEach(function(a) {
-            newsArticles.push({
-              title: a.headline || '',
-              summary: a.description || '',
-              body: '<p>' + (a.description || '') + '</p>',
-              header_image: a.images?.[0]?.url || '',
-              tag: 'TOUR NEWS',
-              published_at: a.published || new Date().toISOString(),
-              slug: null,
-              _espn: true,
-            });
-          });
-        }
-      } catch(e) {}
-    }
-
     articlesLoaded = true;
   } catch(e) {
     console.warn('Articles fetch failed:', e);
@@ -857,6 +855,30 @@ function switchTab(i) {
 }
 
 // ============================================
+// SCORE TICKER
+// ============================================
+function renderScoreTicker() {
+  var ticker = document.getElementById('scoreTicker');
+  var inner = document.getElementById('scoreTickerInner');
+  if (!ticker || !inner) return;
+  var active = PLAYERS ? PLAYERS.filter(function(p) { return p.status === 'active'; }) : [];
+  var isLive = TOURNAMENT && active.length > 0 && TOURNAMENT.state === 'in';
+  if (!isLive) { ticker.style.display = 'none'; return; }
+  ticker.style.display = 'block';
+  var items = '';
+  items += '<span class="ticker-live-badge">LIVE</span>';
+  items += '<span class="ticker-item" style="color:#D4A853;font-weight:700">' + esc(TOURNAMENT.name) + ' &mdash; R' + TOURNAMENT.round + '</span>';
+  active.slice(0, 15).forEach(function(p) {
+    var sc = p.score.startsWith('+') ? 'color:var(--s-red)' : p.score === 'E' ? 'color:#999' : 'color:#4CAF50';
+    items += '<span class="ticker-item">' + p.c + ' <span class="ticker-name">' + esc(p.name) + '</span> <span class="ticker-score" style="' + sc + '">' + p.score + '</span>';
+    if (p.thru && p.thru !== '-' && p.thru !== 'F') items += ' <span style="color:#666;font-size:10px">thru ' + p.thru + '</span>';
+    items += '</span>';
+  });
+  // Duplicate for seamless scroll
+  inner.innerHTML = items + items;
+}
+
+// ============================================
 // EMAIL
 // ============================================
 let popupClosed = false;
@@ -876,7 +898,7 @@ function subscribeEmail() {
   if (!email || !email.includes('@')) return;
   localStorage.setItem('tf-subscribed', '1');
   const popup = document.getElementById('emailPopup');
-  popup.innerHTML = '<div style="text-align:center;padding:12px 0"><div style="font-size:20px;margin-bottom:6px">&#10003;</div><div style="font-size:15px;font-weight:700">You\'re in.</div><div style="font-size:12px;color:var(--text-muted);margin-top:4px">We\'ll send you the good stuff.</div></div>';
+  popup.innerHTML = '<div style="text-align:center;padding:12px 0"><div style="font-size:20px;margin-bottom:6px;color:var(--green)">&#10003;</div><div style="font-family:Playfair Display,Georgia,serif;font-size:16px;font-weight:700;color:var(--text)">You\'re in.</div><div style="font-size:12px;color:var(--muted);margin-top:4px">We\'ll send you the good stuff.</div></div>';
   setTimeout(function() { popup.classList.remove('show'); }, 2500);
 }
 function subscribeInline(inputId) {
@@ -885,7 +907,7 @@ function subscribeInline(inputId) {
   const email = input.value;
   if (!email || !email.includes('@')) return;
   localStorage.setItem('tf-subscribed', '1');
-  input.parentElement.innerHTML = '<div style="font-size:14px;font-weight:700;color:#fff;padding:8px 0">You\'re in. Welcome to TourFeed.</div>';
+  input.parentElement.innerHTML = '<div style="font-family:Playfair Display,Georgia,serif;font-size:15px;font-weight:700;color:#fff;padding:8px 0">You\'re in. Welcome to TourFeed.</div>';
 }
 setTimeout(showPopup, 12000);
 
@@ -932,43 +954,33 @@ function renderArticleDetail(a) {
   var dateStr = a.published_at ? new Date(a.published_at).toLocaleDateString('en-US', {month:'long', day:'numeric', year:'numeric'}) : '';
   var backLabel = currentTab === 2 ? 'News' : currentTab === 3 ? 'Insights' : currentTab === 4 ? 'Blog' : 'Back';
   var tagText = esc(a.tag || 'NEWS');
+  var tClass = tagClass(a.tag);
 
-  var html = '<div class="article-detail" style="max-width:680px;margin:0 auto">';
+  var html = '<div class="article-detail">';
 
   // Back button
-  html += '<button onclick="closeArticleDetail()" style="background:none;border:none;color:var(--green);font-size:13px;font-weight:700;cursor:pointer;padding:10px 0;font-family:inherit;display:flex;align-items:center;gap:4px">&larr; ' + backLabel + '</button>';
+  html += '<button onclick="closeArticleDetail()" style="background:none;border:none;color:var(--green);font-size:13px;font-weight:700;cursor:pointer;padding:12px 0;font-family:inherit;display:flex;align-items:center;gap:4px">&larr; ' + backLabel + '</button>';
 
-  // Header image or gradient placeholder
-  if (a.header_image) {
-    html += '<div style="position:relative;margin-bottom:20px">';
-    html += '<img src="' + esc(a.header_image) + '" class="article-detail-img" alt="" onerror="this.parentElement.innerHTML=\'<div style=\\\'background:linear-gradient(135deg,var(--navy-l),var(--green-d));border-radius:12px;padding:30px;margin-bottom:20px\\\'>< span class=\\\'tag\\\' style=\\\'color:' + tc + ';background:' + tc + '15\\\'>' + tagText + '</span></div>\'">';
-    html += '<span class="tag" style="position:absolute;bottom:12px;left:12px;color:' + tc + ';background:' + tc + '15;backdrop-filter:blur(4px)">' + tagText + '</span>';
-    html += '</div>';
-  } else {
-    html += '<div style="background:linear-gradient(135deg,var(--navy-l),var(--green-d));border-radius:12px;padding:28px;margin-bottom:20px;border-left:4px solid ' + tc + '">';
-    html += '<span class="tag" style="color:' + tc + ';background:' + tc + '15">' + tagText + '</span>';
-    html += '<div style="font-size:9px;color:var(--g700);margin-top:8px;letter-spacing:1px;font-weight:700">TOUR<span style="color:var(--gold)">FEED</span></div>';
-    html += '</div>';
-  }
+  // Tag
+  html += '<div style="margin-bottom:12px"><span class="tag ' + tClass + '">' + tagText + '</span></div>';
 
   // Headline
-  html += '<h1 style="font-size:26px;font-weight:900;line-height:1.25;color:var(--text);margin-bottom:12px">' + esc(a.title) + '</h1>';
+  html += '<h1 class="article-detail-title">' + esc(a.title) + '</h1>';
 
   // Meta line
-  html += '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:12px;color:var(--text-muted);margin-bottom:20px;padding-bottom:16px;border-bottom:1px solid var(--card-border)">';
-  html += '<span class="tag" style="color:' + tc + ';background:' + tc + '15">' + tagText + '</span>';
-  html += '<span style="font-weight:600;color:var(--text-dim)">By TourFeed Staff</span>';
-  if (dateStr) html += '<span>' + dateStr + '</span>';
-  html += '<span>' + rt + '</span>';
+  html += '<div class="article-detail-meta">';
+  html += '<span style="font-weight:600;color:var(--dim)">By TourFeed Staff</span>';
+  if (dateStr) html += '<span>&middot;</span><span>' + dateStr + '</span>';
+  html += '<span>&middot;</span><span>' + rt + '</span>';
   html += '</div>';
 
   // Article body
-  html += '<div style="line-height:1.85;font-size:16px;color:var(--text-dim);max-width:640px">' + (a.body || '<p>' + esc(a.summary || '') + '</p>') + '</div>';
+  html += '<div class="article-detail-body">' + (a.body || '<p>' + esc(a.summary || '') + '</p>') + '</div>';
 
   // Share buttons
   var safeTitle = esc(a.title).replace(/'/g, '');
   var safeSlug = esc(a.slug || '');
-  html += '<div style="display:flex;gap:8px;margin:24px 0">';
+  html += '<div class="share-row">';
   html += '<button class="share-btn" onclick="shareTwitter(\'' + safeTitle + '\',\'' + safeSlug + '\')">Share on X</button>';
   html += '<button class="share-btn" onclick="shareArticle(\'' + safeTitle + '\',\'' + safeSlug + '\')">Copy Link</button>';
   html += '</div>';
@@ -984,13 +996,13 @@ function renderArticleDetail(a) {
     html += '</div></div>';
   }
 
-  // Related articles — pull from all articles, not just current tab
+  // Related articles
   var allForRelated = newsArticles.concat(blogArticles).concat(bettingArticles);
   var related = allForRelated.filter(function(r) { return r.id !== a.id && r.title !== a.title; }).slice(0, 3);
   if (related.length > 0) {
-    html += '<div style="margin-top:24px;padding-top:20px;border-top:1px solid var(--card-border)">';
-    html += '<div style="font-size:11px;font-weight:700;letter-spacing:2px;color:var(--g700);margin-bottom:12px">MORE FROM TOURFEED</div>';
-    related.forEach(function(r) { html += renderArticleCard(r); });
+    html += '<div style="margin-top:24px;padding-top:20px;border-top:1px solid var(--border)">';
+    html += '<div style="font-family:Playfair Display,Georgia,serif;font-size:13px;font-weight:700;letter-spacing:2px;color:var(--green);margin-bottom:12px;text-transform:uppercase">More From TourFeed</div>';
+    related.forEach(function(r) { html += renderArticleRow(r); });
     html += '</div>';
   }
 
@@ -999,27 +1011,20 @@ function renderArticleDetail(a) {
 }
 
 // ============================================
-// ARTICLE CARD RENDERER
+// ARTICLE ROW RENDERER — text only, no images
 // ============================================
-function renderArticleCard(a) {
-  const tc = tagColor(a.tag);
-  const summary = (a.summary || (a.body ? a.body.replace(/<[^>]+>/g, '').slice(0, 120) : '')).slice(0, 120);
-  const time = timeAgo(a.published_at);
-  const imgSrc = a.header_image || '';
+function renderArticleRow(a) {
+  var tClass = tagClass(a.tag);
+  var time = timeAgo(a.published_at);
 
-  let html = '<div class="article-card" onclick="openArticleDetail(this._article)" style="cursor:pointer">';
-  html += '<div class="article-card-body">';
-  html += '<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">';
-  html += '<span class="tag" style="color:' + tc + ';background:' + tc + '15">' + esc(a.tag || 'NEWS') + '</span>';
-  if (time) html += '<span style="font-size:10px;color:var(--g700)">' + time + '</span>';
+  var html = '<div class="article-row" onclick="openArticleDetail(this._article)" style="cursor:pointer">';
+  html += '<div style="flex-shrink:0;padding-top:2px"><span class="tag ' + tClass + '">' + esc(a.tag || 'NEWS') + '</span></div>';
+  html += '<div class="article-row-body">';
+  html += '<div class="article-row-title">' + esc(a.title) + '</div>';
+  html += '<div class="article-row-byline">By TourFeed Staff';
+  if (time) html += ' &middot; ' + time;
+  html += ' &middot; ' + readTime(a.body) + '</div>';
   html += '</div>';
-  html += '<div class="article-card-title">' + esc(a.title) + '</div>';
-  if (summary) html += '<div class="article-card-excerpt">' + esc(summary) + '</div>';
-  html += '<div class="article-card-meta"><span>By TourFeed Staff</span><span>' + readTime(a.body) + '</span></div>';
-  html += '</div>';
-  if (imgSrc) {
-    html += '<img src="' + esc(imgSrc) + '" class="article-card-img" alt="" onerror="this.style.display=\'none\'">';
-  }
   html += '</div>';
   return html;
 }
@@ -1031,16 +1036,16 @@ function renderScorecard(p) {
   if (!p.holes || p.holes.length === 0) {
     const rounds = [p.r1, p.r2, p.r3, p.r4].filter(function(r) { return r !== null && r !== undefined; });
     const coursePar = TOURNAMENT?.par || 72;
-    let html = '<div class="scorecard"><div class="scorecard-title">Round Scores - ' + p.name + '</div>';
+    let html = '<div class="scorecard"><div class="scorecard-title">Round Scores &mdash; ' + p.name + '</div>';
     html += '<div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:8px">';
     rounds.forEach(function(r, i) {
       const diff = r - coursePar;
       const diffStr = diff === 0 ? 'E' : (diff > 0 ? '+' + diff : '' + diff);
-      const color = diff < 0 ? 'var(--s-green)' : diff > 0 ? 'var(--s-red)' : 'var(--g400)';
-      html += '<div style="text-align:center;min-width:56px"><div style="font-size:9px;color:var(--g700);font-weight:600;letter-spacing:1px">R' + (i+1) + '</div><div style="font-size:22px;font-weight:800;margin-top:2px">' + r + '</div><div style="font-size:11px;font-weight:700;color:' + color + ';margin-top:1px">' + diffStr + '</div></div>';
+      const color = diff < 0 ? '#1A6B3C' : diff > 0 ? 'var(--red)' : 'var(--muted)';
+      html += '<div style="text-align:center;min-width:56px"><div style="font-size:9px;color:var(--muted);font-weight:600;letter-spacing:1px">R' + (i+1) + '</div><div style="font-size:22px;font-weight:800;margin-top:2px;color:var(--text)">' + r + '</div><div style="font-size:11px;font-weight:700;color:' + color + ';margin-top:1px">' + diffStr + '</div></div>';
     });
     if (rounds.length > 0) {
-      html += '<div style="text-align:center;min-width:56px;border-left:1px solid var(--card-border);padding-left:12px"><div style="font-size:9px;color:var(--g700);font-weight:600;letter-spacing:1px">TOTAL</div><div style="font-size:22px;font-weight:800;margin-top:2px">' + rounds.reduce(function(a,b){return a+b;},0) + '</div><div style="font-size:11px;font-weight:700;color:' + (p.score.startsWith('+')?'var(--s-red)':p.score==='E'?'var(--g400)':'var(--s-green)') + ';margin-top:1px">' + p.score + '</div></div>';
+      html += '<div style="text-align:center;min-width:56px;border-left:1px solid var(--border);padding-left:12px"><div style="font-size:9px;color:var(--muted);font-weight:600;letter-spacing:1px">TOTAL</div><div style="font-size:22px;font-weight:800;margin-top:2px;color:var(--text)">' + rounds.reduce(function(a,b){return a+b;},0) + '</div><div style="font-size:11px;font-weight:700;color:' + (p.score.startsWith('+')?'var(--red)':p.score==='E'?'var(--muted)':'#1A6B3C') + ';margin-top:1px">' + p.score + '</div></div>';
     }
     html += '</div></div>';
     return html;
@@ -1061,13 +1066,13 @@ function renderScorecard(p) {
   }
 
   const rd = TOURNAMENT?.round || '';
-  let html = '<div class="scorecard"><div class="scorecard-title">' + (rd ? 'Round ' + rd + ' ' : '') + 'Scorecard - ' + p.name + '</div>';
-  html += '<table><tr style="color:var(--g700);font-weight:600"><td style="text-align:left;padding-left:6px">Hole</td>';
+  let html = '<div class="scorecard"><div class="scorecard-title">' + (rd ? 'Round ' + rd + ' ' : '') + 'Scorecard &mdash; ' + p.name + '</div>';
+  html += '<table><tr style="color:var(--muted);font-weight:600"><td style="text-align:left;padding-left:6px">Hole</td>';
   for (let h = 1; h <= 9; h++) html += '<td>' + h + '</td>';
   html += '<td style="font-weight:800">OUT</td>';
   for (let h = 10; h <= 18; h++) html += '<td>' + h + '</td>';
   html += '<td style="font-weight:800">IN</td><td style="font-weight:800">TOT</td></tr>';
-  html += '<tr style="color:var(--text-muted)"><td style="text-align:left;padding-left:6px;font-weight:600">Par</td>';
+  html += '<tr style="color:var(--muted)"><td style="text-align:left;padding-left:6px;font-weight:600">Par</td>';
   frontPar.forEach(function(v) { html += '<td>' + v + '</td>'; });
   html += '<td style="font-weight:700">' + frontPar.reduce(function(a,b){return a+b;},0) + '</td>';
   backPar.forEach(function(v) { html += '<td>' + v + '</td>'; });
@@ -1078,7 +1083,7 @@ function renderScorecard(p) {
   html += '<td style="font-weight:800">' + front.reduce(function(a,b){return a+b;},0) + '</td>';
   back.forEach(function(v,i) { html += '<td class="' + holeClass(v,backPar[i]) + '">' + v + '</td>'; });
   html += '<td style="font-weight:800">' + back.reduce(function(a,b){return a+b;},0) + '</td>';
-  html += '<td style="font-weight:800;color:var(--s-green)">' + p.holes.reduce(function(a,b){return a+b;},0) + '</td></tr></table></div>';
+  html += '<td style="font-weight:800;color:#1A6B3C">' + p.holes.reduce(function(a,b){return a+b;},0) + '</td></tr></table></div>';
   return html;
 }
 
@@ -1089,51 +1094,51 @@ function renderHome() {
   try {
   let html = '';
 
-  // Live tournament hero
+  // Live tournament hero or coming up
   if (TOURNAMENT && PLAYERS.length > 0) {
     const active = PLAYERS.filter(function(p) { return p.status === 'active'; });
     const leader = active[0];
     const tied = leader ? active.filter(function(p) { return p.score === leader.score; }) : [];
 
-    html += '<div style="background:linear-gradient(135deg,var(--green),var(--green-d));border-radius:12px;padding:18px;margin-bottom:12px">';
+    html += '<div style="background:var(--green);border-radius:4px;padding:20px;margin:16px 0;border-bottom:3px solid #D4A853">';
     html += '<div style="display:flex;justify-content:space-between;align-items:flex-start">';
-    html += '<div><div style="font-size:10px;font-weight:700;letter-spacing:2px;color:rgba(255,255,255,0.7)">LIVE</div>';
-    html += '<div style="font-size:18px;font-weight:800;color:#fff;margin-top:4px">' + esc(TOURNAMENT.name) + '</div>';
-    html += '<div style="font-size:11px;color:rgba(255,255,255,0.7);margin-top:2px">' + esc(TOURNAMENT.course) + ' &middot; ' + esc(TOURNAMENT.status) + '</div></div>';
-    if (TOURNAMENT.broadcast) html += '<div style="background:rgba(0,0,0,0.2);padding:4px 10px;border-radius:6px;font-size:10px;font-weight:700;color:#fff">' + esc(TOURNAMENT.broadcast) + '</div>';
+    html += '<div><div style="font-size:10px;font-weight:700;letter-spacing:2px;color:rgba(255,255,255,0.6)">LIVE</div>';
+    html += '<div style="font-family:Playfair Display,Georgia,serif;font-size:20px;font-weight:800;color:#fff;margin-top:4px">' + esc(TOURNAMENT.name) + '</div>';
+    html += '<div style="font-size:11px;color:rgba(255,255,255,0.6);margin-top:2px">' + esc(TOURNAMENT.course) + ' &middot; ' + esc(TOURNAMENT.status) + '</div></div>';
+    if (TOURNAMENT.broadcast) html += '<div style="background:rgba(0,0,0,0.2);padding:4px 10px;border-radius:2px;font-size:10px;font-weight:700;color:#fff">' + esc(TOURNAMENT.broadcast) + '</div>';
     html += '</div>';
 
     if (leader) {
-      html += '<div style="margin-top:14px;padding:12px;background:rgba(0,0,0,0.15);border-radius:8px">';
+      html += '<div style="margin-top:14px;padding:12px;background:rgba(0,0,0,0.15);border-radius:4px">';
       if (tied.length > 1) {
-        html += '<div style="font-size:11px;color:rgba(255,255,255,0.7);margin-bottom:6px">' + tied.length + '-WAY TIE AT ' + esc(leader.score) + '</div>';
+        html += '<div style="font-size:11px;color:rgba(255,255,255,0.6);margin-bottom:6px">' + tied.length + '-WAY TIE AT ' + esc(leader.score) + '</div>';
         tied.slice(0, 3).forEach(function(p) {
           html += '<div style="font-size:15px;font-weight:700;color:#fff;padding:2px 0">' + p.c + ' ' + esc(p.name) + '</div>';
         });
       } else {
-        html += '<div style="font-size:11px;color:rgba(255,255,255,0.7);margin-bottom:4px">LEADER</div>';
+        html += '<div style="font-size:11px;color:rgba(255,255,255,0.6);margin-bottom:4px">LEADER</div>';
         html += '<div style="display:flex;align-items:center;gap:10px">';
-        html += '<div style="font-size:28px;font-weight:900;color:#fff">' + esc(leader.score) + '</div>';
+        html += '<div style="font-family:Playfair Display,Georgia,serif;font-size:28px;font-weight:900;color:#D4A853">' + esc(leader.score) + '</div>';
         html += '<div><div style="font-size:16px;font-weight:700;color:#fff">' + leader.c + ' ' + esc(leader.name) + '</div>';
-        html += (leader.today ? '<div style="font-size:12px;color:rgba(255,255,255,0.7)">' + esc(leader.today) + ' today &middot; thru ' + esc(leader.thru) + '</div>' : '') + '</div></div>';
+        html += (leader.today ? '<div style="font-size:12px;color:rgba(255,255,255,0.6)">' + esc(leader.today) + ' today &middot; thru ' + esc(leader.thru) + '</div>' : '') + '</div></div>';
       }
       html += '</div>';
     }
-    html += '<button onclick="switchTab(1)" style="background:rgba(255,255,255,0.15);border:none;color:#fff;font-size:12px;font-weight:700;padding:8px 16px;border-radius:6px;margin-top:10px;cursor:pointer;font-family:inherit">Full Leaderboard &rarr;</button>';
+    html += '<button onclick="switchTab(1)" style="background:#D4A853;border:none;color:var(--green);font-size:12px;font-weight:700;padding:8px 16px;border-radius:4px;margin-top:10px;cursor:pointer;font-family:inherit">Full Leaderboard &rarr;</button>';
     html += '</div>';
   } else {
     // Coming up
-    html += '<div style="background:linear-gradient(135deg,var(--navy-l),var(--navy));border:1px solid var(--card-border);border-radius:12px;padding:18px;margin-bottom:12px;text-align:center">';
-    html += '<div style="font-size:10px;font-weight:700;letter-spacing:2px;color:var(--gold);margin-bottom:8px">COMING UP</div>';
+    html += '<div style="background:var(--card);border:1px solid var(--border);border-radius:4px;padding:20px;margin:16px 0;text-align:center">';
+    html += '<div style="font-family:Playfair Display,Georgia,serif;font-size:10px;font-weight:700;letter-spacing:3px;color:var(--gold);margin-bottom:8px">COMING UP</div>';
     if (scheduleData.length > 0) {
       const now = Date.now();
       const next = scheduleData.find(function(e) { return e.startDate && new Date(e.startDate).getTime() > now; });
       if (next) {
         const d = new Date(next.startDate);
         const daysUntil = Math.ceil((d.getTime() - now) / 86400000);
-        html += '<div style="font-size:18px;font-weight:800;color:var(--text)">' + esc(next.event) + '</div>';
-        html += '<div style="font-size:12px;color:var(--text-muted);margin-top:4px">' + esc(next.course) + '</div>';
-        html += '<div style="font-size:24px;font-weight:900;color:var(--gold);margin-top:10px">' + daysUntil + ' DAY' + (daysUntil !== 1 ? 'S' : '') + '</div>';
+        html += '<div style="font-family:Playfair Display,Georgia,serif;font-size:20px;font-weight:800;color:var(--text)">' + esc(next.event) + '</div>';
+        html += '<div style="font-size:12px;color:var(--muted);margin-top:4px">' + esc(next.course) + '</div>';
+        html += '<div style="font-family:Playfair Display,Georgia,serif;font-size:28px;font-weight:900;color:var(--gold);margin-top:10px">' + daysUntil + ' DAY' + (daysUntil !== 1 ? 'S' : '') + '</div>';
       }
     }
     html += '</div>';
@@ -1143,41 +1148,51 @@ function renderHome() {
   var allArticles = newsArticles.concat(blogArticles).concat(bettingArticles);
   allArticles.sort(function(a,b) { return new Date(b.published_at || 0) - new Date(a.published_at || 0); });
 
-  // Featured article — the most recent one, shown large
+  // Featured article — red bottom border card
   if (allArticles.length > 0) {
     var featured = allArticles[0];
-    var ftc = tagColor(featured.tag);
-    html += '<div onclick="openArticleDetail(this._article)" style="cursor:pointer;background:var(--card-bg);border:1px solid var(--card-border);border-radius:12px;overflow:hidden;margin-bottom:12px">';
-    if (featured.header_image) html += '<img src="' + esc(featured.header_image) + '" style="width:100%;height:180px;object-fit:cover" alt="" onerror="this.style.display=\'none\'">';
-    html += '<div style="padding:14px">';
-    html += '<span class="tag" style="color:' + ftc + ';background:' + ftc + '15">' + esc(featured.tag || 'NEWS') + '</span>';
-    html += '<div style="font-size:17px;font-weight:800;color:var(--text);line-height:1.3;margin-top:6px">' + esc(featured.title) + '</div>';
-    var fExcerpt = (featured.summary || (featured.body ? featured.body.replace(/<[^>]+>/g, '').slice(0, 150) : '')).slice(0, 150);
-    html += '<div style="font-size:12px;color:var(--text-muted);margin-top:6px;line-height:1.5">' + esc(fExcerpt) + '...</div>';
-    html += '<div style="font-size:10px;color:var(--g700);margin-top:8px">By TourFeed Staff &middot; ' + timeAgo(featured.published_at) + ' &middot; ' + readTime(featured.body) + '</div>';
-    html += '</div></div>';
+    var ftc = tagClass(featured.tag);
+    html += '<div class="home-featured" onclick="openArticleDetail(this._article)">';
+    html += '<div class="home-featured-tag"><span class="tag ' + ftc + '">' + esc(featured.tag || 'NEWS') + '</span></div>';
+    html += '<div class="home-featured-title">' + esc(featured.title) + '</div>';
+    var fExcerpt = (featured.summary || (featured.body ? featured.body.replace(/<[^>]+>/g, '').slice(0, 180) : '')).slice(0, 180);
+    html += '<div class="home-featured-excerpt">' + esc(fExcerpt) + '...</div>';
+    html += '<div class="home-featured-meta">By TourFeed Staff &middot; ' + timeAgo(featured.published_at) + ' &middot; ' + readTime(featured.body) + '</div>';
+    html += '</div>';
   }
 
-  // Latest stories — next 5 articles
+  // Two columns: Top Stories (left) + Analysis & Picks (right)
+  html += '<div class="home-columns">';
+
+  // LEFT: Top Stories
+  html += '<div>';
+  html += '<div style="font-family:Playfair Display,Georgia,serif;font-size:13px;font-weight:700;color:var(--green);letter-spacing:2px;text-transform:uppercase;border-bottom:1px solid var(--border);padding-bottom:8px;margin-bottom:4px;display:flex;justify-content:space-between;align-items:center">';
+  html += '<span>Top Stories</span>';
+  html += '<button onclick="switchTab(2)" style="background:none;border:none;color:var(--green);font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;text-transform:none;letter-spacing:0">All News &rarr;</button>';
+  html += '</div>';
   if (allArticles.length > 1) {
-    html += '<div style="margin-bottom:12px">';
-    html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">';
-    html += '<div style="font-size:10px;font-weight:700;letter-spacing:2px;color:var(--green)">LATEST</div>';
-    html += '<button onclick="switchTab(2)" style="background:none;border:none;color:var(--green);font-size:11px;font-weight:700;cursor:pointer;font-family:inherit">All News &rarr;</button>';
-    html += '</div>';
-    allArticles.slice(1, 6).forEach(function(a) { html += renderArticleCard(a); });
-    html += '</div>';
+    allArticles.slice(1, 6).forEach(function(a) { html += renderArticleRow(a); });
   }
-
-  // TourFeed Picks — our own picks, prominently displayed
-  html += '<div style="padding:16px;background:linear-gradient(135deg,rgba(212,168,83,0.08),rgba(45,143,111,0.05));border:1px solid rgba(212,168,83,0.2);border-radius:12px;margin-bottom:12px">';
-  html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">';
-  html += '<div><div style="font-size:11px;font-weight:900;letter-spacing:2px;color:var(--gold)">TOURFEED PICKS</div>';
-  html += '<div style="font-size:10px;color:var(--text-muted);margin-top:2px">Our model-generated picks for this week</div></div>';
-  html += '<button onclick="switchTab(3)" style="background:none;border:none;color:var(--gold);font-size:11px;font-weight:700;cursor:pointer;font-family:inherit">Full Analysis &rarr;</button>';
   html += '</div>';
 
-  // Live picks from current tournament data
+  // RIGHT: Analysis & Picks
+  html += '<div>';
+  html += '<div style="font-family:Playfair Display,Georgia,serif;font-size:13px;font-weight:700;color:var(--gold);letter-spacing:2px;text-transform:uppercase;border-bottom:1px solid var(--border);padding-bottom:8px;margin-bottom:4px;display:flex;justify-content:space-between;align-items:center">';
+  html += '<span>Analysis &amp; Picks</span>';
+  html += '<button onclick="switchTab(3)" style="background:none;border:none;color:var(--gold);font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;text-transform:none;letter-spacing:0">Full Analysis &rarr;</button>';
+  html += '</div>';
+  var rightArticles = blogArticles.concat(bettingArticles).sort(function(a,b) { return new Date(b.published_at || 0) - new Date(a.published_at || 0); });
+  if (rightArticles.length > 0) {
+    rightArticles.slice(0, 5).forEach(function(a) { html += renderArticleRow(a); });
+  } else {
+    html += '<div style="font-size:13px;color:var(--muted);padding:16px 0">Analysis and betting picks coming soon.</div>';
+  }
+  html += '</div>';
+  html += '</div>'; // end columns
+
+  // Quick Picks strip from PLAYERS data
+  html += '<div class="picks-strip">';
+  html += '<div class="picks-strip-title">Quick Picks</div>';
   if (TOURNAMENT && PLAYERS.length > 0) {
     var active = PLAYERS.filter(function(p) { return p.status === 'active'; });
     if (active.length > 3) {
@@ -1187,87 +1202,42 @@ function renderHome() {
       var toOdds = function(pct) { return pct >= 50 ? '-' + Math.round(pct / (100 - pct) * 100) : '+' + Math.round((100 - pct) / pct * 100); };
       var totalRaw = active.slice(0, 15).reduce(function(s, p) { return s + calcP(Math.abs(parseS(p.score) - leaderNum)); }, 0) + 10;
 
-      // Best bet — player 2-5 range with best today score
       var bestBet = active.slice(1, 6).sort(function(a,b) { return (parseS(a.today)||0) - (parseS(b.today)||0); })[0];
-      // Longshot — player 6-15 range
       var longshot = active.slice(5, 15).sort(function(a,b) { return (parseS(a.today)||0) - (parseS(b.today)||0); })[0];
 
+      html += '<div style="display:flex;gap:12px;flex-wrap:wrap">';
       if (bestBet) {
         var bbBack = Math.abs(parseS(bestBet.score) - leaderNum);
         var bbPct = (calcP(bbBack) / totalRaw) * 100;
-        html += '<div style="padding:10px 12px;background:rgba(45,143,111,0.1);border-radius:8px;margin-bottom:6px;display:flex;align-items:center">';
-        html += '<span class="tag" style="color:var(--green);background:rgba(45,143,111,0.2);font-size:9px;margin-right:10px">BEST BET</span>';
-        html += '<div style="flex:1"><div style="font-size:14px;font-weight:800;color:var(--text)">' + bestBet.c + ' ' + esc(bestBet.name) + '</div>';
-        html += '<div style="font-size:10px;color:var(--text-muted)">' + bestBet.score + ' &middot; ' + bbBack + ' back</div></div>';
-        html += '<div style="font-size:16px;font-weight:900;color:var(--green)">' + toOdds(bbPct) + '</div></div>';
+        html += '<div style="flex:1;min-width:200px;padding:12px;background:var(--green-fade);border:1px solid var(--border);border-radius:4px">';
+        html += '<div style="font-size:9px;font-weight:700;letter-spacing:1px;color:var(--green);margin-bottom:6px">BEST BET</div>';
+        html += '<div style="font-family:Playfair Display,Georgia,serif;font-size:15px;font-weight:800;color:var(--text)">' + bestBet.c + ' ' + esc(bestBet.name) + '</div>';
+        html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:4px"><span style="font-size:11px;color:var(--muted)">' + bestBet.score + ' &middot; ' + bbBack + ' back</span>';
+        html += '<span style="font-family:Playfair Display,Georgia,serif;font-size:18px;font-weight:900;color:var(--green)">' + toOdds(bbPct) + '</span></div></div>';
       }
       if (longshot) {
         var lsBack = Math.abs(parseS(longshot.score) - leaderNum);
         var lsPct = (calcP(lsBack) / totalRaw) * 100;
-        html += '<div style="padding:10px 12px;background:rgba(212,168,83,0.08);border-radius:8px;margin-bottom:6px;display:flex;align-items:center">';
-        html += '<span class="tag" style="color:var(--gold);background:rgba(212,168,83,0.15);font-size:9px;margin-right:10px">LONGSHOT</span>';
-        html += '<div style="flex:1"><div style="font-size:14px;font-weight:800;color:var(--text)">' + longshot.c + ' ' + esc(longshot.name) + '</div>';
-        html += '<div style="font-size:10px;color:var(--text-muted)">' + longshot.score + ' &middot; ' + lsBack + ' back</div></div>';
-        html += '<div style="font-size:16px;font-weight:900;color:var(--gold)">' + toOdds(lsPct) + '</div></div>';
+        html += '<div style="flex:1;min-width:200px;padding:12px;background:var(--gold-fade);border:1px solid var(--border);border-radius:4px">';
+        html += '<div style="font-size:9px;font-weight:700;letter-spacing:1px;color:var(--gold);margin-bottom:6px">LONGSHOT</div>';
+        html += '<div style="font-family:Playfair Display,Georgia,serif;font-size:15px;font-weight:800;color:var(--text)">' + longshot.c + ' ' + esc(longshot.name) + '</div>';
+        html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:4px"><span style="font-size:11px;color:var(--muted)">' + longshot.score + ' &middot; ' + lsBack + ' back</span>';
+        html += '<span style="font-family:Playfair Display,Georgia,serif;font-size:18px;font-weight:900;color:var(--gold)">' + toOdds(lsPct) + '</span></div></div>';
       }
-    }
-  } else {
-    // No live tournament — show teaser to betting articles
-    html += '<div style="font-size:13px;color:var(--text-muted);padding:8px 0">Picks update during tournament play. Read our full betting preview below.</div>';
-  }
-
-  // Link to betting articles
-  if (bettingArticles.length > 0) {
-    html += '<div style="margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,0.06)">';
-    bettingArticles.slice(0, 2).forEach(function(a) { html += renderArticleCard(a); });
-    html += '</div>';
-  }
-  html += '</div>';
-
-  // Blog / analysis section
-  if (blogArticles.length > 0) {
-    html += '<div style="margin-bottom:12px">';
-    html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">';
-    html += '<div style="font-size:10px;font-weight:700;letter-spacing:2px;color:var(--green)">ANALYSIS & PREVIEWS</div>';
-    html += '<button onclick="switchTab(4)" style="background:none;border:none;color:var(--green);font-size:11px;font-weight:700;cursor:pointer;font-family:inherit">All Blog &rarr;</button>';
-    html += '</div>';
-    blogArticles.slice(0, 3).forEach(function(a) { html += renderArticleCard(a); });
-    html += '</div>';
-  }
-
-  // Quick links
-  html += '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px">';
-  [['Scores',1,'Leaderboard'],['Insights',3,'Picks & Odds'],['Schedule',6,'Calendar']].forEach(function(item) {
-    html += '<div onclick="switchTab(' + item[1] + ')" style="padding:14px;background:var(--card-bg);border:1px solid var(--card-border);border-radius:10px;text-align:center;cursor:pointer">';
-    html += '<div style="font-size:13px;font-weight:800;color:var(--text)">' + item[0] + '</div>';
-    html += '<div style="font-size:10px;color:var(--text-muted);margin-top:2px">' + item[2] + '</div>';
-    html += '</div>';
-  });
-  html += '</div>';
-
-  // Upcoming event
-  if (scheduleData.length > 0) {
-    var now2 = Date.now();
-    var next = scheduleData.find(function(e) { return e.startDate && new Date(e.startDate).getTime() > now2; });
-    if (next) {
-      var nd = new Date(next.startDate);
-      var nDays = Math.ceil((nd.getTime() - now2) / 86400000);
-      html += '<div style="padding:14px;background:var(--card-bg);border:1px solid var(--card-border);border-radius:10px;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between">';
-      html += '<div><div style="font-size:10px;font-weight:700;letter-spacing:2px;color:var(--gold);margin-bottom:4px">NEXT UP</div>';
-      html += '<div style="font-size:14px;font-weight:800;color:var(--text)">' + esc(next.event) + '</div>';
-      html += '<div style="font-size:11px;color:var(--text-muted)">' + esc(next.course) + '</div></div>';
-      html += '<div style="text-align:right"><div style="font-size:22px;font-weight:900;color:var(--gold)">' + nDays + '</div><div style="font-size:9px;color:var(--text-muted)">DAY' + (nDays !== 1 ? 'S' : '') + '</div></div>';
       html += '</div>';
     }
+  } else {
+    html += '<div style="font-size:13px;color:var(--muted);padding:4px 0">Picks update during tournament play.</div>';
   }
+  html += '</div>';
 
-  // Email CTA
+  // Newsletter CTA
   if (!localStorage.getItem('tf-subscribed')) {
     html += '<div class="email-cta"><div class="email-cta-title">Get TourFeed in your inbox</div><div class="email-cta-sub">Scores, recaps, and betting picks. Free, no spam.</div><div class="email-cta-form"><input type="email" id="homeEmail" placeholder="Your email"><button onclick="subscribeInline(\'homeEmail\')">Subscribe</button></div></div>';
   }
 
   return html;
-  } catch(e) { console.error('renderHome error:', e); return '<div style="padding:40px;text-align:center;color:var(--text-muted)">Loading...</div>'; }
+  } catch(e) { console.error('renderHome error:', e); return '<div style="padding:40px;text-align:center;color:var(--muted)">Loading...</div>'; }
 }
 
 // ============================================
@@ -1297,7 +1267,7 @@ function isTeetime(thru) {
 function renderTeeTimes() {
   const withTimes = PLAYERS.filter(function(p) { return p.status === 'active' && isTeetime(p.thru); });
   if (withTimes.length === 0) {
-    return '<div style="text-align:center;padding:40px 20px"><div style="font-size:14px;font-weight:700;color:var(--text-dim)">No tee times available</div></div>';
+    return '<div style="text-align:center;padding:40px 20px"><div style="font-family:Playfair Display,Georgia,serif;font-size:15px;font-weight:700;color:var(--dim)">No tee times available</div></div>';
   }
   const groups = {};
   withTimes.forEach(function(p) { const t = p.thru.trim(); if (!groups[t]) groups[t] = []; groups[t].push(p); });
@@ -1310,9 +1280,9 @@ function renderTeeTimes() {
   sortedTimes.forEach(function(time) {
     let players = groups[time];
     if (searchFilter) { players = players.filter(function(p) { return p.name.toLowerCase().includes(searchFilter); }); if (players.length === 0) return; }
-    html += '<div style="margin-top:14px;margin-bottom:6px;display:flex;align-items:center;gap:10px"><div style="font-size:15px;font-weight:800;color:var(--text)">' + time + '</div><div style="flex:1;height:1px;background:var(--card-border)"></div></div>';
+    html += '<div style="margin-top:14px;margin-bottom:6px;display:flex;align-items:center;gap:10px"><div style="font-family:Playfair Display,Georgia,serif;font-size:16px;font-weight:800;color:var(--text)">' + time + '</div><div style="flex:1;height:1px;background:var(--border)"></div></div>';
     players.forEach(function(p) {
-      html += '<div style="display:flex;align-items:center;padding:10px 12px;background:var(--card-bg);border:1px solid var(--card-border);border-radius:8px;margin-bottom:4px"><span style="font-size:14px;margin-right:8px">' + p.c + '</span><div style="flex:1"><div style="font-size:14px;font-weight:700;color:var(--text)">' + p.name + '</div></div><div class="lb-total ' + scoreClass(p.score) + '" style="font-size:16px">' + (p.score || '-') + '</div></div>';
+      html += '<div style="display:flex;align-items:center;padding:10px 12px;background:var(--card);border:1px solid var(--border);border-radius:4px;margin-bottom:4px"><span style="font-size:14px;margin-right:8px">' + p.c + '</span><div style="flex:1"><div style="font-size:14px;font-weight:700;color:var(--text)">' + p.name + '</div></div><div class="lb-total ' + scoreClass(p.score) + '" style="font-size:16px">' + (p.score || '-') + '</div></div>';
     });
   });
   return html;
@@ -1325,24 +1295,27 @@ function renderScores() {
   });
   html += '</div>';
 
-  if (scoresLoading) return html + '<div style="text-align:center;padding:60px 20px"><div style="font-size:14px;font-weight:700;color:var(--text-dim)">Loading scores...</div></div>';
-  if (scoresError) return html + '<div style="text-align:center;padding:40px 20px"><div style="font-size:13px;color:var(--text-muted)">' + scoresError + '</div><button class="filter-btn" style="margin-top:14px;color:var(--green);border:1px solid var(--green)" onclick="fetchESPNScores(currentScoresTour)">Retry</button></div>';
-  if (!TOURNAMENT || PLAYERS.length === 0) return html + '<div style="text-align:center;padding:40px 20px"><div style="font-size:14px;font-weight:700;color:var(--text-dim)">No active event</div><div style="font-size:11px;color:var(--g700);margin-top:6px">Check the Schedule tab for upcoming events</div></div>';
+  if (scoresLoading) return html + '<div style="text-align:center;padding:60px 20px"><div style="font-family:Playfair Display,Georgia,serif;font-size:15px;font-weight:700;color:var(--dim)">Loading scores...</div></div>';
+  if (scoresError) return html + '<div style="text-align:center;padding:40px 20px"><div style="font-size:13px;color:var(--muted)">' + scoresError + '</div><button class="filter-btn" style="margin-top:14px;color:var(--green);border:1px solid var(--green)" onclick="fetchESPNScores(currentScoresTour)">Retry</button></div>';
+  if (!TOURNAMENT || PLAYERS.length === 0) return html + '<div style="text-align:center;padding:40px 20px"><div style="font-family:Playfair Display,Georgia,serif;font-size:15px;font-weight:700;color:var(--dim)">No active event</div><div style="font-size:11px;color:var(--muted);margin-top:6px">Check the Schedule tab for upcoming events</div></div>';
 
   const hasTeetimes = PLAYERS.some(function(p) { return p.status === 'active' && isTeetime(p.thru); });
   const allTeetimes = PLAYERS.filter(function(p) { return p.status === 'active'; }).every(function(p) { return isTeetime(p.thru); });
   if (allTeetimes && hasTeetimes && scoresView === 'leaderboard') scoresView = 'teetimes';
 
-  html += '<div class="broadcast"><div><div class="broadcast-name">' + TOURNAMENT.name + '</div><div class="broadcast-sub">' + TOURNAMENT.course + ' &middot; ' + TOURNAMENT.status + '</div></div><div style="text-align:right">' + (TOURNAMENT.purse ? '<div class="broadcast-label">PURSE</div><div class="broadcast-value">' + TOURNAMENT.purse + '</div>' : '') + '</div></div>';
+  // Tournament header bar
+  html += '<div style="background:var(--green);border-radius:4px;padding:14px 16px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center">';
+  html += '<div><div style="font-family:Playfair Display,Georgia,serif;font-size:17px;font-weight:800;color:#fff">' + TOURNAMENT.name + '</div><div style="font-size:11px;color:rgba(255,255,255,0.6);margin-top:2px">' + TOURNAMENT.course + ' &middot; ' + TOURNAMENT.status + '</div></div>';
+  html += '<div style="text-align:right">' + (TOURNAMENT.purse ? '<div style="font-size:9px;color:rgba(255,255,255,0.5);font-weight:600;letter-spacing:1px">PURSE</div><div style="font-size:14px;font-weight:700;color:#D4A853">' + TOURNAMENT.purse + '</div>' : '') + '</div></div>';
 
   if (hasTeetimes) {
-    html += '<div style="display:flex;gap:4px;margin:8px 0;background:var(--card-bg);border-radius:8px;padding:3px;border:1px solid var(--card-border)">';
-    html += '<button class="filter-btn" style="flex:1;text-align:center;' + (scoresView==='leaderboard'?'background:var(--green);color:#fff':'') + '" onclick="scoresView=\'leaderboard\';renderApp()">Leaderboard</button>';
-    html += '<button class="filter-btn" style="flex:1;text-align:center;' + (scoresView==='teetimes'?'background:var(--green);color:#fff':'') + '" onclick="scoresView=\'teetimes\';renderApp()">Tee Times</button></div>';
+    html += '<div style="display:flex;gap:4px;margin:8px 0;background:var(--card);border-radius:4px;padding:3px;border:1px solid var(--border)">';
+    html += '<button class="filter-btn" style="flex:1;text-align:center;' + (scoresView==='leaderboard'?'background:var(--green);color:#fff;border-color:var(--green)':'') + '" onclick="scoresView=\'leaderboard\';renderApp()">Leaderboard</button>';
+    html += '<button class="filter-btn" style="flex:1;text-align:center;' + (scoresView==='teetimes'?'background:var(--green);color:#fff;border-color:var(--green)':'') + '" onclick="scoresView=\'teetimes\';renderApp()">Tee Times</button></div>';
   }
 
   const updatedStr = lastFetchTime ? lastFetchTime.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}) : '';
-  if (updatedStr) html += '<div style="display:flex;justify-content:space-between;align-items:center;padding:4px 12px;font-size:10px;color:var(--g700)"><span>Updated ' + updatedStr + '</span><span style="cursor:pointer;color:var(--green);font-weight:600" onclick="fetchESPNScores(currentScoresTour)">Refresh</span></div>';
+  if (updatedStr) html += '<div style="display:flex;justify-content:space-between;align-items:center;padding:4px 12px;font-size:10px;color:var(--muted)"><span>Updated ' + updatedStr + '</span><span style="cursor:pointer;color:var(--green);font-weight:600" onclick="fetchESPNScores(currentScoresTour)">Refresh</span></div>';
 
   if (scoresView === 'teetimes' && hasTeetimes) return html + renderTeeTimes();
 
@@ -1369,52 +1342,52 @@ function renderScores() {
     const idx = PLAYERS.indexOf(p);
     const rounds = [p.r1, p.r2, p.r3, p.r4];
     const todayClass = !p.today ? '' : p.today.startsWith('+') ? 'score-over' : p.today === 'E' ? 'score-even' : 'score-under';
-    html += '<div class="lb-row ' + (i===0?'leader':'') + '" onclick="expandPlayer(' + idx + ')"><div class="lb-pos" style="color:' + (i===0?'var(--gold)':'var(--g500)') + '">' + p.pos + '</div><div class="lb-player"><span class="lb-flag">' + p.c + '</span><span class="lb-name ' + (i===0?'top':'') + '">' + p.name + '</span></div>';
+    html += '<div class="lb-row ' + (i===0?'leader':'') + '" onclick="expandPlayer(' + idx + ')"><div class="lb-pos" style="color:' + (i===0?'var(--gold)':'var(--muted)') + '">' + p.pos + '</div><div class="lb-player"><span class="lb-flag">' + p.c + '</span><span class="lb-name ' + (i===0?'top':'') + '">' + p.name + '</span></div>';
     roundCols.forEach(function(r) { html += '<div class="lb-round r-col">' + (rounds[r-1]||'') + '</div>'; });
-    html += '<div class="lb-round r-col ' + todayClass + '" style="width:36px">' + (p.today||'') + '</div><div class="lb-today" style="color:var(--text-muted);font-size:11px">' + (p.thru||'') + '</div><div class="lb-total ' + scoreClass(p.score) + '">' + p.score + '</div></div>';
+    html += '<div class="lb-round r-col ' + todayClass + '" style="width:36px">' + (p.today||'') + '</div><div class="lb-today" style="color:var(--muted);font-size:11px">' + (p.thru||'') + '</div><div class="lb-total ' + scoreClass(p.score) + '">' + p.score + '</div></div>';
     if (expandedCard === idx) html += renderScorecard(p);
   });
 
   if (cut.length > 0) {
-    html += '<div class="section-label" style="margin-top:16px">MISSED CUT</div>';
+    html += '<div class="section-label" style="margin-top:16px">Missed Cut</div>';
     cut.forEach(function(p) {
-      html += '<div class="lb-row" style="opacity:0.5"><div class="lb-pos" style="color:var(--s-red)">' + p.pos + '</div><div class="lb-player"><span class="lb-flag">' + p.c + '</span><span class="lb-name">' + p.name + '</span></div>';
+      html += '<div class="lb-row" style="opacity:0.5"><div class="lb-pos" style="color:var(--red)">' + p.pos + '</div><div class="lb-player"><span class="lb-flag">' + p.c + '</span><span class="lb-name">' + p.name + '</span></div>';
       roundCols.forEach(function(r) { html += '<div class="lb-round r-col">' + ([p.r1,p.r2,p.r3,p.r4][r-1]||'-') + '</div>'; });
       html += '<div class="lb-round r-col" style="width:36px">-</div><div class="lb-today">-</div><div class="lb-total score-over">' + p.score + '</div></div>';
     });
   }
 
   if (wd.length > 0) {
-    html += '<div class="section-label" style="margin-top:16px">WITHDRAWN / DQ</div>';
+    html += '<div class="section-label" style="margin-top:16px">Withdrawn / DQ</div>';
     wd.forEach(function(p) {
-      html += '<div class="lb-row" style="opacity:0.4"><div class="lb-pos" style="color:var(--text-muted)">' + p.pos + '</div><div class="lb-player"><span class="lb-flag">' + p.c + '</span><span class="lb-name">' + p.name + '</span></div>';
+      html += '<div class="lb-row" style="opacity:0.4"><div class="lb-pos" style="color:var(--muted)">' + p.pos + '</div><div class="lb-player"><span class="lb-flag">' + p.c + '</span><span class="lb-name">' + p.name + '</span></div>';
       roundCols.forEach(function(r) { html += '<div class="lb-round r-col">' + ([p.r1,p.r2,p.r3,p.r4][r-1]||'-') + '</div>'; });
       html += '<div class="lb-round r-col" style="width:36px">-</div><div class="lb-today">-</div><div class="lb-total score-over">' + (p.score||'-') + '</div></div>';
     });
   }
 
-  html += '<div style="text-align:center;padding:16px 0;font-size:11px;color:var(--g700)">' + PLAYERS.length + ' players &middot; Auto-refreshing every 30s</div>';
+  html += '<div style="text-align:center;padding:16px 0;font-size:11px;color:var(--muted)">' + PLAYERS.length + ' players &middot; Auto-refreshing every 30s</div>';
   return html;
 }
 
 // ============================================
-// RENDER NEWS TAB — Blog-style feed from Supabase
+// RENDER NEWS TAB — text rows, no images, no ESPN fallback
 // ============================================
 function renderNews() {
   if (currentArticle) return renderArticleDetail(currentArticle);
 
   if (!articlesLoaded) {
     fetchAllArticles();
-    return '<div style="text-align:center;padding:60px 20px"><div style="font-size:14px;font-weight:700;color:var(--text-dim)">Loading news...</div></div>';
+    return '<div style="text-align:center;padding:60px 20px"><div style="font-family:Playfair Display,Georgia,serif;font-size:15px;font-weight:700;color:var(--dim)">Loading news...</div></div>';
   }
 
   if (newsArticles.length === 0) {
-    return '<div style="text-align:center;padding:40px 20px"><div style="font-size:14px;font-weight:700;color:var(--text-dim)">No news yet</div><div style="font-size:12px;color:var(--text-muted);margin-top:6px">Articles will appear here once published</div></div>';
+    return '<div style="text-align:center;padding:40px 20px"><div style="font-family:Playfair Display,Georgia,serif;font-size:15px;font-weight:700;color:var(--dim)">No news yet</div><div style="font-size:12px;color:var(--muted);margin-top:6px">Articles will appear here once published</div></div>';
   }
 
-  let html = '<div class="section-label">NEWS & RECAPS</div>';
+  let html = '<div class="section-label">News &amp; Recaps</div>';
   const visible = newsArticles.slice(0, newsShowCount);
-  visible.forEach(function(a) { html += renderArticleCard(a); });
+  visible.forEach(function(a) { html += renderArticleRow(a); });
   if (newsShowCount < newsArticles.length) {
     html += '<button class="load-more" onclick="newsShowCount+=10;renderApp()">Load More</button>';
   }
@@ -1432,56 +1405,8 @@ function renderNews() {
 // ============================================
 let insightsCache = {};
 
-// Preview picks removed — all picks come from published betting articles in Supabase
-// Generated by blog-scheduler with current field data, not hardcoded
 function getPreviewPicks(eventName, isMajor) {
-  // Return null — no hardcoded picks. Betting content comes from Supabase articles.
   return null;
-  // Dead code below kept for reference only
-  var e = (eventName || '').toLowerCase();
-  if (/masters/i.test(e)) return [
-    { type: 'FAVORITE', name: 'Scottie Scheffler', odds: '+400', reason: 'Two-time champion, world #1, owns this course' },
-    { type: 'FAVORITE', name: 'Rory McIlroy', odds: '+900', reason: 'Defending champion, career Grand Slam holder, back-to-back bid' },
-    { type: 'VALUE', name: 'Ludvig Aberg', odds: '+1600', reason: 'Elite power game suits Augusta, consistent major contender' },
-    { type: 'LONGSHOT', name: 'Robert MacIntyre', odds: '+4000', reason: 'Trending up, recent winner, fits Augusta profile' },
-  ];
-  if (/u\.?s\.?\s*open/i.test(e)) return [
-    { type: 'FAVORITE', name: 'Scottie Scheffler', odds: '+500', reason: 'World #1, consistent in major setups' },
-    { type: 'VALUE', name: 'Xander Schauffele', odds: '+1200', reason: 'Defending champion, thrives in tough conditions' },
-    { type: 'LONGSHOT', name: 'Tommy Fleetwood', odds: '+4000', reason: 'US Open runner-up pedigree, precise iron play' },
-  ];
-  if (/pga championship/i.test(e)) return [
-    { type: 'FAVORITE', name: 'Scottie Scheffler', odds: '+450', reason: 'Dominant form, elite in strong fields' },
-    { type: 'VALUE', name: 'Collin Morikawa', odds: '+1800', reason: 'Past PGA champion, elite approach play' },
-    { type: 'LONGSHOT', name: 'Hideki Matsuyama', odds: '+3500', reason: 'Major pedigree, consistent contender' },
-  ];
-  if (/open championship|the open/i.test(e)) return [
-    { type: 'FAVORITE', name: 'Rory McIlroy', odds: '+700', reason: 'Career Grand Slam holder, two-time Claret Jug winner, links specialist' },
-    { type: 'VALUE', name: 'Tommy Fleetwood', odds: '+2000', reason: 'British player, elite links game' },
-    { type: 'LONGSHOT', name: 'Robert MacIntyre', odds: '+3500', reason: 'Scottish links upbringing, rising form' },
-  ];
-  if (/heritage/i.test(e)) return [
-    { type: 'FAVORITE', name: 'Scottie Scheffler', odds: '+600', reason: 'World #1, Harbour Town suits precision players' },
-    { type: 'VALUE', name: 'Matt Fitzpatrick', odds: '+2500', reason: 'Short tight course rewards accuracy over power' },
-    { type: 'LONGSHOT', name: 'J.J. Spaun', odds: '+5000', reason: 'Riding momentum, good approach stats recently' },
-  ];
-  if (isMajor) return [
-    { type: 'FAVORITE', name: 'Scottie Scheffler', odds: '+500', reason: 'World #1, major championship pedigree' },
-    { type: 'VALUE', name: 'Rory McIlroy', odds: '+1000', reason: 'Five-time major champion, career Grand Slam holder' },
-    { type: 'LONGSHOT', name: 'Ludvig Aberg', odds: '+2500', reason: 'Young talent with elite power metrics' },
-  ];
-  // Generic picks
-  var topPlayers = PLAYERS.filter(function(p) { return p.status === 'active'; }).slice(0, 10);
-  if (topPlayers.length >= 3) return [
-    { type: 'FAVORITE', name: topPlayers[0].name, odds: '+600', reason: 'Current form leader, riding momentum' },
-    { type: 'VALUE', name: topPlayers[2].name, odds: '+2000', reason: 'Strong recent play, good value at this price' },
-    { type: 'LONGSHOT', name: (topPlayers[6] || topPlayers[4] || topPlayers[2]).name, odds: '+5000', reason: 'Under the radar but trending in right direction' },
-  ];
-  return [
-    { type: 'FAVORITE', name: 'Scottie Scheffler', odds: '+500', reason: 'World #1, consistently dominant across all events' },
-    { type: 'VALUE', name: 'Xander Schauffele', odds: '+1200', reason: 'Elite ball-striker, excels in strong fields' },
-    { type: 'LONGSHOT', name: 'Sahith Theegala', odds: '+3000', reason: 'Due for a breakthrough, trending stats' },
-  ];
 }
 
 async function fetchTourInsights(tourId, sport) {
@@ -1519,61 +1444,7 @@ async function fetchTourInsights(tourId, sport) {
 }
 
 function getFullPreviewPicks(eventName, isMajor) {
-  // All picks come from published betting articles, not hardcoded
   return null;
-  var e = (eventName || '').toLowerCase();
-  if (/masters/i.test(e)) return {
-    outrights: [
-      { label: 'FAVORITE', name: 'Scottie Scheffler', odds: '+400', conf: 9, units: '2u', reason: 'Two-time champion. World #1. Has won here twice in 3 years. His iron play at Augusta is borderline unfair.' },
-      { label: 'FAVORITE', name: 'Rory McIlroy', odds: '+900', conf: 8, units: '1.5u', reason: 'Defending champion. Career Grand Slam holder going for back-to-back. The monkey is off his back and he looks free out there.' },
-      { label: 'VALUE', name: 'Ludvig Aberg', odds: '+1600', conf: 7, units: '1u', reason: 'Elite power game that translates perfectly to Augusta. Long off the tee, high ball flight for the par 5s. Just a matter of time.' },
-    ],
-    top5: [
-      { name: 'Xander Schauffele', odds: '+250', reason: 'Always lurking at majors. T2 here in 2022. Too consistent to ignore for a top 5.' },
-      { name: 'Collin Morikawa', odds: '+350', reason: 'Best iron player on tour. Augusta rewards precision approaches more than any course.' },
-    ],
-    top10: [
-      { name: 'Tommy Fleetwood', odds: '+200', reason: '7 top-10s in majors. Course suits his shot-shaping ability.' },
-      { name: 'Shane Lowry', odds: '+250', reason: 'Major champion who thrives in pressure. Quietly consistent at Augusta.' },
-    ],
-    frl: [
-      { name: 'Patrick Cantlay', odds: '+2500', reason: 'Slow-play king owns R1. Low scoring average in opening rounds at majors.' },
-      { name: 'Hideki Matsuyama', odds: '+2000', reason: 'Past champion. Has posted 63 in R1 here. Knows every break on every green.' },
-    ],
-    matchups: [
-      { a: 'Scheffler', b: 'Morikawa', pick: 'Scheffler', odds: '-130', reason: 'Scheffler\'s length advantage on the par 5s is massive. Morikawa can\'t keep up off the tee.' },
-      { a: 'McIlroy', b: 'Schauffele', pick: 'McIlroy', odds: '+110', reason: 'Value on the defending champ. Rory has more experience closing at Augusta now.' },
-      { a: 'Aberg', b: 'Fleetwood', pick: 'Aberg', odds: '-110', reason: 'Power game wins at Augusta. Aberg 30+ yards longer off the tee.' },
-    ],
-    longshot: { name: 'Robert MacIntyre', odds: '+5000', reason: 'The Scot has been quietly climbing the rankings. Won his first PGA Tour event, trending hard. At 50/1 you\'re getting a top-30 player at longshot price.' },
-    props: [
-      { prop: 'Hole-in-one during tournament', pick: 'YES', odds: '+120', reason: 'Par 3s at Augusta with soft conditions. 12th and 16th are prime spots.' },
-      { prop: 'Winning score', pick: 'Under 272.5 (-16.5)', odds: '-110', reason: 'Soft conditions forecasted, low wind. Scheffler shot -14 to win in 2022.' },
-      { prop: 'Playoff', pick: 'NO', odds: '-250', reason: 'Only 4 playoffs in last 25 Masters. Dominant winners tend to separate.' },
-    ],
-    parlay: { legs: 'Scheffler Top 5 + McIlroy Top 10 + Aberg Top 20', odds: '+350', reason: 'Three elite players all finishing where they should. Safe-ish parlay with real juice.' },
-  };
-  // Generic tournament picks
-  return {
-    outrights: [
-      { label: 'FAVORITE', name: 'Scottie Scheffler', odds: '+500', conf: 8, units: '1.5u', reason: 'World #1. Consistently dominant regardless of venue. The safest bet in golf.' },
-      { label: 'VALUE', name: 'Xander Schauffele', odds: '+1200', conf: 7, units: '1u', reason: 'Elite ball-striker who excels in strong fields. Always in contention, due for more wins.' },
-      { label: 'VALUE', name: 'Collin Morikawa', odds: '+1800', conf: 6, units: '0.5u', reason: 'Best approach play on tour. When the iron game is on, nobody is more precise.' },
-    ],
-    top5: [
-      { name: 'Sam Burns', odds: '+300', reason: 'Multiple PGA Tour winner. Consistent enough for a top 5 at generous odds.' },
-      { name: 'Sungjae Im', odds: '+350', reason: 'Iron man of golf. Plays every week, always in the mix. Model loves his consistency.' },
-    ],
-    top10: [
-      { name: 'Matt Fitzpatrick', odds: '+200', reason: 'US Open champion. Precision game travels to any course.' },
-      { name: 'Tommy Fleetwood', odds: '+225', reason: 'Quietly one of the most complete games on tour. Always contending.' },
-    ],
-    longshot: { name: 'Sahith Theegala', odds: '+4000', reason: 'The vibes are immaculate and the stats are backing it up. Multiple close calls mean a win is coming. At 40/1 you want exposure.' },
-    props: [
-      { prop: 'Winning score', pick: 'Under -14.5', odds: '-110', reason: 'Scoring has been low all season. Soft conditions favor low numbers.' },
-    ],
-    parlay: { legs: 'Scheffler Top 5 + Schauffele Top 10 + Under winning score', odds: '+400', reason: 'Two elite players doing elite things plus the scoring trend. Solid correlated parlay.' },
-  };
 }
 
 let insightsExpanded = {};
@@ -1593,13 +1464,11 @@ function renderInsights() {
   var leaderNum = isLive ? pS(active[0].score) : 0;
   var tiedLead = isLive ? active.filter(function(p) { return p.score === active[0].score; }).length > 1 : false;
 
-  // Find top 5 lowest today scores for edge calc
   var todayScores = isLive ? active.slice(0, 30).map(function(p) { return pS(p.today); }).filter(function(v) { return v !== 0; }).sort(function(a,b){return a-b;}) : [];
   var lowestToday = todayScores[0] || 0;
   var top5Today = todayScores.slice(0, 5);
   var avgToday = todayScores.length > 0 ? todayScores.reduce(function(a,b){return a+b;},0) / todayScores.length : 0;
 
-  // Filter betting articles to last 14 days only
   var fourteenDaysAgo = Date.now() - 14 * 24 * 60 * 60 * 1000;
   var recentBettingArticles = (bettingArticles || []).filter(function(a) {
     return a.published_at && new Date(a.published_at).getTime() > fourteenDaysAgo;
@@ -1620,7 +1489,6 @@ function renderInsights() {
 
   function modelEdge(todayNum, back, round) {
     var e = 0;
-    // Best round in field = +5%, top 5 = +3%, above avg = -3%
     if (todayNum === lowestToday && todayNum < 0) e += 5;
     else if (top5Today.indexOf(todayNum) >= 0) e += 3;
     else if (todayNum > avgToday) e -= 3;
@@ -1630,26 +1498,25 @@ function renderInsights() {
   }
 
   function edgeLabel(pos, todayNum, isHottest, edgePct) {
-    if (pos === 1) return {l:'FAVORITE',c:'var(--gold)',bg:'rgba(212,168,83,0.15)'};
-    if (isHottest) return {l:'HOT HAND',c:'var(--s-green)',bg:'rgba(45,212,160,0.12)'};
-    if (edgePct >= 3) return {l:'VALUE',c:'var(--green)',bg:'rgba(45,143,111,0.15)'};
-    if (pos >= 6) return {l:'LONGSHOT',c:'#4A90D9',bg:'rgba(74,144,217,0.12)'};
-    return {l:'VALUE',c:'var(--green)',bg:'rgba(45,143,111,0.15)'};
+    if (pos === 1) return {l:'FAVORITE',c:'var(--gold)',bg:'var(--gold-fade)'};
+    if (isHottest) return {l:'HOT HAND',c:'#1A6B3C',bg:'var(--green-fade)'};
+    if (edgePct >= 3) return {l:'VALUE',c:'var(--green)',bg:'var(--green-fade)'};
+    if (pos >= 6) return {l:'LONGSHOT',c:'#3A6EA5',bg:'rgba(58,110,165,0.08)'};
+    return {l:'VALUE',c:'var(--green)',bg:'var(--green-fade)'};
   }
 
-  // ━━ SECTION 1: LIVE TOURNAMENT HEADER ━━
+  // MODE A: LIVE TOURNAMENT
   if (isLive) {
-    html += '<div style="border:2px solid var(--green);border-radius:12px;padding:16px;margin-bottom:14px">';
+    // Live header
+    html += '<div style="border:2px solid var(--green);border-radius:4px;padding:16px;margin:12px 0">';
     html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">';
-    html += '<div style="width:8px;height:8px;border-radius:50%;background:var(--s-green);animation:pulse 2s infinite"></div>';
+    html += '<div style="width:8px;height:8px;border-radius:50%;background:#1A6B3C;animation:pulse 2s infinite"></div>';
     html += '<div style="font-size:11px;font-weight:800;letter-spacing:2px;color:var(--green)">LIVE BETS &mdash; ' + esc(TOURNAMENT.name).toUpperCase() + ' R' + rd + '</div></div>';
-    html += '<div style="font-size:10px;color:var(--text-muted)">Model updated after Round ' + Math.max(1, rd - 1) + '</div>';
+    html += '<div style="font-size:10px;color:var(--muted)">Model updated after Round ' + Math.max(1, rd - 1) + '</div>';
     html += '</div>';
-  }
 
-  // ━━ SECTION 2: OUTRIGHT WINNER TABLE ━━
-  if (isLive) {
-    html += '<div style="font-size:11px;font-weight:800;letter-spacing:2px;color:var(--g700);margin-bottom:10px">OUTRIGHT WINNER</div>';
+    // OUTRIGHT WINNER TABLE
+    html += '<div class="section-label">Outright Winner</div>';
     var playerOdds = [];
 
     active.slice(0, 10).forEach(function(p, i) {
@@ -1665,100 +1532,96 @@ function renderInsights() {
       var el = edgeLabel(i + 1, todayNum, isHottest, edgePct);
       playerOdds.push({p:p, i:i, odds:odds, imp:imp, model:model, edge:edge, back:back, todayNum:todayNum, isVal:isVal});
 
-      html += '<div style="background:var(--card-bg);border:1px solid var(--card-border);border-radius:10px;padding:12px 14px;margin-bottom:6px;display:flex;align-items:center;gap:10px">';
+      html += '<div style="background:var(--card);border:1px solid var(--border);border-radius:4px;padding:12px 14px;margin-bottom:6px;display:flex;align-items:center;gap:10px">';
       html += '<div style="flex:1;min-width:0">';
-      html += '<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">' + p.c + ' <span style="font-size:14px;font-weight:800;color:var(--text)">' + esc(p.name) + '</span></div>';
+      html += '<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">' + p.c + ' <span style="font-family:Playfair Display,Georgia,serif;font-size:15px;font-weight:800;color:var(--text)">' + esc(p.name) + '</span></div>';
       html += '<div style="display:flex;align-items:center;gap:8px;font-size:10px;flex-wrap:wrap">';
-      html += '<span style="color:var(--text-muted)">Implied ' + imp.toFixed(1) + '%</span>';
-      html += '<span style="color:' + (isVal ? 'var(--s-green)' : 'var(--text-muted)') + ';font-weight:' + (isVal ? '700' : '400') + '">Model ' + model.toFixed(1) + '%</span>';
-      if (isVal) html += '<span style="color:var(--s-green);font-weight:700;font-size:9px;background:rgba(45,212,160,0.12);padding:2px 6px;border-radius:4px">+VALUE</span>';
+      html += '<span style="color:var(--muted)">Implied ' + imp.toFixed(1) + '%</span>';
+      html += '<span style="color:' + (isVal ? '#1A6B3C' : 'var(--muted)') + ';font-weight:' + (isVal ? '700' : '400') + '">Model ' + model.toFixed(1) + '%</span>';
+      if (isVal) html += '<span style="color:#1A6B3C;font-weight:700;font-size:9px;background:var(--green-fade);padding:2px 6px;border-radius:2px">+VALUE</span>';
       html += '</div></div>';
-      html += '<span class="tag" style="color:' + el.c + ';background:' + el.bg + ';font-size:8px;flex-shrink:0">' + el.l + '</span>';
-      html += '<div style="font-size:20px;font-weight:900;color:var(--text);min-width:65px;text-align:right">' + oddsStr(odds) + '</div>';
+      html += '<span class="tag" style="background:' + el.bg + ';color:' + el.c + ';font-size:8px;flex-shrink:0">' + el.l + '</span>';
+      html += '<div style="font-family:Playfair Display,Georgia,serif;font-size:20px;font-weight:900;color:var(--text);min-width:65px;text-align:right">' + oddsStr(odds) + '</div>';
       html += '</div>';
     });
 
-    // ━━ SECTION 3: TOURFEED HANDICAPPER PICK ━━
+    // TOURFEED HANDICAPPER PICK
     var best = null;
     playerOdds.slice(1).forEach(function(po) { if (!best || po.edge > best.edge) best = po; });
     if (best && best.edge > 0) {
       var bp = best.p;
       var dayLabel = rd === 1 ? 'Thursday' : rd === 2 ? 'Friday' : rd === 3 ? 'Saturday' : 'Sunday';
-      html += '<div style="border-left:4px solid var(--green);background:var(--card-bg);border-radius:0 10px 10px 0;padding:16px;margin:16px 0">';
-      html += '<div style="font-size:10px;font-weight:800;letter-spacing:2px;color:var(--green);margin-bottom:8px">TOURFEED HANDICAPPER PICK</div>';
-      html += '<div style="font-size:18px;font-weight:900;color:var(--text);margin-bottom:8px">' + esc(bp.name) + ' ' + oddsStr(best.odds) + ' &mdash; Best Value on ' + dayLabel + '</div>';
-      html += '<div style="font-size:13px;color:var(--text-dim);line-height:1.7;margin-bottom:14px">';
+      html += '<div style="border-left:4px solid var(--green);background:var(--card);border-radius:0 4px 4px 0;padding:16px;margin:16px 0;border:1px solid var(--border);border-left:4px solid var(--green)">';
+      html += '<div style="font-size:10px;font-weight:800;letter-spacing:2px;color:var(--green);margin-bottom:8px">TOURFEED PICK</div>';
+      html += '<div style="font-family:Playfair Display,Georgia,serif;font-size:18px;font-weight:900;color:var(--text);margin-bottom:8px">' + esc(bp.name) + ' ' + oddsStr(best.odds) + ' &mdash; Best Value on ' + dayLabel + '</div>';
+      html += '<div style="font-size:13px;color:var(--dim);line-height:1.7;margin-bottom:14px">';
       html += esc(bp.name) + ' sits at ' + bp.score + ' overall';
       if (best.back > 0) html += ', ' + best.back + ' shot' + (best.back > 1 ? 's' : '') + ' off the lead';
       html += '. ';
       if (best.todayNum < 0) html += 'Shot ' + bp.today + ' today which is one of the best rounds in the field. ';
       else if (best.todayNum === 0) html += 'Even-par today, steady and in control. ';
-      html += 'Our model has ' + esc(bp.name) + ' at ' + best.model.toFixed(1) + '% probability vs the market-implied ' + best.imp.toFixed(1) + '% — a ' + (best.model - best.imp).toFixed(1) + '% edge. ';
+      html += 'Our model has ' + esc(bp.name) + ' at ' + best.model.toFixed(1) + '% probability vs the market-implied ' + best.imp.toFixed(1) + '% &mdash; a ' + (best.model - best.imp).toFixed(1) + '% edge. ';
       html += 'At ' + oddsStr(best.odds) + ', this is the best value on the board right now.';
       html += '</div>';
       html += '<div style="display:flex;gap:8px;flex-wrap:wrap">';
-      html += '<span style="padding:6px 12px;background:rgba(45,143,111,0.12);border-radius:6px;font-size:11px;font-weight:700;color:var(--green)">Confidence: 8/10</span>';
-      html += '<span style="padding:6px 12px;background:rgba(212,168,83,0.12);border-radius:6px;font-size:11px;font-weight:700;color:var(--gold)">2u</span>';
-      html += '<span style="padding:6px 12px;background:rgba(255,255,255,0.05);border-radius:6px;font-size:11px;font-weight:700;color:var(--text-muted)">Season: 0-0</span>';
+      html += '<span style="padding:6px 12px;background:var(--green-fade);border-radius:4px;font-size:11px;font-weight:700;color:var(--green)">Confidence: 8/10</span>';
+      html += '<span style="padding:6px 12px;background:var(--gold-fade);border-radius:4px;font-size:11px;font-weight:700;color:var(--gold)">2u</span>';
+      html += '<span style="padding:6px 12px;background:var(--cream);border-radius:4px;font-size:11px;font-weight:700;color:var(--muted)">Season: 0-0</span>';
       html += '</div></div>';
     }
 
-    // ━━ SECTION 4: LIVE PROPS & MATCHUPS ━━
-    html += '<div style="font-size:11px;font-weight:800;letter-spacing:2px;color:var(--g700);margin:16px 0 10px">LIVE PROPS & MATCHUPS</div>';
+    // PROPS & MATCHUPS
+    html += '<div class="section-label">Props &amp; Matchups</div>';
 
-    // Pick 1: TOP 5 FINISH — best today score from position 3-6
     var t5cands = active.slice(2, 7).sort(function(a,b) { return pS(a.today) - pS(b.today); });
     if (t5cands[0]) {
       var t5 = t5cands[0], t5back = Math.abs(pS(t5.score) - leaderNum);
       var t5odds = posOdds(active.indexOf(t5) + 1);
-      html += '<div style="background:var(--card-bg);border:1px solid var(--card-border);border-radius:10px;padding:14px;margin-bottom:8px">';
-      html += '<span class="tag" style="color:var(--gold);background:rgba(212,168,83,0.15);font-size:9px">TOP 5 FINISH</span>';
-      html += '<div style="font-size:16px;font-weight:800;color:var(--text);margin-top:6px">' + esc(t5.name) + ' ' + oddsStr(Math.round(t5odds * 0.4)) + '</div>';
-      html += '<div style="font-size:12px;color:var(--text-muted);line-height:1.5;margin-top:4px">' + esc(t5.name) + ' is ' + t5back + ' back after shooting ' + (t5.today || 'a solid round') + ' today. Currently in great position to finish inside the top 5 with momentum on their side.</div>';
+      html += '<div style="background:var(--card);border:1px solid var(--border);border-radius:4px;padding:14px;margin-bottom:8px">';
+      html += '<span class="tag tag-betting" style="font-size:9px">TOP 5 FINISH</span>';
+      html += '<div style="font-family:Playfair Display,Georgia,serif;font-size:16px;font-weight:800;color:var(--text);margin-top:6px">' + esc(t5.name) + ' ' + oddsStr(Math.round(t5odds * 0.4)) + '</div>';
+      html += '<div style="font-size:12px;color:var(--muted);line-height:1.5;margin-top:4px">' + esc(t5.name) + ' is ' + t5back + ' back after shooting ' + (t5.today || 'a solid round') + ' today. Currently in great position to finish inside the top 5 with momentum on their side.</div>';
       html += '<div style="font-size:10px;color:var(--green);font-weight:700;margin-top:6px">Confidence: 7/10</div>';
       html += '</div>';
     }
 
-    // Pick 2: HEAD TO HEAD — position 3 vs 4
     if (active.length > 4) {
       var h1 = active[2], h2 = active[3];
       var h1today = pS(h1.today), h2today = pS(h2.today);
       var pick = h1today <= h2today ? h1 : h2;
       var other = pick === h1 ? h2 : h1;
-      html += '<div style="background:var(--card-bg);border:1px solid var(--card-border);border-radius:10px;padding:14px;margin-bottom:8px">';
-      html += '<span class="tag" style="color:#4A90D9;background:rgba(74,144,217,0.12);font-size:9px">HEAD TO HEAD</span>';
-      html += '<div style="font-size:16px;font-weight:800;color:var(--text);margin-top:6px">' + esc(pick.name) + ' over ' + esc(other.name) + ' -110</div>';
-      html += '<div style="font-size:12px;color:var(--text-muted);line-height:1.5;margin-top:4px">' + esc(pick.name) + ' shot ' + (pick.today || 'better') + ' today vs ' + (other.today || 'even') + ' for ' + esc(other.name) + '. The momentum edge is clear — take the head-to-head at even money.</div>';
+      html += '<div style="background:var(--card);border:1px solid var(--border);border-radius:4px;padding:14px;margin-bottom:8px">';
+      html += '<span class="tag tag-analysis" style="font-size:9px">HEAD TO HEAD</span>';
+      html += '<div style="font-family:Playfair Display,Georgia,serif;font-size:16px;font-weight:800;color:var(--text);margin-top:6px">' + esc(pick.name) + ' over ' + esc(other.name) + ' -110</div>';
+      html += '<div style="font-size:12px;color:var(--muted);line-height:1.5;margin-top:4px">' + esc(pick.name) + ' shot ' + (pick.today || 'better') + ' today vs ' + (other.today || 'even') + ' for ' + esc(other.name) + '. The momentum edge is clear &mdash; take the head-to-head at even money.</div>';
       html += '<div style="font-size:10px;color:var(--green);font-weight:700;margin-top:6px">Confidence: 7/10</div>';
       html += '</div>';
     }
 
-    // Pick 3: TOP 10 FINISH — player ranked 8-12 with good today
     var t10cands = active.slice(7, 13).sort(function(a,b) { return pS(a.today) - pS(b.today); });
     if (t10cands[0]) {
       var t10 = t10cands[0], t10back = Math.abs(pS(t10.score) - leaderNum);
-      html += '<div style="background:var(--card-bg);border:1px solid var(--card-border);border-radius:10px;padding:14px;margin-bottom:8px">';
-      html += '<span class="tag" style="color:var(--green);background:rgba(45,143,111,0.15);font-size:9px">TOP 10 FINISH</span>';
-      html += '<div style="font-size:16px;font-weight:800;color:var(--text);margin-top:6px">' + esc(t10.name) + ' +180</div>';
-      html += '<div style="font-size:12px;color:var(--text-muted);line-height:1.5;margin-top:4px">Sitting at ' + t10.score + ' (' + t10back + ' back) and fired ' + (t10.today || 'a strong round') + ' today. Well within striking distance of a top 10 and the price reflects it.</div>';
+      html += '<div style="background:var(--card);border:1px solid var(--border);border-radius:4px;padding:14px;margin-bottom:8px">';
+      html += '<span class="tag tag-recap" style="font-size:9px">TOP 10 FINISH</span>';
+      html += '<div style="font-family:Playfair Display,Georgia,serif;font-size:16px;font-weight:800;color:var(--text);margin-top:6px">' + esc(t10.name) + ' +180</div>';
+      html += '<div style="font-size:12px;color:var(--muted);line-height:1.5;margin-top:4px">Sitting at ' + t10.score + ' (' + t10back + ' back) and fired ' + (t10.today || 'a strong round') + ' today. Well within striking distance of a top 10 and the price reflects it.</div>';
       html += '<div style="font-size:10px;color:var(--green);font-weight:700;margin-top:6px">Confidence: 6/10</div>';
       html += '</div>';
     }
 
-    // Pick 4: LONGSHOT — player 15-25 with lowest today
     var lscands = active.slice(14, 25).sort(function(a,b) { return pS(a.today) - pS(b.today); });
     if (lscands[0]) {
       var ls = lscands[0], lsback = Math.abs(pS(ls.score) - leaderNum);
-      html += '<div style="background:var(--card-bg);border:1px solid var(--card-border);border-radius:10px;padding:14px;margin-bottom:8px">';
-      html += '<span class="tag" style="color:#4A90D9;background:rgba(74,144,217,0.12);font-size:9px">LONGSHOT</span>';
-      html += '<div style="font-size:16px;font-weight:800;color:var(--text);margin-top:6px">' + esc(ls.name) + ' +' + (5000 + lsback * 500) + '</div>';
-      html += '<div style="font-size:12px;color:var(--text-muted);line-height:1.5;margin-top:4px">' + esc(ls.name) + ' is ' + lsback + ' back but shot ' + (ls.today || 'a low round') + ' today — lowest in this part of the field. If that form continues, these odds look generous.</div>';
-      html += '<div style="font-size:10px;color:#4A90D9;font-weight:700;margin-top:6px">Confidence: 4/10</div>';
+      html += '<div style="background:var(--card);border:1px solid var(--border);border-radius:4px;padding:14px;margin-bottom:8px">';
+      html += '<span class="tag" style="background:#3A6EA5;font-size:9px">LONGSHOT</span>';
+      html += '<div style="font-family:Playfair Display,Georgia,serif;font-size:16px;font-weight:800;color:var(--text);margin-top:6px">' + esc(ls.name) + ' +' + (5000 + lsback * 500) + '</div>';
+      html += '<div style="font-size:12px;color:var(--muted);line-height:1.5;margin-top:4px">' + esc(ls.name) + ' is ' + lsback + ' back but shot ' + (ls.today || 'a low round') + ' today &mdash; lowest in this part of the field. If that form continues, these odds look generous.</div>';
+      html += '<div style="font-size:10px;color:#3A6EA5;font-weight:700;margin-top:6px">Confidence: 4/10</div>';
       html += '</div>';
     }
   }
 
-  // ━━ SECTION 5: EARLY PICKS — NEXT EVENT ━━
+  // EARLY PICKS — NEXT EVENT
   if (!scheduleFetched) fetchESPNSchedule();
   if (scheduleData.length > 0) {
     var now = Date.now();
@@ -1767,31 +1630,28 @@ function renderInsights() {
       var nd = new Date(nextEv.startDate);
       var daysLeft = Math.ceil((nd.getTime() - now) / 86400000);
       var isMaj = /masters|pga championship|u\.?s\.?\s*open|open championship|the open/i.test(nextEv.event);
-      html += '<div style="font-size:11px;font-weight:800;letter-spacing:2px;color:' + (isMaj ? 'var(--gold)' : 'var(--g700)') + ';margin:20px 0 10px">EARLY PICKS &mdash; ' + esc(nextEv.event).toUpperCase() + '</div>';
+      html += '<div class="section-label" style="color:' + (isMaj ? 'var(--gold)' : 'var(--green)') + '">Early Picks &mdash; ' + esc(nextEv.event) + '</div>';
 
-      // Course profile card
-      html += '<div style="background:var(--card-bg);border:1px solid var(--card-border);border-radius:10px;padding:14px;margin-bottom:10px">';
-      html += '<div style="font-size:16px;font-weight:800;color:var(--text)">' + esc(nextEv.event) + '</div>';
-      html += '<div style="font-size:11px;color:var(--text-muted);margin-top:3px">' + esc(nextEv.course) + ' &middot; ' + daysLeft + ' days &middot; ' + (nextEv.purse || '') + '</div>';
+      html += '<div style="background:var(--card);border:1px solid var(--border);border-radius:4px;padding:14px;margin-bottom:10px">';
+      html += '<div style="font-family:Playfair Display,Georgia,serif;font-size:17px;font-weight:800;color:var(--text)">' + esc(nextEv.event) + '</div>';
+      html += '<div style="font-size:11px;color:var(--muted);margin-top:3px">' + esc(nextEv.course) + ' &middot; ' + daysLeft + ' days &middot; ' + (nextEv.purse || '') + '</div>';
       if (isMaj) {
         html += '<div style="font-size:11px;color:var(--gold);margin-top:6px;font-weight:600">Key stat: SG Approach &amp; Scrambling are strongest predictors</div>';
-        html += '<div style="font-size:10px;color:var(--text-muted);margin-top:2px">Avg winning score: -12 to -18 depending on conditions</div>';
       }
-      html += '<div style="font-size:11px;color:var(--text-muted);margin-top:6px">Full betting preview and picks in our analysis articles below.</div>';
+      html += '<div style="font-size:11px;color:var(--muted);margin-top:6px">Full betting preview and picks in our analysis articles below.</div>';
       html += '</div>';
     }
   }
 
-  // ━━ SECTION 6: BETTING ARTICLES ━━
+  // BETTING ARTICLES (last 14 days)
   if (recentBettingArticles.length > 0) {
-    html += '<div style="font-size:11px;font-weight:800;letter-spacing:2px;color:var(--gold);margin:16px 0 10px">BETTING ANALYSIS</div>';
-    recentBettingArticles.forEach(function(a) { html += renderArticleCard(a); });
+    html += '<div class="section-label" style="color:var(--gold)">Betting Analysis</div>';
+    recentBettingArticles.forEach(function(a) { html += renderArticleRow(a); });
   }
 
-  // ━━ SECTION 7: SEASON RECORD ━━
+  // SEASON RECORD
   html += '<div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px;margin:20px 0">';
   var recordData = [['0-0','Record'],['--','Win %'],['0%','ROI'],['0u','Units']];
-  // Try to fetch from Supabase (async, will re-render when ready)
   if (!window._bettingRecord) {
     window._bettingRecord = 'loading';
     sb.from('betting_record').select('*').eq('season', 2026).limit(1).then(function(res) {
@@ -1812,14 +1672,14 @@ function renderInsights() {
     ];
   }
   recordData.forEach(function(d) {
-    html += '<div style="background:var(--card-bg);border:1px solid var(--card-border);border-radius:10px;padding:14px;text-align:center">';
-    html += '<div style="font-size:20px;font-weight:900;color:var(--text)">' + d[0] + '</div>';
-    html += '<div style="font-size:9px;color:var(--text-muted);margin-top:3px;letter-spacing:1px">' + d[1] + '</div>';
+    html += '<div style="background:var(--card);border:1px solid var(--border);border-radius:4px;padding:14px;text-align:center">';
+    html += '<div style="font-family:Playfair Display,Georgia,serif;font-size:20px;font-weight:900;color:var(--text)">' + d[0] + '</div>';
+    html += '<div style="font-size:9px;color:var(--muted);margin-top:3px;letter-spacing:1px;text-transform:uppercase">' + d[1] + '</div>';
     html += '</div>';
   });
   html += '</div>';
 
-  // ━━ MODE B: NO LIVE TOURNAMENT ━━
+  // MODE B: NO LIVE TOURNAMENT
   if (!isLive) {
     if (!scheduleFetched) fetchESPNSchedule();
     if (scheduleData.length > 0) {
@@ -1829,39 +1689,39 @@ function renderInsights() {
         var ndB = new Date(nextEv.startDate);
         var daysB = Math.ceil((ndB.getTime() - nowB) / 86400000);
         var isMajB = /masters|pga championship|u\.?s\.?\s*open|open championship|the open/i.test(nextEv.event);
-        html += '<div style="border:1px solid ' + (isMajB ? 'rgba(212,168,83,0.3)' : 'var(--card-border)') + ';border-radius:12px;padding:16px;margin-bottom:14px">';
+        html += '<div style="border:1px solid ' + (isMajB ? '#D4A853' : 'var(--border)') + ';border-radius:4px;padding:16px;margin-bottom:14px">';
         html += '<div style="font-size:10px;font-weight:800;letter-spacing:2px;color:' + (isMajB ? 'var(--gold)' : 'var(--green)') + ';margin-bottom:6px">NEXT EVENT</div>';
-        html += '<div style="font-size:18px;font-weight:900;color:var(--text)">' + esc(nextEv.event) + '</div>';
-        html += '<div style="font-size:11px;color:var(--text-muted);margin-top:3px">' + esc(nextEv.course) + ' &middot; ' + daysB + ' day' + (daysB !== 1 ? 's' : '') + ' &middot; ' + (nextEv.purse || '') + '</div>';
+        html += '<div style="font-family:Playfair Display,Georgia,serif;font-size:18px;font-weight:900;color:var(--text)">' + esc(nextEv.event) + '</div>';
+        html += '<div style="font-size:11px;color:var(--muted);margin-top:3px">' + esc(nextEv.course) + ' &middot; ' + daysB + ' day' + (daysB !== 1 ? 's' : '') + ' &middot; ' + (nextEv.purse || '') + '</div>';
         html += '</div>';
       }
     }
-    html += '<div style="text-align:center;padding:16px;font-size:13px;color:var(--text-muted);background:var(--card-bg);border-radius:10px;margin-bottom:14px">Early picks and full betting preview coming soon.<br>Live odds, props, and matchups activate during tournament play.</div>';
+    html += '<div style="text-align:center;padding:16px;font-size:13px;color:var(--muted);background:var(--card);border:1px solid var(--border);border-radius:4px;margin-bottom:14px">Early picks and full betting preview coming soon.<br>Live odds, props, and matchups activate during tournament play.</div>';
   }
 
-  // ━━ DISCLAIMER ━━
+  // DISCLAIMER
   html += '<div class="disclaimer" style="margin-top:16px">All picks are for entertainment purposes only. Past performance does not guarantee future results. Please gamble responsibly. If you or someone you know has a gambling problem, call 1-800-GAMBLER.</div>';
   return html;
 }
 
 // ============================================
-// RENDER BLOG TAB
+// RENDER BLOG TAB — same as News but for analysis/preview
 // ============================================
 function renderBlog() {
   if (currentArticle) return renderArticleDetail(currentArticle);
 
   if (!articlesLoaded) {
     fetchAllArticles();
-    return '<div style="text-align:center;padding:60px 20px"><div style="font-size:14px;font-weight:700;color:var(--text-dim)">Loading articles...</div></div>';
+    return '<div style="text-align:center;padding:60px 20px"><div style="font-family:Playfair Display,Georgia,serif;font-size:15px;font-weight:700;color:var(--dim)">Loading articles...</div></div>';
   }
 
   if (blogArticles.length === 0) {
-    return '<div style="text-align:center;padding:40px 20px"><div style="font-size:14px;font-weight:700;color:var(--text-dim)">No blog posts yet</div><div style="font-size:12px;color:var(--text-muted);margin-top:6px">Previews, analysis, and power rankings will appear here</div></div>';
+    return '<div style="text-align:center;padding:40px 20px"><div style="font-family:Playfair Display,Georgia,serif;font-size:15px;font-weight:700;color:var(--dim)">No blog posts yet</div><div style="font-size:12px;color:var(--muted);margin-top:6px">Previews, analysis, and power rankings will appear here</div></div>';
   }
 
-  let html = '<div class="section-label">ANALYSIS & PREVIEWS</div>';
+  let html = '<div class="section-label">Analysis &amp; Previews</div>';
   const visible = blogArticles.slice(0, blogShowCount);
-  visible.forEach(function(a) { html += renderArticleCard(a); });
+  visible.forEach(function(a) { html += renderArticleRow(a); });
   if (blogShowCount < blogArticles.length) {
     html += '<button class="load-more" onclick="blogShowCount+=10;renderApp()">Load More</button>';
   }
@@ -1884,16 +1744,16 @@ function renderStandings() {
   });
   html += '</div>';
 
-  if (standingsLoading) return html + '<div style="text-align:center;padding:40px 20px"><div style="font-size:14px;font-weight:700;color:var(--text-dim)">Loading standings...</div></div>';
+  if (standingsLoading) return html + '<div style="text-align:center;padding:40px 20px"><div style="font-family:Playfair Display,Georgia,serif;font-size:15px;font-weight:700;color:var(--dim)">Loading standings...</div></div>';
 
   const data = standingsLive[standingsFilter];
-  if (!data || data.length === 0) return html + '<div style="text-align:center;padding:40px 20px"><div style="font-size:13px;color:var(--text-muted)">' + (standingsError || 'Standings will populate once ESPN data is available') + '</div><button class="filter-btn" style="margin-top:14px;color:var(--green);border:1px solid var(--green)" onclick="standingsFetched[\'' + standingsFilter + '\']=false;fetchESPNStandings(\'' + standingsFilter + '\')">Retry</button></div>';
+  if (!data || data.length === 0) return html + '<div style="text-align:center;padding:40px 20px"><div style="font-size:13px;color:var(--muted)">' + (standingsError || 'Standings will populate once ESPN data is available') + '</div><button class="filter-btn" style="margin-top:14px;color:var(--green);border:1px solid var(--green)" onclick="standingsFetched[\'' + standingsFilter + '\']=false;fetchESPNStandings(\'' + standingsFilter + '\')">Retry</button></div>';
 
   const tourNames = {pga:'FedExCup',dpw:'Race to Dubai',lpga:'Race to CME Globe',kft:'Korn Ferry Points',champ:'Charles Schwab Cup'};
-  html += '<div style="font-size:16px;font-weight:800;margin-bottom:10px">' + (tourNames[standingsFilter] || 'Standings') + '</div>';
+  html += '<div style="font-family:Playfair Display,Georgia,serif;font-size:18px;font-weight:800;margin-bottom:10px;color:var(--text)">' + (tourNames[standingsFilter] || 'Standings') + '</div>';
   html += '<div class="lb-header"><div style="width:28px">POS</div><div style="flex:1">PLAYER</div><div style="width:56px;text-align:center">PTS</div><div style="width:36px;text-align:center">WINS</div><div style="width:40px;text-align:center">TOP 10</div><div style="width:64px;text-align:right">EARNINGS</div></div>';
   data.forEach(function(r, i) {
-    html += '<div class="standings-row ' + (i===0?'top':'') + '" style="' + (i%2===0?'background:rgba(255,255,255,0.01)':'') + '"><div style="width:28px;font-size:12px;font-weight:700;color:' + (i===0?'var(--gold)':'var(--g500)') + '">' + r.pos + '</div><div style="flex:1;font-size:13px;font-weight:' + (i===0?800:600) + ';color:' + (i===0?'var(--text)':'var(--text-dim)') + '">' + r.p + '</div><div style="width:56px;text-align:center;font-size:13px;font-weight:700">' + r.pts + '</div><div style="width:36px;text-align:center;font-size:12px;color:' + (r.w>0?'var(--s-green)':'var(--g500)') + ';font-weight:700">' + r.w + '</div><div style="width:40px;text-align:center;font-size:12px;color:var(--text-muted)">' + r.t10 + '</div><div style="width:64px;text-align:right;font-size:12px;color:var(--gold);font-weight:600">' + r.earn + '</div></div>';
+    html += '<div class="standings-row ' + (i===0?'top':'') + '"><div style="width:28px;font-size:12px;font-weight:700;color:' + (i===0?'var(--gold)':'var(--muted)') + '">' + r.pos + '</div><div style="flex:1;font-size:13px;font-weight:' + (i===0?800:600) + ';color:' + (i===0?'var(--text)':'var(--dim)') + '">' + r.p + '</div><div style="width:56px;text-align:center;font-size:13px;font-weight:700;color:var(--text)">' + r.pts + '</div><div style="width:36px;text-align:center;font-size:12px;color:' + (r.w>0?'#1A6B3C':'var(--muted)') + ';font-weight:700">' + r.w + '</div><div style="width:40px;text-align:center;font-size:12px;color:var(--muted)">' + r.t10 + '</div><div style="width:64px;text-align:right;font-size:12px;color:var(--gold);font-weight:600">' + r.earn + '</div></div>';
   });
   return html;
 }
@@ -1910,17 +1770,17 @@ function renderSchedule() {
   });
   html += '</div>';
 
-  if (scheduleLoading) return html + '<div style="text-align:center;padding:40px 20px"><div style="font-size:14px;font-weight:700;color:var(--text-dim)">Loading schedule...</div></div>';
+  if (scheduleLoading) return html + '<div style="text-align:center;padding:40px 20px"><div style="font-family:Playfair Display,Georgia,serif;font-size:15px;font-weight:700;color:var(--dim)">Loading schedule...</div></div>';
   if (scheduleError || scheduleData.length === 0) {
     if (!scheduleFetched) fetchESPNSchedule();
-    return html + '<div style="text-align:center;padding:40px 20px"><div style="font-size:13px;color:var(--text-muted)">' + (scheduleError || 'Loading schedule...') + '</div></div>';
+    return html + '<div style="text-align:center;padding:40px 20px"><div style="font-size:13px;color:var(--muted)">' + (scheduleError || 'Loading schedule...') + '</div></div>';
   }
 
   const filtered = schedFilter === 'all' ? scheduleData : scheduleData.filter(function(s) { return s.tour === schedFilter; });
-  if (filtered.length === 0) return html + '<div style="text-align:center;padding:40px 20px;font-size:13px;color:var(--text-muted)">No events found</div>';
+  if (filtered.length === 0) return html + '<div style="text-align:center;padding:40px 20px;font-size:13px;color:var(--muted)">No events found</div>';
 
   filtered.forEach(function(s) {
-    html += '<div class="sched-card ' + (s.live?'live':'') + '"><div style="display:flex;justify-content:space-between;align-items:flex-start"><div><div style="display:flex;align-items:center;gap:8px"><span style="font-size:16px;font-weight:800">' + s.event + '</span>' + (s.live?'<span class="badge badge-live">LIVE</span>':'') + (s.major?'<span class="badge badge-major">MAJOR</span>':'') + '</div><div style="font-size:12px;color:var(--text-muted);margin-top:3px">' + s.course + '</div><div style="font-size:11px;color:var(--g700);margin-top:2px">' + s.dates + ' &middot; ' + (TOURS.find(function(x){return x.id===s.tour})?.name||'') + '</div></div><div style="text-align:right">' + (s.purse ? '<div style="font-size:13px;font-weight:700">' + s.purse + '</div>' : '') + (s.tv ? '<div style="font-size:10px;color:var(--text-muted);margin-top:3px">' + s.tv + '</div>' : '') + '</div></div></div>';
+    html += '<div class="sched-card ' + (s.live?'live':'') + '"><div style="display:flex;justify-content:space-between;align-items:flex-start"><div><div style="display:flex;align-items:center;gap:8px"><span style="font-family:Playfair Display,Georgia,serif;font-size:16px;font-weight:800;color:var(--text)">' + s.event + '</span>' + (s.live?'<span class="badge badge-live">LIVE</span>':'') + (s.major?'<span class="badge badge-major">MAJOR</span>':'') + '</div><div style="font-size:12px;color:var(--muted);margin-top:3px">' + s.course + '</div><div style="font-size:11px;color:var(--muted);margin-top:2px">' + s.dates + ' &middot; ' + (TOURS.find(function(x){return x.id===s.tour})?.name||'') + '</div></div><div style="text-align:right">' + (s.purse ? '<div style="font-size:13px;font-weight:700;color:var(--text)">' + s.purse + '</div>' : '') + (s.tv ? '<div style="font-size:10px;color:var(--muted);margin-top:3px">' + s.tv + '</div>' : '') + '</div></div></div>';
   });
   return html;
 }
@@ -1939,14 +1799,8 @@ function _doRender() {
   if (!app) return;
   let html = '<div style="padding:10px 0">';
 
-  const wb = document.getElementById('watchBar');
-  if (wb) {
-    if (TOURNAMENT && TOURNAMENT.broadcast && TOURNAMENT.status && !TOURNAMENT.status.toLowerCase().includes('scheduled')) {
-      wb.style.display = 'flex';
-      document.getElementById('watchChannel').textContent = TOURNAMENT.broadcast;
-      document.getElementById('watchEvent').textContent = '- ' + TOURNAMENT.name + ' ' + TOURNAMENT.status;
-    } else wb.style.display = 'none';
-  }
+  // Update score ticker
+  renderScoreTicker();
 
   switch(currentTab) {
     case 0: html += renderHome(); break;
@@ -1962,9 +1816,8 @@ function _doRender() {
   app.innerHTML = html;
 
   // Bind article click handlers after DOM update
-  document.querySelectorAll('.article-card').forEach(function(el) {
-    // Find the article data for this card
-    const titleEl = el.querySelector('.article-card-title');
+  document.querySelectorAll('.article-row').forEach(function(el) {
+    const titleEl = el.querySelector('.article-row-title');
     if (!titleEl) return;
     const title = titleEl.textContent;
     const allArticles = newsArticles.concat(blogArticles).concat(bettingArticles);
@@ -1972,10 +1825,13 @@ function _doRender() {
     if (match) el._article = match;
   });
 
-  // Bind home story clicks
-  app.querySelectorAll('[onclick*="openArticleDetail"]').forEach(function(el) {
-    // Already bound via inline - handled by _article property
-  });
+  // Bind home featured card
+  var featured = app.querySelector('.home-featured');
+  if (featured) {
+    var allArticles = newsArticles.concat(blogArticles).concat(bettingArticles);
+    allArticles.sort(function(a,b) { return new Date(b.published_at || 0) - new Date(a.published_at || 0); });
+    if (allArticles[0]) featured._article = allArticles[0];
+  }
 }
 
 // ============================================
