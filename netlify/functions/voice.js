@@ -24,11 +24,13 @@ ARTICLE RULES:
 - NEVER start with "The [tournament] is underway" or "It was a great day"
 - NEVER mention TourFeed, AI, automation, or that content is generated.
 
-ARTICLE LENGTHS:
-- Recaps: 200-350 words (tight, punchy)
-- News: 150-250 words (get to the point)
+ARTICLE LENGTHS — MINIMUM 300 WORDS FOR ALL ARTICLES:
+- Recaps: 300-400 words (substantial, not a stub)
+- News: 300-400 words (full article, not a blurb)
 - Previews/analysis: 300-500 words (deeper but focused)
 - Betting: 400-700 words (comprehensive, not padded)
+
+CRITICAL: Write a COMPLETE article. Do not stop early. Include multiple paragraphs with specific details, player names, stats, and analysis. The article must feel finished — not a stub or summary. If under 300 words, you have not written enough.
 
 BETTING VOICE:
 - Read like a sharp friend who does real research, not a tout selling picks.
