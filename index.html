@@ -1194,44 +1194,44 @@ function renderHome() {
   html += '</div>';
   html += '</div>'; // end columns
 
-  // Quick Picks strip from PLAYERS data
+  // Quick Picks — only show live picks when tournament is actively in progress
   html += '<div class="picks-strip">';
   html += '<div class="picks-strip-title">Quick Picks</div>';
-  if (TOURNAMENT && PLAYERS.length > 0) {
-    var active = PLAYERS.filter(function(p) { return p.status === 'active'; });
-    if (active.length > 3) {
-      var parseS = function(s) { if (!s || s === 'E') return 0; return parseInt(s) || 0; };
-      var leaderNum = parseS(active[0].score);
-      var calcP = function(back) { return Math.max(0.5, Math.exp(-0.55 * back) * 30); };
-      var toOdds = function(pct) { return pct >= 50 ? '-' + Math.round(pct / (100 - pct) * 100) : '+' + Math.round((100 - pct) / pct * 100); };
-      var totalRaw = active.slice(0, 15).reduce(function(s, p) { return s + calcP(Math.abs(parseS(p.score) - leaderNum)); }, 0) + 10;
-
-      var bestBet = active.slice(1, 6).sort(function(a,b) { return (parseS(a.today)||0) - (parseS(b.today)||0); })[0];
-      var longshot = active.slice(5, 15).sort(function(a,b) { return (parseS(a.today)||0) - (parseS(b.today)||0); })[0];
-
+  if (state === 'live') {
+    var qActive = PLAYERS.filter(function(p) { return p.status === 'active'; });
+    if (qActive.length > 3) {
+      var qpS = function(s) { if (!s || s === 'E') return 0; return parseInt(s) || 0; };
+      var qLeader = qpS(qActive[0].score);
+      var qCalcP = function(back) { return Math.max(0.5, Math.exp(-0.55 * back) * 30); };
+      var qToOdds = function(pct) { return pct >= 50 ? '-' + Math.round(pct / (100 - pct) * 100) : '+' + Math.round((100 - pct) / pct * 100); };
+      var qTotal = qActive.slice(0, 15).reduce(function(s, p) { return s + qCalcP(Math.abs(qpS(p.score) - qLeader)); }, 0) + 10;
+      var qBest = qActive.slice(1, 6).sort(function(a,b) { return (qpS(a.today)||0) - (qpS(b.today)||0); })[0];
+      var qLong = qActive.slice(5, 15).sort(function(a,b) { return (qpS(a.today)||0) - (qpS(b.today)||0); })[0];
       html += '<div style="display:flex;gap:12px;flex-wrap:wrap">';
-      if (bestBet) {
-        var bbBack = Math.abs(parseS(bestBet.score) - leaderNum);
-        var bbPct = (calcP(bbBack) / totalRaw) * 100;
+      if (qBest) {
+        var qbB = Math.abs(qpS(qBest.score) - qLeader);
         html += '<div style="flex:1;min-width:200px;padding:12px;background:var(--green-fade);border:1px solid var(--border);border-radius:4px">';
         html += '<div style="font-size:9px;font-weight:700;letter-spacing:1px;color:var(--green);margin-bottom:6px">BEST BET</div>';
-        html += '<div style="font-family:Playfair Display,Georgia,serif;font-size:15px;font-weight:800;color:var(--text)">' + bestBet.c + ' ' + esc(bestBet.name) + '</div>';
-        html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:4px"><span style="font-size:11px;color:var(--muted)">' + bestBet.score + ' &middot; ' + bbBack + ' back</span>';
-        html += '<span style="font-family:Playfair Display,Georgia,serif;font-size:18px;font-weight:900;color:var(--green)">' + toOdds(bbPct) + '</span></div></div>';
+        html += '<div style="font-size:15px;font-weight:800;color:var(--text)">' + qBest.c + ' ' + esc(qBest.name) + '</div>';
+        html += '<div style="font-size:18px;font-weight:900;color:var(--green);margin-top:4px">' + qToOdds((qCalcP(qbB)/qTotal)*100) + '</div></div>';
       }
-      if (longshot) {
-        var lsBack = Math.abs(parseS(longshot.score) - leaderNum);
-        var lsPct = (calcP(lsBack) / totalRaw) * 100;
+      if (qLong) {
+        var qlB = Math.abs(qpS(qLong.score) - qLeader);
         html += '<div style="flex:1;min-width:200px;padding:12px;background:var(--gold-fade);border:1px solid var(--border);border-radius:4px">';
         html += '<div style="font-size:9px;font-weight:700;letter-spacing:1px;color:var(--gold);margin-bottom:6px">LONGSHOT</div>';
-        html += '<div style="font-family:Playfair Display,Georgia,serif;font-size:15px;font-weight:800;color:var(--text)">' + longshot.c + ' ' + esc(longshot.name) + '</div>';
-        html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:4px"><span style="font-size:11px;color:var(--muted)">' + longshot.score + ' &middot; ' + lsBack + ' back</span>';
-        html += '<span style="font-family:Playfair Display,Georgia,serif;font-size:18px;font-weight:900;color:var(--gold)">' + toOdds(lsPct) + '</span></div></div>';
+        html += '<div style="font-size:15px;font-weight:800;color:var(--text)">' + qLong.c + ' ' + esc(qLong.name) + '</div>';
+        html += '<div style="font-size:18px;font-weight:900;color:var(--gold);margin-top:4px">' + qToOdds((qCalcP(qlB)/qTotal)*100) + '</div></div>';
       }
       html += '</div>';
     }
   } else {
-    html += '<div style="font-size:13px;color:var(--muted);padding:4px 0">Picks update during tournament play.</div>';
+    // Masters preview picks (static)
+    html += '<div style="display:flex;gap:12px;flex-wrap:wrap">';
+    html += '<div style="flex:1;min-width:150px;padding:12px;background:var(--green-fade);border:1px solid var(--border);border-radius:4px"><div style="font-size:9px;font-weight:700;letter-spacing:1px;color:var(--green);margin-bottom:4px">DEFENDING</div><div style="font-size:14px;font-weight:800;color:var(--text)">Rory McIlroy</div><div style="font-size:18px;font-weight:900;color:var(--green);margin-top:4px">+700</div><div style="font-size:10px;color:var(--muted);margin-top:2px">Career Grand Slam holder</div></div>';
+    html += '<div style="flex:1;min-width:150px;padding:12px;background:var(--green-fade);border:1px solid var(--border);border-radius:4px"><div style="font-size:9px;font-weight:700;letter-spacing:1px;color:var(--green);margin-bottom:4px">VALUE</div><div style="font-size:14px;font-weight:800;color:var(--text)">Viktor Hovland</div><div style="font-size:18px;font-weight:900;color:var(--green);margin-top:4px">+2500</div><div style="font-size:10px;color:var(--muted);margin-top:2px">Elite iron play at Augusta</div></div>';
+    html += '<div style="flex:1;min-width:150px;padding:12px;background:var(--gold-fade);border:1px solid var(--border);border-radius:4px"><div style="font-size:9px;font-weight:700;letter-spacing:1px;color:var(--gold);margin-bottom:4px">LONGSHOT</div><div style="font-size:14px;font-weight:800;color:var(--text)">Sungjae Im</div><div style="font-size:18px;font-weight:900;color:var(--gold);margin-top:4px">+4000</div><div style="font-size:10px;color:var(--muted);margin-top:2px">Three straight top-15 Masters finishes</div></div>';
+    html += '</div>';
+    html += '<div style="font-size:11px;color:var(--green);font-weight:700;margin-top:8px;cursor:pointer" onclick="switchTab(3)">Full Masters picks card drops Wednesday &rarr;</div>';
   }
   html += '</div>';
 
@@ -1830,9 +1830,10 @@ function renderApp() {
 }
 
 function _doRender() {
-  const app = document.getElementById('app');
+  var app = document.getElementById('app');
   if (!app) return;
-  let html = '<div style="padding:10px 0">';
+  try {
+  var html = '<div style="padding:10px 0">';
 
   // Update score ticker
   renderScoreTicker();
@@ -1863,10 +1864,11 @@ function _doRender() {
   // Bind home featured card
   var featured = app.querySelector('.home-featured');
   if (featured) {
-    var allArticles = newsArticles.concat(blogArticles).concat(bettingArticles);
-    allArticles.sort(function(a,b) { return new Date(b.published_at || 0) - new Date(a.published_at || 0); });
-    if (allArticles[0]) featured._article = allArticles[0];
+    var allArt = newsArticles.concat(blogArticles).concat(bettingArticles);
+    allArt.sort(function(a,b) { return new Date(b.published_at || 0) - new Date(a.published_at || 0); });
+    if (allArt[0]) featured._article = allArt[0];
   }
+  } catch(renderErr) { console.error('Render error:', renderErr); app.innerHTML = '<div style="padding:40px;text-align:center;color:var(--muted)">Error rendering page. Please refresh.</div>'; }
 }
 
 // ============================================
