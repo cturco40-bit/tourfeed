@@ -169,7 +169,7 @@ ${playerFacts}`,
     });
 
     // Instagram draft
-    var igTiming = config.type === 'article_betting' ? 'Post morning before round' : 'Post evening before';
+    var igTiming = config.type === 'article_betting' ? 'Prepare today, post tomorrow morning' : 'Prepare today, post tomorrow evening';
     var igPlain = article.body.replace(/<[^>]+>/g, '');
     var igSentences = igPlain.match(/[^.!?]+[.!?]+/g) || [];
     var igText = igSentences.slice(0, 3).join(' ').trim() || igPlain.slice(0, 150).trim();

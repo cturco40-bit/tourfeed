@@ -389,7 +389,7 @@ exports.handler = async (event) => {
           type: 'instagram',
           title: articleTitle,
           body: igCaption,
-          meta: JSON.stringify({ timing: 'Post ASAP' }),
+          meta: JSON.stringify({ timing: 'Prepare now, post within 2 hours' }),
           status: 'pending',
           created_at: new Date().toISOString(),
         });
