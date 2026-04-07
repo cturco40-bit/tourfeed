@@ -171,7 +171,7 @@ Rules:
       messages: [
         {
           role: 'user',
-          content: `Write an original TourFeed article based on these extracted facts:\n\n${factsText}\n\nTWEET RULES:\n- Each tweet must use a DIFFERENT sentence structure. Vary between questions, declarations, comparisons, one-word reactions, hot takes.\n- NEVER repeat the pattern "[thing happened]. That's either [A] or [B]."\n- NEVER state unverified legal claims (arrested, suspended, charged) unless the source facts explicitly confirm it. If unsure, skip.\n- Max 2 tweets. Make them genuinely different angles on the story.\n\nReturn ONLY valid JSON, no markdown fences:\n{"title":"clickbait headline","body":"article HTML with <p> tags","tweets":["tweet 1","tweet 2"]}`,
+          content: `Write an original TourFeed article based on these extracted facts:\n\n${factsText}\n\nTWEET RULES:\n- Write exactly 1 tweet that PROMOTES the article and creates CURIOSITY. Tease the most interesting finding WITHOUT giving the answer away.\n- The tweet should make people want to click the link to read the full article.\n- Example: "We broke down what Tiger not being at Augusta actually means for the betting market. The ripple effects are wild."\n- NOT just restating the headline. Create intrigue.\n\nVARIETY: Use varied sentence structures. BANNED: "That's either [A] or [B]", "That's the kind of [X]", "Respect the [noun]"\nMIX: questions, fragments, comparisons, predictions, one-liners.\n\nCRITICAL SAFETY:\n- NEVER state a player was arrested, charged, or involved in legal trouble unless source EXPLICITLY states it\n- NEVER speculate about criminal activity, substance abuse, or personal scandals\n- If absent from tournament, say "not in the field" — do not speculate why unless official reason given\n- When in doubt, use softer language or skip the topic\n\nReturn ONLY valid JSON, no markdown fences:\n{"title":"clickbait headline","body":"article HTML with <p> tags","tweets":["curiosity-driving tweet that promotes the article"]}`,
         },
       ],
     }),
@@ -354,29 +354,33 @@ exports.handler = async (event) => {
         if (!article) { continue; }
 
         const articleTitle = article.title || 'Breaking Golf News';
+        const articleSlug = articleTitle.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 80);
+        const articleUrl = 'https://tourfeed.co/article/' + articleSlug;
         const articleImage = await uploadImage('BREAKING', articleTitle);
         await sb('content_drafts', 'POST', {
           type: 'article_news',
           title: articleTitle,
           body: article.body || '',
           image_url: articleImage,
+          article_url: articleUrl,
           source_event: item.title,
           status: 'pending',
           created_at: new Date().toISOString(),
         });
 
-        // MAX 5 tweets total per run, MAX 2 per article
+        // Companion tweet — promotes the article, creates curiosity
         const tweets = article.tweets || [];
         let tweetCount = 0;
         for (const tweet of tweets) {
-          if (totalTweetsThisRun >= 5) break;
-          if (tweetCount >= 2) break;
+          if (totalTweetsThisRun >= 3) break;
+          if (tweetCount >= 1) break; // MAX 1 tweet per article
           if (!tweet || tweet.length < 15) continue;
-          // Skip tweets with unverified legal claims
-          if (/arrested|charged|indicted|convicted|guilty/i.test(tweet) && !/source|report|according/i.test(item.title)) continue;
+          // SAFETY: skip tweets with unverified legal claims
+          if (/arrested|charged|indicted|convicted|guilty|dui|mugshot/i.test(tweet)) continue;
           await sb('content_drafts', 'POST', {
             type: 'tweet_content',
-            body: tweet,
+            body: tweet.slice(0, 250) + ' ' + articleUrl,
+            article_url: articleUrl,
             source_event: topicKey,
             status: 'pending',
             created_at: new Date().toISOString(),

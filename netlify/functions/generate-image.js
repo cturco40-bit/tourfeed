@@ -390,17 +390,51 @@ function buildHotTake(p) {
   var c = createCanvas(W, H), ctx = c.getContext('2d');
   bg(ctx, W, H);
 
+  var fullText = p.take || p.quote || '';
+  // If text > 80 chars, use SHORT label card (readable at thumbnail)
+  if (fullText.length > 80) {
+    // Determine label from context
+    var label = 'HOT TAKE';
+    var labelColor = GREEN;
+    var tag = (p.tag || '').toUpperCase();
+    if (tag === 'BREAKING' || /break|arrest|withdraw/i.test(fullText)) { label = 'BREAKING'; labelColor = RED; }
+    else if (tag === 'BETTING' || /odds|bet|pick|value/i.test(fullText)) { label = 'BETTING'; labelColor = GOLD; }
+    else if (tag === 'RECAP' || /recap|win|champion/i.test(fullText)) { label = 'RECAP'; labelColor = GREEN; }
+    else if (/masters|augusta/i.test(fullText)) { label = 'MASTERS 2026'; labelColor = GOLD; }
+
+    // Extract short headline (first 6 words or title)
+    var shortText = (p.headline || fullText).split(/\s+/).slice(0, 6).join(' ');
+    if (shortText.length > 40) shortText = shortText.slice(0, 37) + '...';
+
+    ctx.fillStyle = labelColor; ctx.fillRect(0, 0, W, 5);
+    drawLogo(ctx, 50, 70, 28);
+
+    // Big label
+    ctx.font = F(900, 22);
+    var lw = ctx.measureText(label).width;
+    ctx.fillStyle = labelColor + '25';
+    ctx.beginPath(); ctx.roundRect(50, 150, lw + 40, 50, 8); ctx.fill();
+    ctx.fillStyle = labelColor;
+    ctx.fillText(label, 70, 185);
+
+    // Short headline
+    ctx.font = F(900, 56); ctx.fillStyle = WHITE;
+    fitText(ctx, shortText.toUpperCase(), 50, 320, W - 100, 400, 56, 900);
+
+    watermark(ctx, W, H);
+    return c.toBuffer('image/png');
+  }
+
+  // Short text — show full quote
   ctx.fillStyle = GREEN; ctx.fillRect(0, 0, W, 4);
   drawLogo(ctx, 40, 52, 24);
 
   ctx.font = F(900, 16); ctx.fillStyle = GREEN;
   ctx.fillText('HOT TAKE', 40, 110);
 
-  // Take text centered
   ctx.fillStyle = WHITE; ctx.textAlign = 'center';
-  fitText(ctx, (p.take || p.quote || '').toUpperCase(), W / 2, 300, W - 100, 450, 40, 800);
+  fitText(ctx, fullText.toUpperCase(), W / 2, 300, W - 100, 450, 40, 800);
 
-  // Context
   if (p.context) {
     ctx.font = F(600, 16); ctx.fillStyle = GRAY;
     ctx.fillText((p.context || '').toUpperCase(), W / 2, H - 100);

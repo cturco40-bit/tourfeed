@@ -213,15 +213,22 @@ RULES:
 - NEVER link to anything or mention TourFeed
 - Each tweet = DIFFERENT topic. Cover the full range of what's happening.
 - 1-2 sentences. Short and punchy.
-- Slang fine. "Built different." "Down bad." "That's filthy."
 - Be opinionated. Take stances. Be funny when it fits.
-- Cover: player news, tournament updates, equipment, injuries, hot takes, picks, behind the scenes, crowds, course conditions — EVERYTHING golf
-- Never generic. Always specific.
+
+VARIETY IS MANDATORY. Each tweet must use a COMPLETELY DIFFERENT sentence structure.
+BANNED patterns: "That's either [A] or [B]", "That's the kind of [X] that [Y]", "Respect the [noun]"
+MIX these: Questions ("How is nobody talking about...?"), Declarations ("Schauffele at +350 is a steal."), Fragments ("Scheffler. Bogey-free. Again."), Comparisons ("Last time someone opened like this, they won by 5."), Challenges ("Name a player more locked in. You can't."), One-liners ("Phil at +8. Pain."), Predictions ("Hovland wins this. Calling it now.")
+
+CRITICAL SAFETY:
+- NEVER state a player was arrested, charged, or involved in legal trouble unless the source headline EXPLICITLY states it
+- NEVER speculate about criminal activity, substance abuse, or personal scandals
+- If a player is absent, say "not in the field" — do not speculate why unless official reason is in the headline
+- When in doubt about any claim, use softer language or skip entirely
 
 ${context}`,
         messages: [{
           role: 'user',
-          content: `Latest golf headlines from across the internet:\n\n${headlineList}\n\nPick the 5 most interesting/diverse topics and write an original tweet for each. Different angle per tweet.\n\nReturn ONLY a JSON array of objects with the source headline and your tweet:\n[{"source":"the headline you're reacting to","tweet":"your original tweet"},{"source":"...","tweet":"..."}]`
+          content: `Latest golf headlines:\n\n${headlineList}\n\nPick the 5 most interesting/diverse topics and write one original tweet per topic. Each tweet MUST use a different sentence structure.\n\nReturn ONLY a JSON array of objects:\n[{"source":"headline you're reacting to","tweet":"your original tweet"}]`
         }],
       }),
     });

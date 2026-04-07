@@ -1588,13 +1588,22 @@ function renderInsights() {
   var pS = function(s) { if (!s || s === 'E') return 0; return parseInt(s) || 0; };
   var html = '';
   var active = PLAYERS ? PLAYERS.filter(function(p) { return p.status === 'active'; }) : [];
-  var hasData = TOURNAMENT && active.length > 3;
+  var isLive = TOURNAMENT && active.length > 3 && TOURNAMENT.state !== 'post';
   var rd = TOURNAMENT ? TOURNAMENT.round : 1;
-  var leaderNum = hasData ? pS(active[0].score) : 0;
-  var tiedLead = hasData ? active.filter(function(p) { return p.score === active[0].score; }).length > 1 : false;
+  var leaderNum = isLive ? pS(active[0].score) : 0;
+  var tiedLead = isLive ? active.filter(function(p) { return p.score === active[0].score; }).length > 1 : false;
 
-  // Find lowest today score in field for HOT HAND
-  var lowestToday = hasData ? Math.min.apply(null, active.slice(0, 30).map(function(p) { return pS(p.today) || 0; }).filter(function(v) { return v !== 0; })) : 0;
+  // Find top 5 lowest today scores for edge calc
+  var todayScores = isLive ? active.slice(0, 30).map(function(p) { return pS(p.today); }).filter(function(v) { return v !== 0; }).sort(function(a,b){return a-b;}) : [];
+  var lowestToday = todayScores[0] || 0;
+  var top5Today = todayScores.slice(0, 5);
+  var avgToday = todayScores.length > 0 ? todayScores.reduce(function(a,b){return a+b;},0) / todayScores.length : 0;
+
+  // Filter betting articles to last 14 days only
+  var fourteenDaysAgo = Date.now() - 14 * 24 * 60 * 60 * 1000;
+  var recentBettingArticles = (bettingArticles || []).filter(function(a) {
+    return a.published_at && new Date(a.published_at).getTime() > fourteenDaysAgo;
+  });
 
   function posOdds(pos) {
     if (pos === 1) return tiedLead ? 150 : -175;
@@ -1611,25 +1620,25 @@ function renderInsights() {
 
   function modelEdge(todayNum, back, round) {
     var e = 0;
-    if (todayNum <= -5) e += 6;
-    else if (todayNum <= -3) e += 4;
-    else if (todayNum <= -1) e += 2;
-    else if (todayNum >= 2) e -= 3;
-    else if (todayNum >= 1) e -= 1;
+    // Best round in field = +5%, top 5 = +3%, above avg = -3%
+    if (todayNum === lowestToday && todayNum < 0) e += 5;
+    else if (top5Today.indexOf(todayNum) >= 0) e += 3;
+    else if (todayNum > avgToday) e -= 3;
     if (round >= 3 && back <= 2) e += 2;
     if (round >= 3 && back >= 6) e -= 2;
     return e;
   }
 
-  function edgeLabel(pos, todayNum, isHottest) {
+  function edgeLabel(pos, todayNum, isHottest, edgePct) {
     if (pos === 1) return {l:'FAVORITE',c:'var(--gold)',bg:'rgba(212,168,83,0.15)'};
     if (isHottest) return {l:'HOT HAND',c:'var(--s-green)',bg:'rgba(45,212,160,0.12)'};
+    if (edgePct >= 3) return {l:'VALUE',c:'var(--green)',bg:'rgba(45,143,111,0.15)'};
     if (pos >= 6) return {l:'LONGSHOT',c:'#4A90D9',bg:'rgba(74,144,217,0.12)'};
     return {l:'VALUE',c:'var(--green)',bg:'rgba(45,143,111,0.15)'};
   }
 
   // ━━ SECTION 1: LIVE TOURNAMENT HEADER ━━
-  if (hasData) {
+  if (isLive) {
     html += '<div style="border:2px solid var(--green);border-radius:12px;padding:16px;margin-bottom:14px">';
     html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">';
     html += '<div style="width:8px;height:8px;border-radius:50%;background:var(--s-green);animation:pulse 2s infinite"></div>';
@@ -1639,7 +1648,7 @@ function renderInsights() {
   }
 
   // ━━ SECTION 2: OUTRIGHT WINNER TABLE ━━
-  if (hasData) {
+  if (isLive) {
     html += '<div style="font-size:11px;font-weight:800;letter-spacing:2px;color:var(--g700);margin-bottom:10px">OUTRIGHT WINNER</div>';
     var playerOdds = [];
 
@@ -1652,7 +1661,8 @@ function renderInsights() {
       var model = Math.max(0.5, imp + edge);
       var isVal = model > imp;
       var isHottest = todayNum === lowestToday && todayNum < 0;
-      var el = edgeLabel(i + 1, todayNum, isHottest);
+      var edgePct = model - imp;
+      var el = edgeLabel(i + 1, todayNum, isHottest, edgePct);
       playerOdds.push({p:p, i:i, odds:odds, imp:imp, model:model, edge:edge, back:back, todayNum:todayNum, isVal:isVal});
 
       html += '<div style="background:var(--card-bg);border:1px solid var(--card-border);border-radius:10px;padding:12px 14px;margin-bottom:6px;display:flex;align-items:center;gap:10px">';
@@ -1773,9 +1783,9 @@ function renderInsights() {
   }
 
   // ━━ SECTION 6: BETTING ARTICLES ━━
-  if (bettingArticles && bettingArticles.length > 0) {
+  if (recentBettingArticles.length > 0) {
     html += '<div style="font-size:11px;font-weight:800;letter-spacing:2px;color:var(--gold);margin:16px 0 10px">BETTING ANALYSIS</div>';
-    bettingArticles.forEach(function(a) { html += renderArticleCard(a); });
+    recentBettingArticles.forEach(function(a) { html += renderArticleCard(a); });
   }
 
   // ━━ SECTION 7: SEASON RECORD ━━
@@ -1809,11 +1819,27 @@ function renderInsights() {
   });
   html += '</div>';
 
-  if (!hasData) {
-    html += '<div style="text-align:center;padding:20px;font-size:13px;color:var(--text-muted)">Live odds, picks, and props update during tournament play.<br>Check our published betting articles above for pre-tournament picks.</div>';
+  // ━━ MODE B: NO LIVE TOURNAMENT ━━
+  if (!isLive) {
+    if (!scheduleFetched) fetchESPNSchedule();
+    if (scheduleData.length > 0) {
+      var nowB = Date.now();
+      var nextEv = scheduleData.find(function(e) { return e.startDate && new Date(e.startDate).getTime() > nowB; });
+      if (nextEv) {
+        var ndB = new Date(nextEv.startDate);
+        var daysB = Math.ceil((ndB.getTime() - nowB) / 86400000);
+        var isMajB = /masters|pga championship|u\.?s\.?\s*open|open championship|the open/i.test(nextEv.event);
+        html += '<div style="border:1px solid ' + (isMajB ? 'rgba(212,168,83,0.3)' : 'var(--card-border)') + ';border-radius:12px;padding:16px;margin-bottom:14px">';
+        html += '<div style="font-size:10px;font-weight:800;letter-spacing:2px;color:' + (isMajB ? 'var(--gold)' : 'var(--green)') + ';margin-bottom:6px">NEXT EVENT</div>';
+        html += '<div style="font-size:18px;font-weight:900;color:var(--text)">' + esc(nextEv.event) + '</div>';
+        html += '<div style="font-size:11px;color:var(--text-muted);margin-top:3px">' + esc(nextEv.course) + ' &middot; ' + daysB + ' day' + (daysB !== 1 ? 's' : '') + ' &middot; ' + (nextEv.purse || '') + '</div>';
+        html += '</div>';
+      }
+    }
+    html += '<div style="text-align:center;padding:16px;font-size:13px;color:var(--text-muted);background:var(--card-bg);border-radius:10px;margin-bottom:14px">Early picks and full betting preview coming soon.<br>Live odds, props, and matchups activate during tournament play.</div>';
   }
 
-  // ━━ SECTION 8: DISCLAIMER ━━
+  // ━━ DISCLAIMER ━━
   html += '<div class="disclaimer" style="margin-top:16px">All picks are for entertainment purposes only. Past performance does not guarantee future results. Please gamble responsibly. If you or someone you know has a gambling problem, call 1-800-GAMBLER.</div>';
   return html;
 }
