@@ -1,73 +1,58 @@
-// TourFeed Image Generator
-// Two modes:
-// 1. Auto-generated data cards (leaderboard, betting, stat, etc.) — no photos needed
-// 2. Photo composites via query params (photo= URL) — for manual editor or ESPN photos
+// TourFeed Image Generator — Vintage Golf Editorial Design
+// Cream background, Playfair Display headlines, gold accents
+// Matches the tourfeed.co site aesthetic
 
-const { createCanvas, GlobalFonts, loadImage } = require('@napi-rs/canvas');
+const { createCanvas, GlobalFonts } = require('@napi-rs/canvas');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
 
-const fontB64 = require('./font-data');
-const fontPath = path.join(os.tmpdir(), 'DMSans.ttf');
-if (!fs.existsSync(fontPath)) {
-  fs.writeFileSync(fontPath, Buffer.from(fontB64, 'base64'));
-}
-GlobalFonts.registerFromPath(fontPath, 'DM Sans');
+// Load both fonts
+const dmB64 = require('./font-data');
+const pfB64 = require('./font-playfair');
+const dmPath = path.join(os.tmpdir(), 'DMSans.ttf');
+const pfPath = path.join(os.tmpdir(), 'PlayfairDisplay.ttf');
+if (!fs.existsSync(dmPath)) fs.writeFileSync(dmPath, Buffer.from(dmB64, 'base64'));
+if (!fs.existsSync(pfPath)) fs.writeFileSync(pfPath, Buffer.from(pfB64, 'base64'));
+GlobalFonts.registerFromPath(dmPath, 'DM Sans');
+GlobalFonts.registerFromPath(pfPath, 'Playfair Display');
 
-const NAVY = '#1B2538';
-const NAVY_D = '#111927';
-const GREEN = '#2D8F6F';
+// Brand colors matching the site
+const CREAM = '#FAF6F0';
+const CARD = '#FFFFFF';
+const GREEN = '#1A472A';
+const GREEN_L = '#2D5A3B';
 const GOLD = '#D4A853';
-const WHITE = '#FFFFFF';
-const GRAY = '#868E96';
-const GRAY_D = '#495057';
-const RED = '#E63946';
-const S_GREEN = '#2DD4A0';
-const S_RED = '#FF6B6B';
+const GOLD_D = '#8B7335';
+const RED = '#8B2020';
+const TEXT = '#2C2416';
+const DIM = '#5C5244';
+const MUTED = '#8C8478';
+const BORDER = '#D8D0C4';
 
-function F(w, s) { return `${w} ${s}px "DM Sans"`; }
+function dm(w, s) { return w + ' ' + s + 'px "DM Sans"'; }
+function pf(w, s) { return w + ' ' + s + 'px "Playfair Display"'; }
 
-async function fetchImg(url) {
-  if (!url) return null;
-  try {
-    const r = await fetch(url);
-    if (!r.ok) return null;
-    const b = Buffer.from(await r.arrayBuffer());
-    return b.length > 500 ? await loadImage(b) : null;
-  } catch(e) { return null; }
+function tagColors(tag) {
+  var t = (tag || '').toUpperCase();
+  if (t === 'RECAP' || t === 'TOURNAMENT') return { bg: GREEN, fg: '#fff' };
+  if (t === 'BETTING') return { bg: GOLD_D, fg: '#fff' };
+  if (t === 'BREAKING' || t === 'INJURY') return { bg: RED, fg: '#fff' };
+  if (t === 'PREVIEW') return { bg: GREEN_L, fg: '#dfe8d8' };
+  if (t === 'ANALYSIS') return { bg: '#4A4030', fg: '#F5EFE5' };
+  if (t === 'NEWS' || t === 'TOUR NEWS') return { bg: '#3D4F42', fg: '#dfe8d8' };
+  if (t.includes('MASTERS')) return { bg: GREEN, fg: GOLD };
+  return { bg: GREEN, fg: '#fff' };
 }
 
-function drawLogo(ctx, x, y, sz) {
-  ctx.font = F(900, sz);
-  ctx.textAlign = 'left';
-  ctx.fillStyle = WHITE;
-  ctx.fillText('TOUR', x, y);
-  ctx.fillStyle = GOLD;
-  ctx.fillText('FEED', x + ctx.measureText('TOUR').width + 2, y);
-}
-
-function watermark(ctx, W, H) {
-  ctx.globalAlpha = 0.6;
-  ctx.font = F(900, 20);
-  ctx.textAlign = 'right';
-  ctx.fillStyle = WHITE;
-  var tw = ctx.measureText('TOUR').width;
-  var fw = ctx.measureText('FEED').width;
-  ctx.fillText('TOUR', W - 25 - fw - 2, H - 22);
-  ctx.fillStyle = GOLD;
-  ctx.fillText('FEED', W - 25, H - 22);
-  ctx.globalAlpha = 1;
-  ctx.textAlign = 'left';
-}
-
-function fitText(ctx, text, x, y, maxW, maxH, startSz, weight) {
+// Auto-fit text — returns final Y position
+function fitText(ctx, text, x, y, maxW, maxH, startSz, weight, font) {
   var sz = startSz;
   while (sz > 14) {
-    ctx.font = F(weight, sz);
-    var lh = Math.round(sz * 1.25);
+    ctx.font = font === 'pf' ? pf(weight, sz) : dm(weight, sz);
+    var lh = Math.round(sz * 1.3);
     var lines = [], line = '';
-    for (var w of (text||'').split(' ')) {
+    for (var w of (text || '').split(' ')) {
       var t = line + (line ? ' ' : '') + w;
       if (ctx.measureText(t).width > maxW && line) { lines.push(line); line = w; }
       else line = t;
@@ -79,456 +64,458 @@ function fitText(ctx, text, x, y, maxW, maxH, startSz, weight) {
     }
     sz -= 2;
   }
-  ctx.font = F(weight, 14);
-  var line2 = '', cy = y;
-  for (var w2 of (text||'').split(' ')) {
-    var t2 = line2 + (line2 ? ' ' : '') + w2;
-    if (ctx.measureText(t2).width > maxW && line2) { ctx.fillText(line2, x, cy); cy += 18; line2 = w2; }
-    else line2 = t2;
+  ctx.font = font === 'pf' ? pf(weight, 14) : dm(weight, 14);
+  var ln = '', cy = y;
+  for (var w2 of (text || '').split(' ')) {
+    var t2 = ln + (ln ? ' ' : '') + w2;
+    if (ctx.measureText(t2).width > maxW && ln) { ctx.fillText(ln, x, cy); cy += 18; ln = w2; }
+    else ln = t2;
   }
-  if (line2) { ctx.fillText(line2, x, cy); cy += 18; }
+  if (ln) { ctx.fillText(ln, x, cy); cy += 18; }
   return cy;
 }
 
-function bg(ctx, W, H) {
-  var g = ctx.createLinearGradient(0, 0, W, H);
-  g.addColorStop(0, NAVY_D);
-  g.addColorStop(0.5, NAVY);
-  g.addColorStop(1, '#1a3a2f');
-  ctx.fillStyle = g;
-  ctx.fillRect(0, 0, W, H);
+function drawLogo(ctx, x, y, sz) {
+  ctx.font = dm('900', sz);
+  ctx.textAlign = 'left';
+  ctx.fillStyle = GREEN;
+  ctx.fillText('TOUR', x, y);
+  var tw = ctx.measureText('TOUR').width;
+  ctx.fillStyle = GOLD;
+  ctx.fillText('FEED', x + tw + 2, y);
 }
 
-function scoreColor(s) {
-  if (!s) return GRAY;
-  s = String(s);
-  return s.startsWith('+') ? S_RED : s === 'E' || s === '0' ? GRAY : S_GREEN;
+function drawWatermark(ctx, W, H) {
+  ctx.globalAlpha = 0.35;
+  ctx.font = dm('900', 18);
+  ctx.textAlign = 'right';
+  ctx.fillStyle = GREEN;
+  var tw = ctx.measureText('TOUR').width;
+  var fw = ctx.measureText('FEED').width;
+  ctx.fillText('TOUR', W - 30 - fw - 2, H - 24);
+  ctx.fillStyle = GOLD;
+  ctx.fillText('FEED', W - 30, H - 24);
+  ctx.globalAlpha = 1;
+  ctx.textAlign = 'left';
 }
 
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// TEMPLATE A: LEADERBOARD CARD
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-function buildLeaderboard(p) {
-  var players = [];
-  try { players = JSON.parse(p.players || '[]'); } catch(e) {}
-  if (!players.length) return null;
-  var W = 1080, H = 1080;
+function drawTag(ctx, tag, x, y) {
+  var tc = tagColors(tag);
+  var tagText = (tag || 'NEWS').toUpperCase();
+  ctx.font = dm('700', 10);
+  var tw = ctx.measureText(tagText).width;
+  ctx.fillStyle = tc.bg;
+  ctx.beginPath();
+  ctx.roundRect(x, y, tw + 14, 20, 3);
+  ctx.fill();
+  ctx.fillStyle = tc.fg;
+  ctx.fillText(tagText, x + 7, y + 14);
+}
+
+// ━━━ ARTICLE HEADER (1200x630) ━━━
+function buildArticleHeader(p) {
+  var W = 1200, H = 630;
   var c = createCanvas(W, H), ctx = c.getContext('2d');
-  bg(ctx, W, H);
 
-  // Top bar
+  // Cream background
+  ctx.fillStyle = CREAM;
+  ctx.fillRect(0, 0, W, H);
+
+  // Subtle border
+  ctx.strokeStyle = BORDER;
+  ctx.lineWidth = 1;
+  ctx.strokeRect(0.5, 0.5, W - 1, H - 1);
+
+  // Top green bar
   ctx.fillStyle = GREEN;
   ctx.fillRect(0, 0, W, 4);
 
-  // Logo + LIVE badge
-  drawLogo(ctx, 40, 52, 26);
-  if (p.status && p.status.toLowerCase().includes('progress')) {
-    ctx.fillStyle = S_GREEN + '30';
-    ctx.beginPath(); ctx.roundRect(W - 110, 25, 75, 30, 6); ctx.fill();
-    ctx.font = F(700, 13); ctx.fillStyle = S_GREEN; ctx.textAlign = 'center';
-    ctx.fillText('LIVE', W - 72, 46); ctx.textAlign = 'left';
-  }
+  // Logo
+  drawLogo(ctx, 50, 52, 22);
 
-  // Tournament name
-  ctx.font = F(900, 40); ctx.fillStyle = WHITE;
-  ctx.fillText(p.tournament || 'Tournament', 40, 110);
-  ctx.font = F(500, 20); ctx.fillStyle = GRAY;
-  ctx.fillText((p.status || '') + (p.course ? ' \u2022 ' + p.course : ''), 40, 142);
+  // Tag badge
+  drawTag(ctx, p.tag, 50, 80);
 
-  // Column headers
-  ctx.font = F(700, 14); ctx.fillStyle = GRAY_D;
-  ctx.fillText('POS', 40, 195);
-  ctx.fillText('PLAYER', 110, 195);
-  ctx.textAlign = 'center'; ctx.fillText('TODAY', 800, 195);
-  ctx.textAlign = 'right'; ctx.fillText('TOTAL', 1020, 195);
+  // Headline — Playfair Display
+  ctx.fillStyle = TEXT;
   ctx.textAlign = 'left';
+  var endY = fitText(ctx, p.headline || '', 50, 155, W - 100, 320, 40, '800', 'pf');
 
-  ctx.fillStyle = WHITE + '08'; ctx.fillRect(40, 205, 1000, 1);
+  // Gold line under headline
+  ctx.fillStyle = GOLD;
+  ctx.fillRect(50, endY + 16, 120, 3);
 
-  // Player rows
-  players.slice(0, 10).forEach(function(pl, i) {
-    var y = 230 + i * 76;
-    // Leader highlight
-    if (i === 0) {
-      ctx.fillStyle = GREEN + '10';
-      ctx.beginPath(); ctx.roundRect(20, y - 6, 1040, 68, 8); ctx.fill();
-    }
-    // Position
-    ctx.font = F(800, 24); ctx.fillStyle = i === 0 ? GOLD : GRAY;
-    ctx.fillText(String(pl.pos || i + 1), 50, y + 32);
-    // Name
-    ctx.font = F(i === 0 ? 800 : 600, 24); ctx.fillStyle = WHITE;
-    ctx.fillText(pl.name || '', 110, y + 32);
-    // Flag
-    if (pl.flag) {
-      ctx.font = F(500, 14); ctx.fillStyle = GRAY;
-      ctx.fillText(pl.flag, 110, y + 52);
-    }
-    // Today
-    ctx.font = F(700, 22); ctx.fillStyle = scoreColor(pl.today);
-    ctx.textAlign = 'center'; ctx.fillText(pl.today || '', 800, y + 32);
-    // Total
-    ctx.font = F(900, 28); ctx.fillStyle = scoreColor(pl.total);
-    ctx.textAlign = 'right'; ctx.fillText(pl.total || '', 1020, y + 32);
-    ctx.textAlign = 'left';
-    // Divider
-    if (i < players.length - 1 && i < 9) {
-      ctx.fillStyle = WHITE + '06'; ctx.fillRect(40, y + 64, 1000, 1);
-    }
-  });
+  // Bottom left: tourfeed.co
+  ctx.font = dm('600', 11);
+  ctx.fillStyle = MUTED;
+  ctx.fillText('tourfeed.co', 50, H - 30);
 
-  watermark(ctx, W, H);
+  // Watermark
+  drawWatermark(ctx, W, H);
+
   return c.toBuffer('image/png');
 }
 
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// TEMPLATE B: BETTING PICK CARD
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// ━━━ TWEET IMAGE (1080x1080) ━━━
+function buildTweet(p) {
+  var W = 1080, H = 1080;
+  var c = createCanvas(W, H), ctx = c.getContext('2d');
+
+  // Cream background
+  ctx.fillStyle = CREAM;
+  ctx.fillRect(0, 0, W, H);
+
+  // Subtle border
+  ctx.strokeStyle = BORDER;
+  ctx.lineWidth = 1;
+  ctx.strokeRect(0.5, 0.5, W - 1, H - 1);
+
+  // Top green bar
+  ctx.fillStyle = GREEN;
+  ctx.fillRect(0, 0, W, 5);
+
+  // Logo
+  drawLogo(ctx, 60, 70, 26);
+
+  // Tag badge — large and prominent
+  var tag = p.tag || 'NEWS';
+  if (/masters|augusta/i.test((p.headline || '') + ' ' + (p.quote || ''))) tag = 'MASTERS 2026';
+  if (/break|withdraw|arrest/i.test(p.headline || '')) tag = 'BREAKING';
+  if (/bet|odds|pick|value/i.test(p.headline || '')) tag = 'BETTING';
+  if (/recap|win|champion/i.test(p.headline || '')) tag = 'RECAP';
+
+  var tc = tagColors(tag);
+  var tagText = tag.toUpperCase();
+  ctx.font = dm('800', 14);
+  var tagW = ctx.measureText(tagText).width;
+  ctx.fillStyle = tc.bg;
+  ctx.beginPath();
+  ctx.roundRect(60, 120, tagW + 24, 30, 4);
+  ctx.fill();
+  ctx.fillStyle = tc.fg;
+  ctx.fillText(tagText, 72, 141);
+
+  // Short headline — MAX 6 words from headline or tweet
+  var fullText = p.headline || p.quote || p.take || '';
+  var shortText = fullText.split(/\s+/).slice(0, 6).join(' ');
+  if (shortText.length > 45) shortText = shortText.slice(0, 42) + '...';
+
+  // Headline in Playfair Display
+  ctx.fillStyle = TEXT;
+  ctx.textAlign = 'left';
+  var endY = fitText(ctx, shortText, 60, 260, W - 120, 400, 52, '800', 'pf');
+
+  // Gold line
+  ctx.fillStyle = GOLD;
+  ctx.fillRect(60, endY + 24, 140, 3);
+
+  // Bottom: tourfeed.co
+  ctx.font = dm('600', 12);
+  ctx.fillStyle = MUTED;
+  ctx.fillText('tourfeed.co', 60, H - 40);
+
+  // Watermark
+  drawWatermark(ctx, W, H);
+
+  return c.toBuffer('image/png');
+}
+
+// ━━━ LEADERBOARD CARD (1080x1080) ━━━
+function buildLeaderboard(p) {
+  var players = [];
+  try { players = JSON.parse(p.players || '[]'); } catch(e) {}
+  if (!players.length) return buildTweet({ headline: p.tournament || 'Leaderboard', tag: 'RECAP' });
+
+  var W = 1080, H = 1080;
+  var c = createCanvas(W, H), ctx = c.getContext('2d');
+
+  ctx.fillStyle = CREAM;
+  ctx.fillRect(0, 0, W, H);
+  ctx.strokeStyle = BORDER;
+  ctx.lineWidth = 1;
+  ctx.strokeRect(0.5, 0.5, W - 1, H - 1);
+  ctx.fillStyle = GREEN;
+  ctx.fillRect(0, 0, W, 4);
+
+  drawLogo(ctx, 50, 52, 22);
+
+  // Tournament name
+  ctx.font = pf('800', 32);
+  ctx.fillStyle = TEXT;
+  ctx.fillText(p.tournament || 'Tournament', 50, 110);
+  ctx.font = dm('500', 14);
+  ctx.fillStyle = MUTED;
+  ctx.fillText((p.status || '') + (p.course ? ' \u2022 ' + p.course : ''), 50, 135);
+
+  // Column headers
+  ctx.fillStyle = '#F0EAE0';
+  ctx.fillRect(40, 160, W - 80, 30);
+  ctx.font = dm('700', 10);
+  ctx.fillStyle = MUTED;
+  ctx.fillText('POS', 55, 180);
+  ctx.fillText('PLAYER', 100, 180);
+  ctx.textAlign = 'center';
+  ctx.fillText('TODAY', 800, 180);
+  ctx.textAlign = 'right';
+  ctx.fillText('TOTAL', 1010, 180);
+  ctx.textAlign = 'left';
+
+  players.slice(0, 10).forEach(function(pl, i) {
+    var y = 205 + i * 68;
+    if (i === 0) {
+      ctx.fillStyle = GREEN + '08';
+      ctx.fillRect(40, y - 5, W - 80, 62);
+    }
+    ctx.font = dm('700', 18);
+    ctx.fillStyle = i === 0 ? GOLD_D : MUTED;
+    ctx.fillText(String(pl.pos || i + 1), 55, y + 28);
+    ctx.font = dm(i === 0 ? '800' : '600', 18);
+    ctx.fillStyle = TEXT;
+    ctx.fillText(pl.name || '', 100, y + 28);
+    if (pl.flag) { ctx.font = dm('400', 11); ctx.fillStyle = MUTED; ctx.fillText(pl.flag, 100, y + 46); }
+
+    var sc = !pl.today ? MUTED : (pl.today + '').startsWith('+') ? RED : (pl.today + '') === 'E' ? MUTED : GREEN;
+    ctx.font = dm('700', 16); ctx.fillStyle = sc; ctx.textAlign = 'center';
+    ctx.fillText(pl.today || '', 800, y + 28);
+
+    var tc2 = !pl.total ? MUTED : (pl.total + '').startsWith('+') ? RED : (pl.total + '') === 'E' ? MUTED : GREEN;
+    ctx.font = dm('900', 20); ctx.fillStyle = tc2; ctx.textAlign = 'right';
+    ctx.fillText(pl.total || '', 1010, y + 28);
+    ctx.textAlign = 'left';
+
+    if (i < players.length - 1 && i < 9) {
+      ctx.fillStyle = BORDER;
+      ctx.fillRect(50, y + 58, W - 100, 1);
+    }
+  });
+
+  drawWatermark(ctx, W, H);
+  return c.toBuffer('image/png');
+}
+
+// ━━━ BETTING PICK CARD (1080x1080) ━━━
 function buildPick(p) {
   var W = 1080, H = 1080;
   var c = createCanvas(W, H), ctx = c.getContext('2d');
-  bg(ctx, W, H);
+
+  ctx.fillStyle = CREAM;
+  ctx.fillRect(0, 0, W, H);
+  ctx.strokeStyle = BORDER;
+  ctx.lineWidth = 1;
+  ctx.strokeRect(0.5, 0.5, W - 1, H - 1);
+  ctx.fillStyle = GREEN;
+  ctx.fillRect(0, 0, W, 4);
+
+  drawLogo(ctx, 50, 52, 22);
 
   var label = (p.label || 'BEST BET').toUpperCase();
-  var lc = label === 'LONGSHOT' ? GOLD : label.includes('VALUE') ? '#4A90D9' : label === 'FADE' ? RED : GREEN;
-
-  // Gold accent glow
-  var glow = ctx.createRadialGradient(W * 0.8, 100, 50, W * 0.8, 100, 500);
-  glow.addColorStop(0, lc + '15');
-  glow.addColorStop(1, 'transparent');
-  ctx.fillStyle = glow;
-  ctx.fillRect(0, 0, W, H);
-
-  ctx.fillStyle = lc; ctx.fillRect(0, 0, W, 4);
-  drawLogo(ctx, 40, 52, 24);
+  var lc = label === 'LONGSHOT' ? GOLD_D : label.includes('VALUE') ? GREEN_L : label === 'FADE' ? RED : GREEN;
 
   // Label badge
-  ctx.font = F(900, 18); var tw = ctx.measureText(label).width;
-  ctx.fillStyle = lc + '25';
-  ctx.beginPath(); ctx.roundRect(40, 90, tw + 30, 36, 6); ctx.fill();
-  ctx.fillStyle = lc; ctx.fillText(label, 55, 115);
+  ctx.font = dm('800', 14);
+  var lw = ctx.measureText(label).width;
+  ctx.fillStyle = lc;
+  ctx.beginPath(); ctx.roundRect(50, 100, lw + 24, 30, 4); ctx.fill();
+  ctx.fillStyle = '#fff';
+  ctx.fillText(label, 62, 121);
 
-  // Player name huge
-  ctx.font = F(900, 52); ctx.fillStyle = WHITE;
-  ctx.fillText(p.player || '', 40, 230);
+  // Player name
+  ctx.font = pf('900', 44);
+  ctx.fillStyle = TEXT;
+  ctx.fillText(p.player || '', 50, 220);
 
-  // Odds massive
-  ctx.font = F(900, 72); ctx.fillStyle = lc;
-  ctx.fillText(p.odds || '', 40, 320);
+  // Odds
+  ctx.font = dm('900', 60);
+  ctx.fillStyle = GREEN;
+  ctx.fillText(p.odds || '', 50, 300);
 
   // Reasoning
   if (p.reasoning) {
-    ctx.font = F(500, 20); ctx.fillStyle = '#CED4DA';
-    fitText(ctx, p.reasoning, 40, 380, W - 80, 180, 20, 500);
+    ctx.fillStyle = DIM;
+    fitText(ctx, p.reasoning, 50, 360, W - 100, 200, 16, '500', 'dm');
   }
 
   // Confidence dots
   if (p.confidence) {
+    ctx.font = dm('700', 11); ctx.fillStyle = MUTED; ctx.fillText('CONFIDENCE', 50, 610);
     var conf = parseInt(p.confidence) || 0;
-    ctx.font = F(700, 14); ctx.fillStyle = GRAY; ctx.fillText('CONFIDENCE', 40, 600);
     for (var i = 0; i < 10; i++) {
-      ctx.beginPath(); ctx.arc(55 + i * 30, 630, 10, 0, Math.PI * 2);
-      ctx.fillStyle = i < conf ? lc : WHITE + '15'; ctx.fill();
+      ctx.beginPath(); ctx.arc(65 + i * 28, 640, 9, 0, Math.PI * 2);
+      ctx.fillStyle = i < conf ? GREEN : BORDER; ctx.fill();
     }
   }
 
-  // Units
-  if (p.units) {
-    ctx.font = F(800, 18); ctx.fillStyle = WHITE;
-    ctx.fillStyle = lc + '30';
-    ctx.beginPath(); ctx.roundRect(40, 660, 80, 34, 6); ctx.fill();
-    ctx.fillStyle = lc; ctx.font = F(800, 16);
-    ctx.fillText(p.units, 58, 682);
-  }
+  // Gold line
+  ctx.fillStyle = GOLD;
+  ctx.fillRect(50, H - 100, 120, 3);
 
-  // Tournament
-  ctx.font = F(600, 16); ctx.fillStyle = GRAY;
-  ctx.fillText((p.tournament || '').toUpperCase(), 40, H - 60);
+  ctx.font = dm('600', 12); ctx.fillStyle = MUTED;
+  ctx.fillText((p.tournament || '').toUpperCase(), 50, H - 60);
 
-  watermark(ctx, W, H);
+  drawWatermark(ctx, W, H);
   return c.toBuffer('image/png');
 }
 
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// TEMPLATE C: STAT CARD
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-function buildStat(p) {
-  var W = 1080, H = 1080;
-  var c = createCanvas(W, H), ctx = c.getContext('2d');
-  bg(ctx, W, H);
-
-  ctx.fillStyle = GREEN; ctx.fillRect(0, 0, W, 4);
-  drawLogo(ctx, 40, 52, 24);
-
-  // Label
-  ctx.font = F(900, 16); ctx.fillStyle = GREEN;
-  ctx.fillText('STAT OF THE DAY', 40, 110);
-
-  // Big number centered
-  ctx.font = F(900, 130); ctx.fillStyle = WHITE;
-  ctx.textAlign = 'center';
-  ctx.fillText(p.number || '', W / 2, 400);
-
-  // Stat label
-  ctx.font = F(700, 28); ctx.fillStyle = GOLD;
-  ctx.fillText((p.label || '').toUpperCase(), W / 2, 460);
-
-  // Player + context
-  ctx.font = F(600, 22); ctx.fillStyle = GRAY;
-  ctx.fillText(p.player || '', W / 2, 530);
-  ctx.font = F(500, 18); ctx.fillStyle = GRAY_D;
-  ctx.fillText(p.context || '', W / 2, 565);
-
-  // Comparison
-  if (p.comparison) {
-    ctx.font = F(500, 16); ctx.fillStyle = GRAY_D;
-    ctx.fillText(p.comparison, W / 2, 640);
-  }
-
-  ctx.textAlign = 'left';
-  watermark(ctx, W, H);
-  return c.toBuffer('image/png');
-}
-
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// TEMPLATE D: ARTICLE HEADER (1200x630)
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-async function buildArticleHeader(p) {
-  var W = 1200, H = 630;
-  var c = createCanvas(W, H), ctx = c.getContext('2d');
-  bg(ctx, W, H);
-
-  var tag = (p.tag || 'NEWS').toUpperCase();
-  var tc = tag === 'RECAP' || tag === 'PREVIEW' ? GREEN : tag === 'BETTING' || tag === 'ANALYSIS' ? GOLD : tag === 'BREAKING' ? RED : GREEN;
-
-  // Photo background if provided
-  if (p.photo) {
-    var img = await fetchImg(p.photo);
-    if (img) {
-      var scale = Math.max(W / img.width, H / img.height);
-      ctx.globalAlpha = 0.3;
-      ctx.drawImage(img, (W - img.width * scale) / 2, (H - img.height * scale) / 2, img.width * scale, img.height * scale);
-      ctx.globalAlpha = 1;
-      ctx.fillStyle = NAVY_D + 'CC';
-      ctx.fillRect(0, 0, W, H);
-    }
-  }
-
-  ctx.fillStyle = tc; ctx.fillRect(0, 0, W, 4);
-  drawLogo(ctx, 40, 42, 18);
-
-  // Tag
-  ctx.font = F(700, 12);
-  var tagW = ctx.measureText(tag).width;
-  ctx.fillStyle = tc + '30';
-  ctx.beginPath(); ctx.roundRect(40, 56, tagW + 20, 24, 5); ctx.fill();
-  ctx.fillStyle = tc; ctx.fillText(tag, 50, 73);
-
-  // Headline
-  ctx.fillStyle = WHITE; ctx.textAlign = 'left';
-  fitText(ctx, p.headline || '', 40, 140, W - 80, 380, 38, 800);
-
-  // Footer
-  ctx.font = F(600, 12); ctx.fillStyle = GRAY;
-  ctx.fillText((p.tournament || '').toUpperCase() + (p.read_time ? '  \u2022  ' + p.read_time : ''), 40, H - 30);
-  watermark(ctx, W, H);
-  return c.toBuffer('image/png');
-}
-
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// TEMPLATE E: BREAKING NEWS (text only)
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// ━━━ BREAKING NEWS (1080x1080) ━━━
 function buildBreaking(p) {
   var W = 1080, H = 1080;
   var c = createCanvas(W, H), ctx = c.getContext('2d');
 
-  // Dark bg with red accent
-  ctx.fillStyle = NAVY_D; ctx.fillRect(0, 0, W, H);
-  var rg = ctx.createRadialGradient(W / 2, 200, 50, W / 2, 200, 600);
-  rg.addColorStop(0, RED + '15');
-  rg.addColorStop(1, 'transparent');
-  ctx.fillStyle = rg; ctx.fillRect(0, 0, W, H);
+  ctx.fillStyle = CREAM;
+  ctx.fillRect(0, 0, W, H);
+  ctx.strokeStyle = BORDER;
+  ctx.lineWidth = 1;
+  ctx.strokeRect(0.5, 0.5, W - 1, H - 1);
 
-  ctx.fillStyle = RED; ctx.fillRect(0, 0, W, 5);
-  drawLogo(ctx, 40, 52, 24);
+  // Red top bar
+  ctx.fillStyle = RED;
+  ctx.fillRect(0, 0, W, 5);
+
+  drawLogo(ctx, 50, 52, 22);
 
   // BREAKING badge
-  ctx.font = F(900, 20);
+  ctx.font = dm('900', 16);
   var bw = ctx.measureText('BREAKING').width;
   ctx.fillStyle = RED;
-  ctx.beginPath(); ctx.roundRect(40, 100, bw + 30, 40, 6); ctx.fill();
-  ctx.fillStyle = WHITE; ctx.fillText('BREAKING', 55, 128);
+  ctx.beginPath(); ctx.roundRect(50, 100, bw + 24, 32, 4); ctx.fill();
+  ctx.fillStyle = '#fff';
+  ctx.fillText('BREAKING', 62, 123);
 
-  // Headline centered
-  ctx.fillStyle = WHITE; ctx.textAlign = 'center';
-  var endY = fitText(ctx, (p.headline || '').toUpperCase(), W / 2, 280, W - 100, 400, 48, 900);
-
-  // Green line
-  ctx.strokeStyle = GREEN; ctx.lineWidth = 3;
-  ctx.beginPath(); ctx.moveTo(W * 0.2, endY + 30); ctx.lineTo(W * 0.8, endY + 30); ctx.stroke();
-
-  // Context
-  if (p.context) {
-    ctx.font = F(700, 20); ctx.fillStyle = '#CED4DA';
-    ctx.fillText((p.context || '').toUpperCase(), W / 2, endY + 65);
-  }
-
-  // Source
-  ctx.font = F(600, 14); ctx.fillStyle = GRAY;
-  ctx.fillText(p.source || 'TOURFEED STAFF', W / 2, endY + 95);
-
+  // Headline
+  ctx.fillStyle = TEXT;
   ctx.textAlign = 'left';
-  watermark(ctx, W, H);
-  return c.toBuffer('image/png');
-}
+  var endY = fitText(ctx, (p.headline || '').toUpperCase(), 50, 240, W - 100, 400, 44, '800', 'pf');
 
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// TEMPLATE F: HOT TAKE (text only)
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-function buildHotTake(p) {
-  var W = 1080, H = 1080;
-  var c = createCanvas(W, H), ctx = c.getContext('2d');
-  bg(ctx, W, H);
-
-  var fullText = p.take || p.quote || '';
-  // If text > 80 chars, use SHORT label card (readable at thumbnail)
-  if (fullText.length > 40) {
-    // Determine label from context
-    var label = 'HOT TAKE';
-    var labelColor = GREEN;
-    var tag = (p.tag || '').toUpperCase();
-    if (tag === 'BREAKING' || /break|arrest|withdraw/i.test(fullText)) { label = 'BREAKING'; labelColor = RED; }
-    else if (tag === 'BETTING' || /odds|bet|pick|value/i.test(fullText)) { label = 'BETTING'; labelColor = GOLD; }
-    else if (tag === 'RECAP' || /recap|win|champion/i.test(fullText)) { label = 'RECAP'; labelColor = GREEN; }
-    else if (/masters|augusta/i.test(fullText)) { label = 'MASTERS 2026'; labelColor = GOLD; }
-
-    // Extract short headline (first 6 words or title)
-    var shortText = (p.headline || fullText).split(/\s+/).slice(0, 6).join(' ');
-    if (shortText.length > 40) shortText = shortText.slice(0, 37) + '...';
-
-    ctx.fillStyle = labelColor; ctx.fillRect(0, 0, W, 5);
-    drawLogo(ctx, 50, 70, 28);
-
-    // Big label
-    ctx.font = F(900, 22);
-    var lw = ctx.measureText(label).width;
-    ctx.fillStyle = labelColor + '25';
-    ctx.beginPath(); ctx.roundRect(50, 150, lw + 40, 50, 8); ctx.fill();
-    ctx.fillStyle = labelColor;
-    ctx.fillText(label, 70, 185);
-
-    // Short headline
-    ctx.font = F(900, 56); ctx.fillStyle = WHITE;
-    fitText(ctx, shortText.toUpperCase(), 50, 320, W - 100, 400, 56, 900);
-
-    watermark(ctx, W, H);
-    return c.toBuffer('image/png');
-  }
-
-  // Short text — show full quote
-  ctx.fillStyle = GREEN; ctx.fillRect(0, 0, W, 4);
-  drawLogo(ctx, 40, 52, 24);
-
-  ctx.font = F(900, 16); ctx.fillStyle = GREEN;
-  ctx.fillText('HOT TAKE', 40, 110);
-
-  ctx.fillStyle = WHITE; ctx.textAlign = 'center';
-  fitText(ctx, fullText.toUpperCase(), W / 2, 300, W - 100, 450, 40, 800);
+  // Gold line
+  ctx.fillStyle = GOLD;
+  ctx.fillRect(50, endY + 24, 140, 3);
 
   if (p.context) {
-    ctx.font = F(600, 16); ctx.fillStyle = GRAY;
-    ctx.fillText((p.context || '').toUpperCase(), W / 2, H - 100);
+    ctx.font = dm('600', 16); ctx.fillStyle = DIM;
+    ctx.fillText((p.context || '').toUpperCase(), 50, endY + 55);
   }
 
-  ctx.textAlign = 'left';
-  watermark(ctx, W, H);
+  drawWatermark(ctx, W, H);
   return c.toBuffer('image/png');
 }
 
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// TEMPLATE G: PLAYER QUOTE (text only)
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-function buildQuote(p) {
-  var W = 1080, H = 1080;
-  var c = createCanvas(W, H), ctx = c.getContext('2d');
-  bg(ctx, W, H);
-
-  ctx.fillStyle = GREEN; ctx.fillRect(0, 0, W, 4);
-  drawLogo(ctx, 40, 52, 24);
-
-  // Big quote mark
-  ctx.font = F(900, 120); ctx.fillStyle = GREEN + '30';
-  ctx.fillText('\u201C', 30, 240);
-
-  // Quote text
-  ctx.fillStyle = WHITE; ctx.textAlign = 'center';
-  var endY = fitText(ctx, (p.quote || '').toUpperCase(), W / 2, 300, W - 120, 400, 36, 800);
-
-  // Green line
-  ctx.strokeStyle = GREEN; ctx.lineWidth = 3;
-  ctx.beginPath(); ctx.moveTo(W * 0.2, endY + 20); ctx.lineTo(W * 0.8, endY + 20); ctx.stroke();
-
-  // Player name
-  ctx.font = F(800, 24); ctx.fillStyle = WHITE;
-  ctx.fillText((p.player || '').toUpperCase(), W / 2, endY + 55);
-
-  // Context
-  ctx.font = F(600, 16); ctx.fillStyle = GRAY;
-  ctx.fillText((p.context || '').toUpperCase(), W / 2, endY + 85);
-
-  ctx.textAlign = 'left';
-  watermark(ctx, W, H);
-  return c.toBuffer('image/png');
-}
-
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// TEMPLATE H: WINNER / CHAMPION (text only)
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// ━━━ WINNER / CHAMPION (1080x1080) ━━━
 function buildWinner(p) {
   var W = 1080, H = 1080;
   var c = createCanvas(W, H), ctx = c.getContext('2d');
 
-  ctx.fillStyle = NAVY_D; ctx.fillRect(0, 0, W, H);
-  var gg = ctx.createRadialGradient(W / 2, H * 0.5, 50, W / 2, H * 0.5, 500);
-  gg.addColorStop(0, GOLD + '18');
-  gg.addColorStop(1, 'transparent');
-  ctx.fillStyle = gg; ctx.fillRect(0, 0, W, H);
+  ctx.fillStyle = CREAM;
+  ctx.fillRect(0, 0, W, H);
+  ctx.strokeStyle = BORDER;
+  ctx.lineWidth = 1;
+  ctx.strokeRect(0.5, 0.5, W - 1, H - 1);
+  ctx.fillStyle = GOLD;
+  ctx.fillRect(0, 0, W, 5);
 
-  ctx.fillStyle = GOLD; ctx.fillRect(0, 0, W, 5);
-  drawLogo(ctx, 40, 52, 24);
+  drawLogo(ctx, 50, 52, 22);
 
   ctx.textAlign = 'center';
+  ctx.font = dm('700', 14); ctx.fillStyle = GOLD_D;
+  ctx.fillText('C H A M P I O N', W / 2, 300);
 
-  // CHAMPION label
-  ctx.font = F(700, 18); ctx.fillStyle = GOLD;
-  ctx.fillText('C H A M P I O N', W / 2, 280);
-
-  // Player name
-  ctx.font = F(900, 60); ctx.fillStyle = WHITE;
+  ctx.font = pf('900', 52); ctx.fillStyle = TEXT;
   ctx.fillText(p.player || '', W / 2, 400);
 
-  // Score
-  ctx.font = F(900, 56); ctx.fillStyle = GREEN;
-  ctx.fillText(p.score || '', W / 2, 490);
+  ctx.font = dm('900', 48); ctx.fillStyle = GREEN;
+  ctx.fillText(p.score || '', W / 2, 475);
 
-  // Tournament
-  ctx.font = F(700, 24); ctx.fillStyle = WHITE;
-  ctx.fillText((p.tournament || '').toUpperCase(), W / 2, 560);
+  ctx.font = dm('700', 18); ctx.fillStyle = DIM;
+  ctx.fillText((p.tournament || '').toUpperCase(), W / 2, 530);
 
-  // Flag
-  if (p.flag) {
-    ctx.font = F(500, 18); ctx.fillStyle = GRAY;
-    ctx.fillText(p.flag, W / 2, 600);
-  }
+  ctx.fillStyle = GOLD;
+  ctx.fillRect(W / 2 - 60, 555, 120, 3);
 
   ctx.textAlign = 'left';
-  watermark(ctx, W, H);
+  drawWatermark(ctx, W, H);
   return c.toBuffer('image/png');
 }
 
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// HANDLER
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// ━━━ STAT CARD (1080x1080) ━━━
+function buildStat(p) {
+  var W = 1080, H = 1080;
+  var c = createCanvas(W, H), ctx = c.getContext('2d');
+
+  ctx.fillStyle = CREAM;
+  ctx.fillRect(0, 0, W, H);
+  ctx.strokeStyle = BORDER;
+  ctx.lineWidth = 1;
+  ctx.strokeRect(0.5, 0.5, W - 1, H - 1);
+  ctx.fillStyle = GREEN;
+  ctx.fillRect(0, 0, W, 4);
+
+  drawLogo(ctx, 50, 52, 22);
+
+  ctx.textAlign = 'center';
+  ctx.font = pf('900', 110); ctx.fillStyle = TEXT;
+  ctx.fillText(p.number || '', W / 2, 420);
+
+  ctx.font = dm('700', 22); ctx.fillStyle = GOLD_D;
+  ctx.fillText((p.label || '').toUpperCase(), W / 2, 470);
+
+  ctx.font = pf('700', 24); ctx.fillStyle = TEXT;
+  ctx.fillText(p.player || '', W / 2, 540);
+
+  ctx.font = dm('500', 14); ctx.fillStyle = MUTED;
+  ctx.fillText(p.context || '', W / 2, 575);
+
+  ctx.fillStyle = GOLD;
+  ctx.fillRect(W / 2 - 60, 600, 120, 3);
+
+  ctx.textAlign = 'left';
+  drawWatermark(ctx, W, H);
+  return c.toBuffer('image/png');
+}
+
+// ━━━ QUOTE (1080x1080) ━━━
+function buildQuote(p) {
+  var W = 1080, H = 1080;
+  var c = createCanvas(W, H), ctx = c.getContext('2d');
+
+  ctx.fillStyle = CREAM;
+  ctx.fillRect(0, 0, W, H);
+  ctx.strokeStyle = BORDER;
+  ctx.lineWidth = 1;
+  ctx.strokeRect(0.5, 0.5, W - 1, H - 1);
+  ctx.fillStyle = GREEN;
+  ctx.fillRect(0, 0, W, 4);
+
+  drawLogo(ctx, 50, 52, 22);
+
+  // Quote mark
+  ctx.font = pf('800', 100); ctx.fillStyle = GOLD + '40';
+  ctx.fillText('\u201C', 40, 230);
+
+  // Quote text — max 6 words for tweet images
+  var quoteText = p.quote || '';
+  if (quoteText.length > 45) quoteText = quoteText.split(/\s+/).slice(0, 6).join(' ');
+
+  ctx.fillStyle = TEXT;
+  var endY = fitText(ctx, quoteText, 60, 290, W - 120, 350, 40, '700', 'pf');
+
+  // Gold line
+  ctx.fillStyle = GOLD;
+  ctx.fillRect(60, endY + 20, 120, 3);
+
+  // Attribution
+  if (p.player) {
+    ctx.font = dm('800', 18); ctx.fillStyle = TEXT;
+    ctx.fillText((p.player || '').toUpperCase(), 60, endY + 55);
+  }
+  if (p.context) {
+    ctx.font = dm('500', 13); ctx.fillStyle = MUTED;
+    ctx.fillText(p.context || '', 60, endY + 78);
+  }
+
+  drawWatermark(ctx, W, H);
+  return c.toBuffer('image/png');
+}
+
+// ━━━ HANDLER ━━━
 exports.handler = async (event) => {
   var p = event.queryStringParameters || {};
   var type = p.type || 'headline';
@@ -538,17 +525,16 @@ exports.handler = async (event) => {
     case 'leaderboard': buf = buildLeaderboard(p); break;
     case 'pick': buf = buildPick(p); break;
     case 'stat': buf = buildStat(p); break;
-    case 'article_header': buf = await buildArticleHeader(p); break;
+    case 'article_header': buf = buildArticleHeader(p); break;
+    case 'headline': buf = buildArticleHeader(p); break;
     case 'breaking': buf = buildBreaking(p); break;
-    case 'hot_take': buf = buildHotTake(p); break;
+    case 'hot_take': buf = buildTweet(p); break;
     case 'quote': buf = buildQuote(p); break;
     case 'winner': buf = buildWinner(p); break;
-    // Legacy compat
-    case 'headline': buf = p.tag === 'BREAKING' ? buildBreaking(p) : await buildArticleHeader(p); break;
-    default: buf = await buildArticleHeader(p);
+    default: buf = buildArticleHeader(p);
   }
 
-  if (!buf) buf = buildBreaking({ headline: 'Image generation failed' });
+  if (!buf) buf = buildTweet({ headline: 'TourFeed', tag: 'NEWS' });
 
   return {
     statusCode: 200,
