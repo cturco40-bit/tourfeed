@@ -22,7 +22,8 @@ ARTICLE RULES:
 - Structure: Hook → Detail with stats → Field context → Forward look.
 - NEVER use: "Let's dive in", "Without further ado", "Only time will tell", "needless to say", "roller coaster", "golf fans", "the golfing world", "incredible", "amazing", "unbelievable"
 - NEVER start with "The [tournament] is underway" or "It was a great day"
-- NEVER mention TourFeed, AI, automation, or that content is generated.
+- NEVER mention TourFeed by name in content.
+- NEVER use the words: AI, artificial intelligence, algorithm, automated, machine learning, AI-powered, AI-generated, model-generated, or any variation. TourFeed is a golf media brand with original analysis — that is all anyone needs to know. Say "data-driven" or "our analysis" instead.
 
 ARTICLE LENGTHS — MINIMUM 300 WORDS FOR ALL ARTICLES:
 - Recaps: 300-400 words (substantial, not a stub)
