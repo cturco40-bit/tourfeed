@@ -1150,16 +1150,60 @@ function renderHome() {
     html += '</div>';
   }
 
-  // Betting picks section
+  // TourFeed Picks — our own picks, prominently displayed
+  html += '<div style="padding:16px;background:linear-gradient(135deg,rgba(212,168,83,0.08),rgba(45,143,111,0.05));border:1px solid rgba(212,168,83,0.2);border-radius:12px;margin-bottom:12px">';
+  html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">';
+  html += '<div><div style="font-size:11px;font-weight:900;letter-spacing:2px;color:var(--gold)">TOURFEED PICKS</div>';
+  html += '<div style="font-size:10px;color:var(--text-muted);margin-top:2px">Our model-generated picks for this week</div></div>';
+  html += '<button onclick="switchTab(3)" style="background:none;border:none;color:var(--gold);font-size:11px;font-weight:700;cursor:pointer;font-family:inherit">Full Analysis &rarr;</button>';
+  html += '</div>';
+
+  // Live picks from current tournament data
+  if (TOURNAMENT && PLAYERS.length > 0) {
+    var active = PLAYERS.filter(function(p) { return p.status === 'active'; });
+    if (active.length > 3) {
+      var parseS = function(s) { if (!s || s === 'E') return 0; return parseInt(s) || 0; };
+      var leaderNum = parseS(active[0].score);
+      var calcP = function(back) { return Math.max(0.5, Math.exp(-0.55 * back) * 30); };
+      var toOdds = function(pct) { return pct >= 50 ? '-' + Math.round(pct / (100 - pct) * 100) : '+' + Math.round((100 - pct) / pct * 100); };
+      var totalRaw = active.slice(0, 15).reduce(function(s, p) { return s + calcP(Math.abs(parseS(p.score) - leaderNum)); }, 0) + 10;
+
+      // Best bet — player 2-5 range with best today score
+      var bestBet = active.slice(1, 6).sort(function(a,b) { return (parseS(a.today)||0) - (parseS(b.today)||0); })[0];
+      // Longshot — player 6-15 range
+      var longshot = active.slice(5, 15).sort(function(a,b) { return (parseS(a.today)||0) - (parseS(b.today)||0); })[0];
+
+      if (bestBet) {
+        var bbBack = Math.abs(parseS(bestBet.score) - leaderNum);
+        var bbPct = (calcP(bbBack) / totalRaw) * 100;
+        html += '<div style="padding:10px 12px;background:rgba(45,143,111,0.1);border-radius:8px;margin-bottom:6px;display:flex;align-items:center">';
+        html += '<span class="tag" style="color:var(--green);background:rgba(45,143,111,0.2);font-size:9px;margin-right:10px">BEST BET</span>';
+        html += '<div style="flex:1"><div style="font-size:14px;font-weight:800;color:var(--text)">' + bestBet.c + ' ' + esc(bestBet.name) + '</div>';
+        html += '<div style="font-size:10px;color:var(--text-muted)">' + bestBet.score + ' &middot; ' + bbBack + ' back</div></div>';
+        html += '<div style="font-size:16px;font-weight:900;color:var(--green)">' + toOdds(bbPct) + '</div></div>';
+      }
+      if (longshot) {
+        var lsBack = Math.abs(parseS(longshot.score) - leaderNum);
+        var lsPct = (calcP(lsBack) / totalRaw) * 100;
+        html += '<div style="padding:10px 12px;background:rgba(212,168,83,0.08);border-radius:8px;margin-bottom:6px;display:flex;align-items:center">';
+        html += '<span class="tag" style="color:var(--gold);background:rgba(212,168,83,0.15);font-size:9px;margin-right:10px">LONGSHOT</span>';
+        html += '<div style="flex:1"><div style="font-size:14px;font-weight:800;color:var(--text)">' + longshot.c + ' ' + esc(longshot.name) + '</div>';
+        html += '<div style="font-size:10px;color:var(--text-muted)">' + longshot.score + ' &middot; ' + lsBack + ' back</div></div>';
+        html += '<div style="font-size:16px;font-weight:900;color:var(--gold)">' + toOdds(lsPct) + '</div></div>';
+      }
+    }
+  } else {
+    // No live tournament — show teaser to betting articles
+    html += '<div style="font-size:13px;color:var(--text-muted);padding:8px 0">Picks update during tournament play. Read our full betting preview below.</div>';
+  }
+
+  // Link to betting articles
   if (bettingArticles.length > 0) {
-    html += '<div style="padding:14px;background:rgba(212,168,83,0.05);border:1px solid rgba(212,168,83,0.15);border-radius:10px;margin-bottom:12px">';
-    html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">';
-    html += '<div style="font-size:10px;font-weight:700;letter-spacing:2px;color:var(--gold)">BETTING & PICKS</div>';
-    html += '<button onclick="switchTab(3)" style="background:none;border:none;color:var(--gold);font-size:11px;font-weight:700;cursor:pointer;font-family:inherit">All Picks &rarr;</button>';
-    html += '</div>';
+    html += '<div style="margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,0.06)">';
     bettingArticles.slice(0, 2).forEach(function(a) { html += renderArticleCard(a); });
     html += '</div>';
   }
+  html += '</div>';
 
   // Blog / analysis section
   if (blogArticles.length > 0) {
