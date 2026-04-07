@@ -124,13 +124,17 @@ exports.handler = async (event) => {
       } else {
         // Post tweet
         const tweetText = params.text || draft.body;
-        await fetch('https://tourfeed.co/.netlify/functions/post-tweet', {
+        const tweetRes = await fetch('https://tourfeed.co/.netlify/functions/post-tweet', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ text: tweetText, image: draft.image_url || undefined }),
         });
+        const tweetData = await tweetRes.json();
+        if (!tweetData.success) {
+          return { statusCode: 200, headers, body: JSON.stringify({ success: false, error: tweetData.error || 'Twitter posting failed' }) };
+        }
         await sb(`content_drafts?id=eq.${id}`, 'PATCH', { status: 'published', published_at: new Date().toISOString() });
-        return { statusCode: 200, headers, body: JSON.stringify({ success: true, type: 'tweet' }) };
+        return { statusCode: 200, headers, body: JSON.stringify({ success: true, type: 'tweet', tweet_id: tweetData.tweet_id }) };
       }
     } catch (e) {
       return { statusCode: 500, headers, body: JSON.stringify({ error: e.message }) };
