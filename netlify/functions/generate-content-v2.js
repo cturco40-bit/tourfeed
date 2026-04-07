@@ -166,6 +166,27 @@ exports.handler = async (event) => {
       created_at: new Date().toISOString(),
     });
     await recordHash(hash, type);
+
+    // Generate Instagram draft for article types
+    if (type.startsWith('article')) {
+      var igTiming = type === 'article_recap' ? 'Post immediately' :
+                     type === 'article_betting' ? 'Post morning before round' :
+                     type === 'article_news' ? 'Post ASAP' :
+                     'Post evening before';
+      var igHashtags = '#golf #masters #masters2026 #augusta #pgatour #golfbetting #golfpicks #greenjacket #tourfeed';
+      var plainBody = body.replace(/<[^>]+>/g, '').slice(0, 200);
+      var igCaption = plainBody.split('.').slice(0, 2).join('.') + '.\n\nFull story: tourfeed.co\n\n' + igHashtags;
+      await sb('content_drafts', 'POST', {
+        type: 'instagram',
+        title: title,
+        body: igCaption,
+        meta: JSON.stringify({ timing: igTiming }),
+        tournament_id: tournamentId,
+        status: 'pending',
+        created_at: new Date().toISOString(),
+      });
+    }
+
     return { skipped: false, hash, draft };
   }
 

@@ -380,6 +380,18 @@ exports.handler = async (event) => {
           totalTweetsThisRun++;
         }
 
+        // Instagram draft
+        var igPlain = (article.body || '').replace(/<[^>]+>/g, '').slice(0, 200);
+        var igCaption = igPlain.split('.').slice(0, 2).join('.') + '.\n\nFull story: tourfeed.co\n\n#golf #masters #masters2026 #augusta #pgatour #golfnews #tourfeed #greenjacket #breakingnews';
+        await sb('content_drafts', 'POST', {
+          type: 'instagram',
+          title: articleTitle,
+          body: igCaption,
+          meta: JSON.stringify({ timing: 'Post ASAP' }),
+          status: 'pending',
+          created_at: new Date().toISOString(),
+        });
+
         // Record hash + topic so future runs skip
         await sb('content_hashes', 'POST', { hash: contentHash, source: item.source, created_at: new Date().toISOString() });
         await sb('content_topics', 'POST', { topic_key: topicKey, player_name: topicKey.split('-')[0], event_type: topicKey.split('-')[1], created_at: new Date().toISOString() }).catch(function(){});

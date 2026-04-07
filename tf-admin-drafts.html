@@ -253,12 +253,22 @@ async function loadDrafts() {
     list.innerHTML = filtered.map(d => {
       const isTweet = d.type && (d.type.includes('tweet') || d.type === 'hot_take');
       const isArticle = d.type && d.type.includes('article');
+      const isInstagram = d.type === 'instagram';
       let content = '';
 
       // Image
       if (d.image_url) content += '<img src="' + d.image_url + '" class="draft-image" loading="lazy" alt="" onerror="this.style.display=\'none\'">';
 
-      if (isArticle) {
+      // Timing suggestion for Instagram
+      if (isInstagram && d.meta) {
+        try { var meta = typeof d.meta === 'string' ? JSON.parse(d.meta) : d.meta; if (meta.timing) content += '<div style="font-size:10px;font-weight:700;color:#9333ea;background:rgba(147,51,234,0.08);padding:4px 8px;border-radius:4px;margin-bottom:8px;display:inline-block">' + meta.timing + '</div>'; } catch(e) {}
+      }
+
+      if (isInstagram) {
+        if (d.title) content += '<div class="draft-article-title">' + escHtml(d.title) + '</div>';
+        content += '<div style="font-size:13px;color:#5C5244;line-height:1.6;white-space:pre-wrap;padding:12px;background:#F5EFE5;border-radius:4px;margin-top:6px">' + escHtml(d.body) + '</div>';
+        content += '<div style="display:flex;gap:8px;margin-top:8px"><button style="padding:8px 14px;background:#F5EFE5;border:1px solid #D8D0C4;border-radius:4px;font-size:11px;font-weight:700;color:#5C5244;cursor:pointer;font-family:inherit" onclick="navigator.clipboard.writeText(loadedDrafts[' + d.id + ']?.body||'+"''"+ ');this.textContent='+  "'Copied!'"+';setTimeout(()=>this.textContent='+"'Copy Caption'"+',2000)">Copy Caption</button><button style="padding:8px 14px;background:#F5EFE5;border:1px solid #D8D0C4;border-radius:4px;font-size:11px;font-weight:700;color:#5C5244;cursor:pointer;font-family:inherit" onclick="openImageEditor(' + d.id + ')">Create Image</button></div>';
+      } else if (isArticle) {
         if (d.title) content += '<div class="draft-article-title">' + escHtml(d.title) + '</div>';
         content += '<div class="draft-article-full">' + (d.body || '') + '</div>';
       } else {
@@ -272,7 +282,7 @@ async function loadDrafts() {
 
       return '<div class="draft" id="draft-' + d.id + '"><div class="draft-top"><div style="display:flex;align-items:center;gap:8px">' +
         (isTweet ? '<div class="draft-select ' + (selectedIds.has(d.id)?'checked':'') + '" onclick="toggleSelect(' + d.id + ')"></div>' : '') +
-        '<span class="draft-type">' + (d.type||'draft').replace(/_/g,' ').toUpperCase() + '</span></div><span class="draft-time">' + new Date(d.created_at).toLocaleString() + '</span></div>' +
+        '<span class="draft-type" style="' + (isInstagram ? 'color:#9333ea' : '') + '">' + (d.type||'draft').replace(/_/g,' ').toUpperCase() + '</span></div><span class="draft-time">' + new Date(d.created_at).toLocaleString() + '</span></div>' +
         content +
         '<textarea class="draft-edit" id="edit-' + d.id + '" rows="4">' + (d.body||'') + '</textarea>' +
         '<div class="draft-actions" id="actions-' + d.id + '">' +

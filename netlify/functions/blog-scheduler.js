@@ -168,6 +168,19 @@ ${playerFacts}`,
       content_hash: hash,
     });
 
+    // Instagram draft
+    var igTiming = config.type === 'article_betting' ? 'Post morning before round' : 'Post evening before';
+    var igPlain = article.body.replace(/<[^>]+>/g, '').slice(0, 200);
+    var igCaption = igPlain.split('.').slice(0, 2).join('.') + '.\n\nFull story: tourfeed.co\n\n#golf #masters #masters2026 #augusta #pgatour #golfbetting #golfpicks #greenjacket #tourfeed';
+    await sb('content_drafts', 'POST', {
+      type: 'instagram',
+      title: article.title,
+      body: igCaption,
+      meta: JSON.stringify({ timing: igTiming }),
+      status: 'pending',
+      created_at: new Date().toISOString(),
+    });
+
     results.push({ success: true, key, type: config.type, title: article.title });
     } // end for loop
 
