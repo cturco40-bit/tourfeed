@@ -213,14 +213,18 @@ ${context}`,
     if (!res.ok) return { statusCode: 200, headers, body: JSON.stringify({ skipped: 'AI failed' }) };
 
     let tweets;
+    let rawText = '';
     try {
-      const text = (await res.json()).content?.[0]?.text || '';
-      tweets = JSON.parse(text.replace(/```json\s?|```/g, '').trim());
+      rawText = (await res.json()).content?.[0]?.text || '';
+      tweets = JSON.parse(rawText.replace(/```json\s?|```/g, '').trim());
     } catch(e) {
-      return { statusCode: 200, headers, body: JSON.stringify({ skipped: 'Parse failed' }) };
+      return { statusCode: 200, headers, body: JSON.stringify({ skipped: 'Parse failed', raw: rawText.slice(0, 300) }) };
     }
 
-    if (!Array.isArray(tweets)) return { statusCode: 200, headers, body: JSON.stringify({ skipped: 'Not array' }) };
+    if (!Array.isArray(tweets)) return { statusCode: 200, headers, body: JSON.stringify({ skipped: 'Not array', raw: rawText.slice(0, 300) }) };
+
+    // If AI returned empty array, report it
+    if (tweets.length === 0) return { statusCode: 200, headers, body: JSON.stringify({ success: true, drafted: 0, reason: 'AI returned empty array', sourcesScraped: [...new Set(allHeadlines.map(h=>h.src))], totalHeadlines: allHeadlines.length }) };
 
     const drafted = [];
     for (const item of tweets) {
