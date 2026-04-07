@@ -1490,7 +1490,9 @@ function renderInsights() {
   var pS = function(s) { if (!s || s === 'E') return 0; return parseInt(s) || 0; };
   var html = '';
   var active = PLAYERS ? PLAYERS.filter(function(p) { return p.status === 'active'; }) : [];
-  var isLive = TOURNAMENT && active.length > 3 && TOURNAMENT.state !== 'post';
+  // Only use dynamic odds when tournament is ACTIVELY IN PROGRESS with real scores
+  var hasRealScores = active.length > 3 && active.some(function(p) { return p.score && p.score !== 'E' && p.score !== ''; });
+  var isLive = getSiteState() === 'live' && hasRealScores;
   var rd = TOURNAMENT ? TOURNAMENT.round : 1;
   var leaderNum = isLive ? pS(active[0].score) : 0;
   var tiedLead = isLive ? active.filter(function(p) { return p.score === active[0].score; }).length > 1 : false;
@@ -1723,16 +1725,16 @@ function renderInsights() {
     // Pre-Tournament Favorites Table
     html += '<div style="font-size:10px;font-weight:800;letter-spacing:2px;color:var(--gold);margin-bottom:8px">PRE-TOURNAMENT FAVORITES</div>';
     var preFavs = [
-      {pos:1,name:'Scottie Scheffler',odds:'+500',note:'2x Masters champion, won Open Championship'},
-      {pos:2,name:'Rory McIlroy',odds:'+700',note:'Defending champion, career Grand Slam holder'},
-      {pos:3,name:'Xander Schauffele',odds:'+1000',note:'2024 PGA + Open champion'},
-      {pos:4,name:'Bryson DeChambeau',odds:'+1400',note:'Back-to-back LIV wins, 2x US Open champion'},
-      {pos:5,name:'Jon Rahm',odds:'+1600',note:'2023 Masters champion, LIV Golf'},
-      {pos:6,name:'Collin Morikawa',odds:'+2000',note:'Playing through back injury'},
-      {pos:7,name:'Ludvig Aberg',odds:'+2000',note:'First Masters appearance'},
-      {pos:8,name:'Viktor Hovland',odds:'+2500',note:'0 majors, elite talent'},
-      {pos:9,name:'Patrick Cantlay',odds:'+2800',note:'8 PGA Tour wins'},
-      {pos:10,name:'Tommy Fleetwood',odds:'+3000',note:'Ryder Cup regular'},
+      {pos:1,name:'Scottie Scheffler',odds:'+500',label:'FAVORITE',lc:'var(--gold)',note:'World #1. Two-time Masters champion. Won the Open Championship last year.'},
+      {pos:2,name:'Rory McIlroy',odds:'+700',label:'DEFENDING',lc:'var(--green)',note:'Defending champion. Completed the career Grand Slam here last year.'},
+      {pos:3,name:'Xander Schauffele',odds:'+1000',label:'CONTENDER',lc:'var(--green)',note:'Won the PGA and Open in 2024. Elite ball-striker.'},
+      {pos:4,name:'Bryson DeChambeau',odds:'+1400',label:'HOT',lc:'var(--red)',note:'Back-to-back LIV wins. 2020 US Open champion. Red hot form.'},
+      {pos:5,name:'Jon Rahm',odds:'+1600',label:'PAST CHAMP',lc:'var(--gold)',note:'Won the 2023 Masters. Knows Augusta. LIV Golf.'},
+      {pos:6,name:'Collin Morikawa',odds:'+2000',label:'CONTENDER',lc:'var(--green)',note:'Two-time major winner. Playing through a back injury.'},
+      {pos:7,name:'Ludvig Aberg',odds:'+2000',label:'DEBUT',lc:'#4A90D9',note:'First Masters appearance. One of the most talented young players in golf.'},
+      {pos:8,name:'Viktor Hovland',odds:'+2500',label:'VALUE',lc:'var(--green)',note:'Elite iron play that Augusta rewards. Undervalued.'},
+      {pos:9,name:'Patrick Cantlay',odds:'+2800',label:'SLEEPER',lc:'var(--muted)',note:'Putter has been on fire. Quiet but dangerous.'},
+      {pos:10,name:'Tommy Fleetwood',odds:'+3000',label:'SLEEPER',lc:'var(--muted)',note:'Consistently contends in majors. Due for a breakthrough.'},
     ];
     preFavs.forEach(function(f) {
       var imp = (100 / (parseInt(f.odds.replace('+','')) + 100) * 100).toFixed(1);
@@ -1740,8 +1742,9 @@ function renderInsights() {
       html += '<div style="width:24px;font-size:12px;font-weight:700;color:' + (f.pos===1?'var(--gold)':'var(--muted)') + '">' + f.pos + '</div>';
       html += '<div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:' + (f.pos<=3?'800':'600') + ';color:var(--text)">' + f.name + '</div>';
       html += '<div style="font-size:10px;color:var(--muted)">' + f.note + '</div></div>';
-      html += '<div style="font-size:10px;color:var(--muted);margin-right:10px">' + imp + '%</div>';
-      html += '<div style="font-size:16px;font-weight:900;color:var(--green)">' + f.odds + '</div>';
+      html += '<span style="font-size:8px;font-weight:700;letter-spacing:1px;padding:2px 6px;border-radius:2px;color:' + f.lc + ';background:' + f.lc + '12;margin-right:8px;flex-shrink:0">' + f.label + '</span>';
+      html += '<div style="text-align:right;flex-shrink:0"><div style="font-size:16px;font-weight:900;color:var(--green)">' + f.odds + '</div>';
+      html += '<div style="font-size:9px;color:var(--muted)">' + imp + '%</div></div>';
       html += '</div>';
     });
 
