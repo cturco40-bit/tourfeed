@@ -381,8 +381,10 @@ exports.handler = async (event) => {
         }
 
         // Instagram draft
-        var igPlain = (article.body || '').replace(/<[^>]+>/g, '').slice(0, 200);
-        var igCaption = igPlain.split('.').slice(0, 2).join('.') + '.\n\nFull story: tourfeed.co\n\n#golf #masters #masters2026 #augusta #pgatour #golfnews #tourfeed #greenjacket #breakingnews';
+        var igPlain = (article.body || '').replace(/<[^>]+>/g, '');
+        var igSentences = igPlain.match(/[^.!?]+[.!?]+/g) || [];
+        var igText = igSentences.slice(0, 3).join(' ').trim() || igPlain.slice(0, 150).trim();
+        var igCaption = igText + '\n\nFull story: tourfeed.co\n\n#golf #masters #masters2026 #augusta #pgatour #golfnews #golfpicks #greenjacket #breakingnews #sportsbetting';
         await sb('content_drafts', 'POST', {
           type: 'instagram',
           title: articleTitle,

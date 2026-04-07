@@ -170,8 +170,10 @@ ${playerFacts}`,
 
     // Instagram draft
     var igTiming = config.type === 'article_betting' ? 'Post morning before round' : 'Post evening before';
-    var igPlain = article.body.replace(/<[^>]+>/g, '').slice(0, 200);
-    var igCaption = igPlain.split('.').slice(0, 2).join('.') + '.\n\nFull story: tourfeed.co\n\n#golf #masters #masters2026 #augusta #pgatour #golfbetting #golfpicks #greenjacket #tourfeed';
+    var igPlain = article.body.replace(/<[^>]+>/g, '');
+    var igSentences = igPlain.match(/[^.!?]+[.!?]+/g) || [];
+    var igText = igSentences.slice(0, 3).join(' ').trim() || igPlain.slice(0, 150).trim();
+    var igCaption = igText + '\n\nFull story: tourfeed.co\n\n#golf #masters #masters2026 #augusta #pgatour #golfbetting #golfpicks #greenjacket #sportsbetting';
     await sb('content_drafts', 'POST', {
       type: 'instagram',
       title: article.title,

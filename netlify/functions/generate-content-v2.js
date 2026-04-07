@@ -173,9 +173,13 @@ exports.handler = async (event) => {
                      type === 'article_betting' ? 'Post morning before round' :
                      type === 'article_news' ? 'Post ASAP' :
                      'Post evening before';
-      var igHashtags = '#golf #masters #masters2026 #augusta #pgatour #golfbetting #golfpicks #greenjacket #tourfeed';
-      var plainBody = body.replace(/<[^>]+>/g, '').slice(0, 200);
-      var igCaption = plainBody.split('.').slice(0, 2).join('.') + '.\n\nFull story: tourfeed.co\n\n' + igHashtags;
+      var igHashtags = '#golf #masters #masters2026 #augusta #pgatour #golfpicks #golfbetting #greenjacket #sportsbetting';
+      // Extract 2-3 COMPLETE sentences (never cut mid-sentence)
+      var plainBody = body.replace(/<[^>]+>/g, '');
+      var sentences = plainBody.match(/[^.!?]+[.!?]+/g) || [];
+      var igText = sentences.slice(0, 3).join(' ').trim();
+      if (!igText) igText = plainBody.slice(0, 150).trim();
+      var igCaption = igText + '\n\nFull story: tourfeed.co\n\n' + igHashtags;
       await sb('content_drafts', 'POST', {
         type: 'instagram',
         title: title,
