@@ -131,16 +131,16 @@ exports.handler = async (event) => {
       'Sport: ' + sport + '\n' +
       'Current odds (player: american odds):\n' + oddsString + '\n\n' +
       (playerFactsStr ? 'Player context from our database:\n' + playerFactsStr + '\n\n' : '') +
-      'Return ONLY this JSON:\n' +
+      'Return ONLY this JSON (analysis: one sentence only, max 15 words):\n' +
       '{\n' +
-      '  "best_bet": { "player_name": "", "odds": "", "implied_probability": "", "true_probability": "", "edge": "", "analysis": "" },\n' +
+      '  "best_bet": { "player_name": "", "odds": "", "implied_probability": "", "true_probability": "", "edge": "", "analysis": "one sentence, max 15 words" },\n' +
       '  "value_plays": [\n' +
-      '    { "player_name": "", "odds": "", "implied_probability": "", "true_probability": "", "edge": "", "analysis": "" },\n' +
-      '    { "player_name": "", "odds": "", "implied_probability": "", "true_probability": "", "edge": "", "analysis": "" },\n' +
-      '    { "player_name": "", "odds": "", "implied_probability": "", "true_probability": "", "edge": "", "analysis": "" }\n' +
+      '    { "player_name": "", "odds": "", "implied_probability": "", "true_probability": "", "edge": "", "analysis": "one sentence, max 15 words" },\n' +
+      '    { "player_name": "", "odds": "", "implied_probability": "", "true_probability": "", "edge": "", "analysis": "one sentence, max 15 words" },\n' +
+      '    { "player_name": "", "odds": "", "implied_probability": "", "true_probability": "", "edge": "", "analysis": "one sentence, max 15 words" }\n' +
       '  ],\n' +
-      '  "longshot": { "player_name": "", "odds": "", "implied_probability": "", "true_probability": "", "edge": "", "analysis": "" },\n' +
-      '  "fade": { "player_name": "", "odds": "", "implied_probability": "", "true_probability": "", "edge": "", "analysis": "" },\n' +
+      '  "longshot": { "player_name": "", "odds": "", "implied_probability": "", "true_probability": "", "edge": "", "analysis": "one sentence, max 15 words" },\n' +
+      '  "fade": { "player_name": "", "odds": "", "implied_probability": "", "true_probability": "", "edge": "", "analysis": "one sentence, max 15 words" },\n' +
       '  "confidence": { "best_bet": 0, "value_1": 0, "value_2": 0, "value_3": 0, "longshot": 0, "fade": 0 }\n' +
       '}\n\n' +
       'Apply the full handicapping framework. Show your edge. Pick value not chalk.';
@@ -150,7 +150,7 @@ exports.handler = async (event) => {
       headers: { 'Content-Type': 'application/json', 'x-api-key': ANTHROPIC_KEY, 'anthropic-version': '2023-06-01' },
       body: JSON.stringify({
         model: 'claude-haiku-4-5-20251001',
-        max_tokens: 1200,
+        max_tokens: 2000,
         system: SYSTEM_PROMPT,
         messages: [{ role: 'user', content: userPrompt }],
       }),
