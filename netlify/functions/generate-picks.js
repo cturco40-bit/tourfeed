@@ -126,7 +126,6 @@ ${tournament.name} odds: ${oddsStr}`;
 
     // 8. Insert into betting_picks
     console.log('Saving to Supabase...');
-    const batchId = new Date().toISOString();
     const tournamentId = tournament.id;
     const inserted = [];
 
@@ -138,8 +137,6 @@ ${tournament.name} odds: ${oddsStr}`;
         bet_type: betType,
         pick: pick.pick || pick.player_name + ' to ' + betType,
         odds: pick.odds || '',
-        implied_probability: pick.implied_pct || null,
-        model_probability: pick.model_pct || null,
         is_value: true,
         edge_label: edgeLabel,
         analysis: pick.analysis || '',
@@ -147,9 +144,7 @@ ${tournament.name} odds: ${oddsStr}`;
         units: betType === 'outright' ? 2.0 : betType === 'top5' ? 1.5 : betType === 'longshot' || betType === 'parlay' ? 0.5 : 1.0,
         result: 'pending',
         sportsbook: pick.sportsbook || 'DraftKings',
-        batch_id: batchId,
-        meta: JSON.stringify(pick.meta || {}),
-        created_at: batchId,
+        created_at: new Date().toISOString(),
       };
       console.log('Inserting into table: betting_picks');
       console.log('Attempting Supabase insert, row:', JSON.stringify(row, null, 2));
