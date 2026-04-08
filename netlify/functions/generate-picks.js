@@ -150,7 +150,7 @@ exports.handler = async (event) => {
       headers: { 'Content-Type': 'application/json', 'x-api-key': ANTHROPIC_KEY, 'anthropic-version': '2023-06-01' },
       body: JSON.stringify({
         model: 'claude-haiku-4-5-20251001',
-        max_tokens: 800,
+        max_tokens: 1200,
         system: SYSTEM_PROMPT,
         messages: [{ role: 'user', content: userPrompt }],
       }),
@@ -167,11 +167,30 @@ exports.handler = async (event) => {
     // 6. Parse JSON response
     var picks;
     try {
-      picks = JSON.parse(rawText.replace(/```json\s?|```/g, '').trim());
-    } catch(e) {
-      var jsonMatch = rawText.match(/\{[\s\S]*"best_bet"[\s\S]*\}/);
-      if (jsonMatch) picks = JSON.parse(jsonMatch[0]);
-      else return { statusCode: 200, headers, body: JSON.stringify({ error: 'Parse failed', raw: rawText.slice(0, 500) }) };
+      // First attempt: direct parse
+      var cleaned = rawText
+        .replace(/```json\s?|```/g, '')
+        .replace(/[\u0000-\u001F\u007F-\u009F]/g, '')
+        .trim();
+      picks = JSON.parse(cleaned);
+    } catch(e1) {
+      try {
+        // Second attempt: extract JSON object with regex
+        var match = rawText.match(/\{[\s\S]*"best_bet"[\s\S]*"fade"[\s\S]*\}/);
+        if (!match) throw new Error('No JSON found');
+        picks = JSON.parse(match[0]);
+      } catch(e2) {
+        try {
+          // Third attempt: truncation fix — find last complete property
+          var truncated = rawText.replace(/```json\s?|```/g, '').trim();
+          var lastBrace = truncated.lastIndexOf('}');
+          var fixed = truncated.slice(0, lastBrace + 1);
+          picks = JSON.parse(fixed);
+        } catch(e3) {
+          console.error('All parse attempts failed:', rawText.slice(0, 500));
+          return { statusCode: 200, headers, body: JSON.stringify({ error: 'Parse failed', raw: rawText.slice(0, 200) }) };
+        }
+      }
     }
 
     // 7. Extract confidence scores
