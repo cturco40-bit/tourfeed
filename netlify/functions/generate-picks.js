@@ -256,7 +256,42 @@ exports.handler = async (event) => {
 
     console.log('Supabase write complete —', inserted.length, 'picks inserted');
 
-    // 9. Notify
+    // 9. Create Instagram drafts for each pick
+    var igHashtags = {
+      'BEST BET': '#masters #masters2026 #augusta #golfbetting #sportsbetting #golfpicks',
+      'VALUE': '#masters #masters2026 #augusta #golfbetting #sportsbetting',
+      'LONGSHOT': '#masters #masters2026 #augusta #longshot #golfbetting',
+      'FADE': '#masters #masters2026 #augusta #golfbetting',
+    };
+    var igLabels = { 'BEST BET': 'BEST BET', 'VALUE': 'VALUE PLAY', 'LONGSHOT': 'LONGSHOT', 'FADE': 'FADE OF THE WEEK' };
+    var allPicksFlat = [];
+    if (picks.best_bet) allPicksFlat.push({ ...picks.best_bet, edge_label: 'BEST BET' });
+    if (picks.value_plays) picks.value_plays.slice(0, 3).forEach(function(p) { allPicksFlat.push({ ...p, edge_label: 'VALUE' }); });
+    if (picks.longshot) allPicksFlat.push({ ...picks.longshot, edge_label: 'LONGSHOT' });
+    if (picks.fade) allPicksFlat.push({ ...picks.fade, edge_label: 'FADE' });
+
+    for (var ig = 0; ig < allPicksFlat.length; ig++) {
+      var pk = allPicksFlat[ig];
+      var label = igLabels[pk.edge_label] || pk.edge_label;
+      var tags = igHashtags[pk.edge_label] || '#masters #golfbetting';
+      var igCaption = label + '\n' + (pk.player_name || '') + ' ' + (pk.odds || '') + '\n\n' + (pk.analysis || '') + '\n\nFull picks card at tourfeed.co\n\n' + tags;
+      var igWords = (pk.player_name || '').split(/\s+/);
+      var igHL = igWords.length <= 3 ? (pk.player_name || '') + ' Is the Play' : igWords[igWords.length - 1] + ' Is the Play This Week';
+      if (pk.edge_label === 'LONGSHOT') igHL = (pk.player_name || '') + ' Could Shock Augusta';
+      if (pk.edge_label === 'FADE') igHL = 'Fade ' + (pk.player_name || '') + ' This Week';
+      try {
+        await sb('content_drafts', 'POST', {
+          type: 'instagram',
+          title: (pk.player_name || '') + ' — ' + pk.edge_label,
+          body: igCaption,
+          image_headline: igHL,
+          status: 'pending',
+          created_at: new Date().toISOString(),
+        });
+      } catch(e) {}
+    }
+
+    // 10. Notify
     try {
       var bestName = picks.best_bet?.player_name || 'Unknown';
       var bestOdds = picks.best_bet?.odds || '';
