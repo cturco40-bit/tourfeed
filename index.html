@@ -1811,7 +1811,7 @@ function renderInsights() {
     // Load picks from betting_picks if not already loaded
     if (!_bettingPicks) {
       _bettingPicks = 'loading';
-      sb.from('betting_picks').select('*').order('created_at', {ascending:false}).limit(30).then(function(res) {
+      sb.from('betting_picks').select('*').order('created_at', {ascending:true}).limit(30).then(function(res) {
         if (res.data && res.data.length > 0) { _bettingPicks = res.data; renderApp(); }
         else { _bettingPicks = null; }
       }).catch(function() { _bettingPicks = null; });
@@ -2039,7 +2039,7 @@ startAutoRefresh();
 // Load betting picks early for Home Quick Picks + Picks tab
 if (!_bettingPicks) {
   _bettingPicks = 'loading';
-  sb.from('betting_picks').select('*').order('created_at', {ascending:false}).limit(30).then(function(res) {
+  sb.from('betting_picks').select('*').order('created_at', {ascending:true}).limit(30).then(function(res) {
     if (res.data && res.data.length > 0) { _bettingPicks = res.data; renderApp(); }
     else { _bettingPicks = null; }
   }).catch(function() { _bettingPicks = null; });

@@ -37,4 +37,8 @@
 
 [functions."generate-picks"]
   timeout = 60
-  schedule = "0 11 * * *"
+  schedule = "0 5 * * *"
+
+[functions."post-reddit"]
+  timeout = 30
+  schedule = "0 8 * * *"

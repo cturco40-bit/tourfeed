@@ -45,6 +45,13 @@ exports.handler = async (event) => {
     if (!tournament) return { statusCode: 200, headers, body: JSON.stringify({ skipped: 'No tournament found' }) };
     console.log('Tournament:', tournament.name);
 
+    // Check if picks already locked for this tournament
+    var existing = await sb('betting_picks?tournament_id=eq.' + encodeURIComponent(tournament.id) + '&select=id&limit=1');
+    if (existing.length > 0) {
+      console.log('Picks already locked for', tournament.name);
+      return { statusCode: 200, headers, body: JSON.stringify({ skipped: 'Picks already locked for this tournament' }) };
+    }
+
     // 2. Get real sportsbook odds — top 20 players
     console.log('Fetching odds from Supabase');
     const odds = await sb('player_odds?order=best_odds.asc&limit=20');
@@ -124,17 +131,9 @@ ${tournament.name} odds: ${oddsStr}`;
       else return { statusCode: 200, headers, body: JSON.stringify({ error: 'Parse failed', raw: rawText.slice(0, 500) }) };
     }
 
-    // 8. Delete old picks for this tournament, then insert new batch
+    // 8. Insert picks (only runs if none exist yet — checked above)
     console.log('Saving to Supabase...');
     const tournamentId = tournament.id;
-
-    // Clear existing picks for this tournament first — one clean set at all times
-    var deleteRes = await fetchT(SB_URL + '/rest/v1/betting_picks?tournament_id=eq.' + encodeURIComponent(tournamentId), {
-      method: 'DELETE',
-      headers: { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY, 'Content-Type': 'application/json' },
-    });
-    console.log('Cleared old picks, status:', deleteRes.status);
-
     const inserted = [];
 
     // Helper to insert a pick row
