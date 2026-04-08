@@ -74,6 +74,38 @@ OUTPUT RULES — non-negotiable:
 - Never mention AI or models
 - Always produce picks regardless of data quality`;
 
+// Helper: create Instagram drafts from an array of picks (from DB or freshly generated)
+async function createInstagramDrafts(picksList) {
+  var igHashtags = {
+    'BEST BET': '#masters #masters2026 #augusta #golfbetting #sportsbetting #golfpicks',
+    'VALUE': '#masters #masters2026 #augusta #golfbetting #sportsbetting',
+    'LONGSHOT': '#masters #masters2026 #augusta #longshot #golfbetting',
+    'FADE': '#masters #masters2026 #augusta #golfbetting',
+  };
+  var igLabels = { 'BEST BET': 'BEST BET', 'VALUE': 'VALUE PLAY', 'LONGSHOT': 'LONGSHOT', 'FADE': 'FADE OF THE WEEK' };
+  for (var ig = 0; ig < picksList.length; ig++) {
+    var pk = picksList[ig];
+    var el = pk.edge_label || '';
+    var label = igLabels[el] || el;
+    var tags = igHashtags[el] || '#masters #golfbetting';
+    var igCaption = label + '\n' + (pk.player_name || '') + ' ' + (pk.odds || '') + '\n\n' + (pk.analysis || '') + '\n\nFull picks card at tourfeed.co\n\n' + tags;
+    var igWords = (pk.player_name || '').split(/\s+/);
+    var igHL = igWords.length <= 3 ? (pk.player_name || '') + ' Is the Play' : igWords[igWords.length - 1] + ' Is the Play This Week';
+    if (el === 'LONGSHOT') igHL = (pk.player_name || '') + ' Could Shock Augusta';
+    if (el === 'FADE') igHL = 'Fade ' + (pk.player_name || '') + ' This Week';
+    try {
+      await sb('content_drafts', 'POST', {
+        type: 'instagram',
+        title: (pk.player_name || '') + ' — ' + el,
+        body: igCaption,
+        image_headline: igHL,
+        status: 'pending',
+        created_at: new Date().toISOString(),
+      });
+    } catch(e) {}
+  }
+}
+
 exports.handler = async (event) => {
   var headers = { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' };
   var ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY;
@@ -93,6 +125,15 @@ exports.handler = async (event) => {
     var existing = await sb('betting_picks?tournament_id=eq.' + encodeURIComponent(tournament.id) + '&select=id&limit=1');
     if (existing.length > 0) {
       console.log('Picks already locked for', tournament.name);
+      // Still create Instagram drafts if they don't exist yet
+      var existingIg = await sb('content_drafts?type=eq.instagram&title=like.*BEST BET*&created_at=gte.' + new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString() + '&select=id&limit=1');
+      if (existingIg.length === 0) {
+        var lockedPicks = await sb('betting_picks?tournament_id=eq.' + encodeURIComponent(tournament.id) + '&order=created_at.asc');
+        if (lockedPicks.length > 0) {
+          await createInstagramDrafts(lockedPicks);
+          return { statusCode: 200, headers, body: JSON.stringify({ skipped: 'Picks locked, created ' + lockedPicks.length + ' Instagram drafts' }) };
+        }
+      }
       return { statusCode: 200, headers, body: JSON.stringify({ skipped: 'Picks already locked for this tournament' }) };
     }
 
@@ -257,39 +298,12 @@ exports.handler = async (event) => {
     console.log('Supabase write complete —', inserted.length, 'picks inserted');
 
     // 9. Create Instagram drafts for each pick
-    var igHashtags = {
-      'BEST BET': '#masters #masters2026 #augusta #golfbetting #sportsbetting #golfpicks',
-      'VALUE': '#masters #masters2026 #augusta #golfbetting #sportsbetting',
-      'LONGSHOT': '#masters #masters2026 #augusta #longshot #golfbetting',
-      'FADE': '#masters #masters2026 #augusta #golfbetting',
-    };
-    var igLabels = { 'BEST BET': 'BEST BET', 'VALUE': 'VALUE PLAY', 'LONGSHOT': 'LONGSHOT', 'FADE': 'FADE OF THE WEEK' };
     var allPicksFlat = [];
     if (picks.best_bet) allPicksFlat.push({ ...picks.best_bet, edge_label: 'BEST BET' });
     if (picks.value_plays) picks.value_plays.slice(0, 3).forEach(function(p) { allPicksFlat.push({ ...p, edge_label: 'VALUE' }); });
     if (picks.longshot) allPicksFlat.push({ ...picks.longshot, edge_label: 'LONGSHOT' });
     if (picks.fade) allPicksFlat.push({ ...picks.fade, edge_label: 'FADE' });
-
-    for (var ig = 0; ig < allPicksFlat.length; ig++) {
-      var pk = allPicksFlat[ig];
-      var label = igLabels[pk.edge_label] || pk.edge_label;
-      var tags = igHashtags[pk.edge_label] || '#masters #golfbetting';
-      var igCaption = label + '\n' + (pk.player_name || '') + ' ' + (pk.odds || '') + '\n\n' + (pk.analysis || '') + '\n\nFull picks card at tourfeed.co\n\n' + tags;
-      var igWords = (pk.player_name || '').split(/\s+/);
-      var igHL = igWords.length <= 3 ? (pk.player_name || '') + ' Is the Play' : igWords[igWords.length - 1] + ' Is the Play This Week';
-      if (pk.edge_label === 'LONGSHOT') igHL = (pk.player_name || '') + ' Could Shock Augusta';
-      if (pk.edge_label === 'FADE') igHL = 'Fade ' + (pk.player_name || '') + ' This Week';
-      try {
-        await sb('content_drafts', 'POST', {
-          type: 'instagram',
-          title: (pk.player_name || '') + ' — ' + pk.edge_label,
-          body: igCaption,
-          image_headline: igHL,
-          status: 'pending',
-          created_at: new Date().toISOString(),
-        });
-      } catch(e) {}
-    }
+    await createInstagramDrafts(allPicksFlat);
 
     // 10. Notify
     try {
