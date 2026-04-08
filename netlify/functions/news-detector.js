@@ -162,7 +162,7 @@ ${playerFacts}`,
       messages: [
         {
           role: 'user',
-          content: `Write an original TourFeed article based on these extracted facts:\n\n${factsText}\n\nTWEET RULES:\n- Write exactly 1 tweet that PROMOTES the article and creates CURIOSITY. Tease the most interesting finding WITHOUT giving the answer away.\n- The tweet should make people want to click the link to read the full article.\n- Example: "We broke down what Tiger not being at Augusta actually means for the betting market. The ripple effects are wild."\n- NOT just restating the headline. Create intrigue.\n\nVARIETY: Use varied sentence structures. BANNED: "That's either [A] or [B]", "That's the kind of [X]", "Respect the [noun]"\nMIX: questions, fragments, comparisons, predictions, one-liners.\n\nCRITICAL SAFETY:\n- NEVER state a player was arrested, charged, or involved in legal trouble unless source EXPLICITLY states it\n- NEVER speculate about criminal activity, substance abuse, or personal scandals\n- If absent from tournament, say "not in the field" — do not speculate why unless official reason given\n- When in doubt, use softer language or skip the topic\n\nReturn ONLY valid JSON, no markdown fences:\n{"title":"clickbait headline","body":"article HTML with <p> tags","tweets":["curiosity-driving tweet that promotes the article"]}`,
+          content: `Write an original TourFeed article based on these extracted facts:\n\n${factsText}\n\nTWEET RULES:\n- Write exactly 1 tweet that PROMOTES our picks and analysis on the website. Tie the news to a betting angle and drive readers to tourfeed.co for the full breakdown.\n- Example: "Tiger out of Augusta changes the entire outright market. We updated our picks and found value nobody is talking about. tourfeed.co"\n- Always end with "tourfeed.co" or "Full picks at tourfeed.co" or similar CTA.\n- NOT just restating the headline. Create a picks angle.\n\nVARIETY: Use varied sentence structures. BANNED: "That's either [A] or [B]", "That's the kind of [X]", "Respect the [noun]"\nMIX: questions, fragments, comparisons, predictions, one-liners.\n\nCRITICAL SAFETY:\n- NEVER state a player was arrested, charged, or involved in legal trouble unless source EXPLICITLY states it\n- NEVER speculate about criminal activity, substance abuse, or personal scandals\n- If absent from tournament, say "not in the field" — do not speculate why unless official reason given\n- When in doubt, use softer language or skip the topic\n\nReturn ONLY valid JSON, no markdown fences:\n{"title":"clickbait headline","body":"article HTML with <p> tags","tweets":["curiosity-driving tweet that promotes the article"]}`,
         },
       ],
     }),
@@ -392,8 +392,7 @@ exports.handler = async (event) => {
           if (/arrested|charged|indicted|convicted|guilty|dui|mugshot/i.test(tweet)) continue;
           await sb('content_drafts', 'POST', {
             type: 'tweet_content',
-            body: (tweet.length > 250 ? tweet.slice(0, tweet.lastIndexOf(' ', 250)) : tweet) + ' ' + articleUrl,
-            article_url: articleUrl,
+            body: tweet.length > 280 ? tweet.slice(0, tweet.lastIndexOf(' ', 280)) : tweet,
             source_event: topicKey,
             status: 'pending',
             created_at: new Date().toISOString(),
@@ -408,7 +407,7 @@ exports.handler = async (event) => {
         var igSentences = igPlain.split(/(?<=[a-z]{2,}[.!?])\s+(?=[A-Z])/g).filter(function(s) { return s.length > 20; });
         var igText = igSentences.slice(0, 2).join(' ').trim();
         if (!igText || igText.length < 30) igText = igPlain.slice(0, 200).trim();
-        var igCaption = igText + '\n\nFull story: tourfeed.co\n\n#golf #masters #masters2026 #augusta #pgatour #golfnews #golfpicks #greenjacket #breakingnews #sportsbetting';
+        var igCaption = igText + '\n\nFull picks and analysis at tourfeed.co';
         await sb('content_drafts', 'POST', {
           type: 'instagram',
           title: articleTitle,

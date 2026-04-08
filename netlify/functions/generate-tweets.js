@@ -207,13 +207,13 @@ exports.handler = async (event) => {
         max_tokens: 1200,
         system: require('./voice') + `
 
-ZERO emojis. ZERO hashtags. NEVER link to anything or mention TourFeed.
-Each tweet = DIFFERENT topic. 1-2 sentences.
+ZERO emojis. ZERO hashtags. You are TourFeed's social account promoting our picks and analysis.
+Each tweet = DIFFERENT topic. 1-2 sentences. Always end with "tourfeed.co" or "Full picks at tourfeed.co" or similar CTA.
 ${playerFactsContext}
 ${context}`,
         messages: [{
           role: 'user',
-          content: `Latest golf headlines:\n\n${headlineList}\n\nPick the 5 most interesting/diverse topics and write one original tweet per topic. Each tweet MUST use a different sentence structure.\n\nReturn ONLY a JSON array of objects:\n[{"source":"headline you're reacting to","tweet":"your original tweet"}]`
+          content: `Latest golf headlines:\n\n${headlineList}\n\nPick the 5 most interesting headlines and write one tweet per topic that ties the news to a BETTING ANGLE or our PICKS on the website. Each tweet should make readers want to check tourfeed.co for the full analysis. Each tweet MUST use a different sentence structure.\n\nReturn ONLY a JSON array of objects:\n[{"source":"headline you're reacting to","tweet":"your picks-focused tweet ending with tourfeed.co CTA"}]`
         }],
       }),
     });

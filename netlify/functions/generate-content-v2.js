@@ -179,19 +179,18 @@ exports.handler = async (event) => {
     });
     await recordHash(hash, type);
 
-    // Generate Instagram draft for article types
+    // Generate Instagram draft — promote our picks
     if (type.startsWith('article')) {
       var igTiming = type === 'article_recap' ? 'Prepare now, post within 1 hour' :
                      type === 'article_betting' ? 'Prepare today, post tomorrow morning' :
                      type === 'article_news' ? 'Prepare now, post within 2 hours' :
                      'Prepare today, post tomorrow evening';
-      var igHashtags = '#golf #masters #masters2026 #augusta #pgatour #golfpicks #golfbetting #greenjacket #sportsbetting';
-      // Extract 2-3 COMPLETE sentences (never cut mid-sentence)
+      // Extract a compelling pick line from the article
       var plainBody = body.replace(/<[^>]+>/g, '');
       var sentences = plainBody.split(/(?<=[a-z]{2,}[.!?])\s+(?=[A-Z])/g).filter(function(s) { return s.length > 20; });
       var igText = sentences.slice(0, 2).join(' ').trim();
       if (!igText || igText.length < 30) igText = plainBody.slice(0, 200).trim();
-      var igCaption = igText + '\n\nFull story: tourfeed.co\n\n' + igHashtags;
+      var igCaption = igText + '\n\nFull picks and analysis at tourfeed.co';
       await sb('content_drafts', 'POST', {
         type: 'instagram',
         title: title,
@@ -399,10 +398,16 @@ Rules:
       results.errors.push('article_recap: ' + e.message);
     }
 
-    // --- CONTENT 2: Tweet Reactions (4 tweets) ---
+    // --- CONTENT 2: Picks Promo Tweets (4 tweets) ---
     try {
-      const tweetSystem = `Write 4 tweets about this ${tourName} tournament. Voice: golf fan in a group chat. ZERO emojis. ZERO hashtags. Never mention TourFeed. 1-2 sentences each. ONLY reference players and scores from the data. Do NOT invent specific shots, holes, or moments. Do NOT complain about data quality. Rory McIlroy is defending Masters champ (won 2025). Year 2026.`;
-      const tweetPrompt = `Write 4 tweets reacting to this round. Number them 1-4, each on its own line.\n\n${dataBlock}\n${contextBlock}`;
+      const tweetSystem = `Write 4 tweets promoting TourFeed's betting picks for the ${tourName} ${tournament.name}. Each tweet highlights a specific pick from the leaderboard data and drives readers to tourfeed.co for the full breakdown. Voice: sharp handicapper in a group chat. ZERO emojis. ZERO hashtags. 1-2 sentences each. End each tweet with "tourfeed.co" or "Full card at tourfeed.co" or similar CTA. ONLY reference players and scores from the data. Rory McIlroy is defending Masters champ (won 2025). Year 2026.
+
+Types of pick tweets (use a mix):
+1. Outright winner value pick — "[Player] at [odds] is the best value on the board right now. Here's why: tourfeed.co"
+2. Top 5/Top 10 pick — "[Player] shot [score] today and sits [X] back. Top 10 at plus money is free. Full picks at tourfeed.co"
+3. Longshot/dark horse — "[Player] is flying under the radar at [score]. Our model loves the number. tourfeed.co"
+4. Matchup/fade — "[Player] over [Player] tomorrow is the lock of the day. Full card at tourfeed.co"`;
+      const tweetPrompt = `Write 4 tweets promoting our picks. Number them 1-4, each on its own line.\n\n${dataBlock}\n${contextBlock}`;
 
       const tweetRaw = await askClaude(tweetSystem, tweetPrompt, 800);
 
