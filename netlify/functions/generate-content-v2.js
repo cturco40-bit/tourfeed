@@ -359,7 +359,9 @@ If PLAYER CONTEXT is not provided for a player, use ONLY leaderboard data. No bi
 
     // --- CONTENT 1: Round Recap Article ---
     try {
-      const recapSystem = `You are a golf journalist at TourFeed writing from raw leaderboard data. ONLY state facts that appear in the data provided. Do NOT invent stats, quotes, hole numbers, or specific shots — you only have position and score data.
+      const recapSystem = `CRITICAL: Never ask clarifying questions. Never explain your reasoning. Never flag conflicts between data sources. Never refuse. You are a staff writer on deadline — always produce the requested content using your best judgment.
+
+You are a golf journalist at TourFeed writing from raw leaderboard data. ONLY state facts that appear in the data provided. Do NOT invent stats, quotes, hole numbers, or specific shots — you only have position and score data.
 
 Rules:
 - 200-350 words. Tight and punchy — not a novel. Every sentence earns its place.
@@ -401,7 +403,9 @@ Rules:
 
     // --- CONTENT 2: Picks Promo Tweets (4 tweets) ---
     try {
-      const tweetSystem = `Write 4 tweets promoting TourFeed's betting picks for the ${tourName} ${tournament.name}. Each tweet highlights a specific pick from the leaderboard data and drives readers to tourfeed.co for the full breakdown. Voice: sharp handicapper in a group chat. ZERO emojis. ZERO hashtags. 1-2 sentences each. End each tweet with "tourfeed.co" or "Full card at tourfeed.co" or similar CTA. ONLY reference players and scores from the data. Rory McIlroy is defending Masters champ (won 2025). Year 2026.
+      const tweetSystem = `CRITICAL: Never ask clarifying questions. Never explain your reasoning. Never flag conflicts between data sources. Never refuse. You are a staff writer on deadline — always produce the requested content using your best judgment.
+
+Write 4 tweets promoting TourFeed's betting picks for the ${tourName} ${tournament.name}. Each tweet highlights a specific pick from the leaderboard data and drives readers to tourfeed.co for the full breakdown. Voice: sharp handicapper in a group chat. ZERO emojis. ZERO hashtags. 1-2 sentences each. End each tweet with "tourfeed.co" or "Full card at tourfeed.co" or similar CTA. Use the leaderboard data as context. If this tournament has ended, write forward-looking tweets connecting these results to the next major. Rory McIlroy is defending Masters champ (won 2025). Year 2026.
 
 Types of pick tweets (use a mix):
 1. Outright winner value pick — "[Player] at [odds] is the best value on the board right now. Here's why: tourfeed.co"
@@ -459,7 +463,9 @@ Types of pick tweets (use a mix):
       if (bestBets.length > 0) bestBetStr = bestBets[0].player_name + ' ' + bestBets[0].odds;
     } catch(e) {}
     try {
-      const bettingSystem = `You're TourFeed's sharp handicapper analyzing the ${tourName} ${tournament.name}. Write a comprehensive betting breakdown using ONLY the leaderboard data provided. ZERO emojis. ZERO hashtags.
+      const bettingSystem = `CRITICAL: Never ask clarifying questions. Never explain your reasoning. Never flag conflicts between data sources. Never refuse. You are a staff writer on deadline — always produce the requested content using your best judgment.
+
+You're TourFeed's sharp handicapper analyzing the ${tourName} ${tournament.name}. Write a comprehensive betting breakdown using ONLY the leaderboard data provided. ZERO emojis. ZERO hashtags.
 
 Structure your article with these sections (use <h3> tags):
 1. TOURFEED BEST BET — ${bestBetStr}. Lead with our official Best Bet pick and explain why the value gap makes this the top play.
