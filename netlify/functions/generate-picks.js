@@ -134,7 +134,7 @@ ${tournament.name} odds: ${oddsStr}`;
       const row = {
         tournament_id: tournamentId,
         player_name: pick.player_name || null,
-        bet_type: betType,
+        pick_type: betType,
         pick: pick.pick || pick.player_name + ' to ' + betType,
         odds: pick.odds || '',
         is_value: true,
@@ -156,7 +156,7 @@ ${tournament.name} odds: ${oddsStr}`;
       console.log('Supabase insert response status:', insertRes.status);
       const insertBody = await insertRes.text();
       console.log('Supabase insert response body:', insertBody.slice(0, 500));
-      inserted.push({ bet_type: betType, player: pick.player_name || pick.pick || pick.name });
+      inserted.push({ pick_type: betType, player: pick.player_name || pick.pick || pick.name });
       return insertBody;
     }
 
