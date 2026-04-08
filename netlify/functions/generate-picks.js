@@ -4,11 +4,23 @@
 const SB_URL = 'https://yumahmnoltvbiadjefxw.supabase.co';
 const SB_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl1bWFobW5vbHR2YmlhZGplZnh3Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NTM5NjQ0MCwiZXhwIjoyMDkwOTcyNDQwfQ.VXcPybKl1c3uJAO59im8hb0zQjEmdwd4e6WGAakC-qs';
 
+function fetchT(url, options) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 8000);
+  return fetch(url, { ...options, signal: controller.signal })
+    .then(function(res) { clearTimeout(timeout); return res; })
+    .catch(function(e) {
+      clearTimeout(timeout);
+      if (e.name === 'AbortError') console.log('Fetch timed out:', url.slice(0, 120));
+      throw e;
+    });
+}
+
 async function sb(path, method, body) {
   const hdrs = { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY, 'Content-Type': 'application/json' };
   if (method === 'POST') hdrs['Prefer'] = 'return=representation';
   if (method === 'PATCH') hdrs['Prefer'] = 'return=minimal';
-  const res = await fetch(SB_URL + '/rest/v1/' + path, {
+  const res = await fetchT(SB_URL + '/rest/v1/' + path, {
     method: method || 'GET', headers: hdrs,
     body: body ? JSON.stringify(body) : undefined,
   });
@@ -22,16 +34,22 @@ exports.handler = async (event) => {
   const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY;
   if (!ANTHROPIC_KEY) return { statusCode: 200, headers, body: JSON.stringify({ skipped: 'No API key' }) };
 
+  console.log('Starting generate-picks');
+
   try {
     // 1. Get active tournament
+    console.log('Fetching tournament from Supabase');
     let tournaments = await sb('tournaments?tour_id=eq.pga&status=neq.completed&order=start_date.desc&limit=1');
     if (!tournaments.length) tournaments = await sb('tournaments?tour_id=eq.pga&order=start_date.desc&limit=1');
     const tournament = tournaments[0];
     if (!tournament) return { statusCode: 200, headers, body: JSON.stringify({ skipped: 'No tournament found' }) };
+    console.log('Tournament:', tournament.name);
 
     // 2. Get real sportsbook odds — top 20 players
+    console.log('Fetching odds from Supabase');
     const odds = await sb('player_odds?order=best_odds.asc&limit=20');
     if (!odds.length) return { statusCode: 200, headers, body: JSON.stringify({ skipped: 'No odds data — run fetch-odds first' }) };
+    console.log('Got', odds.length, 'players with odds');
 
     // 3. Get player facts for context
     let playerFacts = [];
@@ -85,6 +103,7 @@ exports.handler = async (event) => {
     }).join('\n\n');
 
     // 6. Call Claude Haiku for analysis
+    console.log('Calling Anthropic API');
     const systemPrompt = `You are TourFeed's expert golf handicapper. You analyze sportsbook odds vs player form to find VALUE — picks where the true probability exceeds the market's implied probability.
 
 Your job: for each player, estimate their TRUE win probability based on current form, course fit, major championship pedigree, and momentum. Compare that to the implied probability from the odds. The biggest POSITIVE gaps (true > implied) are the best value bets.
@@ -153,7 +172,7 @@ Return ONLY valid JSON (no markdown fences, no extra text):
   ]
 }`;
 
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
+    const res = await fetchT('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-api-key': ANTHROPIC_KEY, 'anthropic-version': '2023-06-01' },
       body: JSON.stringify({
@@ -166,11 +185,13 @@ Return ONLY valid JSON (no markdown fences, no extra text):
 
     if (!res.ok) {
       const err = await res.text();
+      console.log('Anthropic API error:', res.status, err.slice(0, 200));
       return { statusCode: 500, headers, body: JSON.stringify({ error: 'Claude API failed: ' + res.status, detail: err.slice(0, 200) }) };
     }
 
     const data = await res.json();
     const rawText = (data.content?.[0]?.text || '').trim();
+    console.log('Anthropic API response length:', rawText.length);
 
     // 7. Parse JSON response
     let picks;
@@ -183,6 +204,7 @@ Return ONLY valid JSON (no markdown fences, no extra text):
     }
 
     // 8. Insert into betting_insights
+    console.log('Saving picks to database');
     const batchId = new Date().toISOString();
     const tournamentId = tournament.id;
     const inserted = [];
@@ -270,11 +292,13 @@ Return ONLY valid JSON (no markdown fences, no extra text):
       }
     }
 
+    console.log('Saved', inserted.length, 'picks to database');
+
     // 9. Notify
     try {
       const bestName = picks.best_bet?.player_name || 'Unknown';
       const bestOdds = picks.best_bet?.odds || '';
-      await fetch('https://ntfy.sh/tourfeed-alerts', {
+      await fetchT('https://ntfy.sh/tourfeed-alerts', {
         method: 'POST',
         headers: { 'Title': 'Picks Updated', 'Priority': '3' },
         body: inserted.length + ' picks generated. Best Bet: ' + bestName + ' ' + bestOdds + ' (' + tournament.name + ')',
@@ -294,6 +318,7 @@ Return ONLY valid JSON (no markdown fences, no extra text):
     };
 
   } catch(err) {
+    console.log('generate-picks fatal error:', err.message);
     return { statusCode: 500, headers, body: JSON.stringify({ error: err.message }) };
   }
 };
