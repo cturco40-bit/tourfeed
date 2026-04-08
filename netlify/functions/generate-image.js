@@ -76,6 +76,7 @@ function fitText(ctx, text, x, y, maxW, maxH, startSz, weight, font) {
 }
 
 function drawLogo(ctx, x, y, sz) {
+  // Wordmark only (golf bag icon is in Canva, not code-generated)
   ctx.font = dm('900', sz);
   ctx.textAlign = 'left';
   ctx.fillStyle = GREEN;
