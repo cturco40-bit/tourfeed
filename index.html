@@ -352,6 +352,7 @@ let scoresError = null;
 let scorecardCache = {};
 let lastFetchTime = null;
 let scoresView = 'leaderboard';
+let _bettingPicks = null;
 
 function getSiteState() {
   if (TOURNAMENT && PLAYERS.length > 0) {
@@ -1355,13 +1356,20 @@ function renderHome() {
       html += '</div>';
     }
   } else {
-    // Masters preview picks (static)
-    html += '<div style="display:flex;gap:12px;flex-wrap:wrap">';
-    html += '<div style="flex:1;min-width:150px;padding:12px;background:var(--green-fade);border:1px solid var(--border);border-radius:4px"><div style="font-size:9px;font-weight:700;letter-spacing:1px;color:var(--green);margin-bottom:4px">DEFENDING</div><div style="font-size:14px;font-weight:800;color:var(--text)">Rory McIlroy</div><div style="font-size:18px;font-weight:900;color:var(--green);margin-top:4px">+700</div><div style="font-size:10px;color:var(--muted);margin-top:2px">Career Grand Slam holder</div></div>';
-    html += '<div style="flex:1;min-width:150px;padding:12px;background:var(--green-fade);border:1px solid var(--border);border-radius:4px"><div style="font-size:9px;font-weight:700;letter-spacing:1px;color:var(--green);margin-bottom:4px">VALUE</div><div style="font-size:14px;font-weight:800;color:var(--text)">Viktor Hovland</div><div style="font-size:18px;font-weight:900;color:var(--green);margin-top:4px">+2500</div><div style="font-size:10px;color:var(--muted);margin-top:2px">Elite iron play at Augusta</div></div>';
-    html += '<div style="flex:1;min-width:150px;padding:12px;background:var(--gold-fade);border:1px solid var(--border);border-radius:4px"><div style="font-size:9px;font-weight:700;letter-spacing:1px;color:var(--gold);margin-bottom:4px">LONGSHOT</div><div style="font-size:14px;font-weight:800;color:var(--text)">Sungjae Im</div><div style="font-size:18px;font-weight:900;color:var(--gold);margin-top:4px">+4000</div><div style="font-size:10px;color:var(--muted);margin-top:2px">Three straight top-15 Masters finishes</div></div>';
-    html += '</div>';
-    html += '<div style="font-size:11px;color:var(--green);font-weight:700;margin-top:8px;cursor:pointer" onclick="switchTab(3)">Full Masters picks card drops Wednesday &rarr;</div>';
+    // Quick picks — pull from betting_insights (single source of truth)
+    var qpBB = _bettingPicks && _bettingPicks !== 'loading' ? (_bettingPicks.find(function(p) { return p.edge_label === 'BEST BET'; }) || null) : null;
+    var qpVal = _bettingPicks && _bettingPicks !== 'loading' ? (_bettingPicks.find(function(p) { return p.bet_type === 'top5'; }) || null) : null;
+    var qpLS = _bettingPicks && _bettingPicks !== 'loading' ? (_bettingPicks.find(function(p) { return p.bet_type === 'longshot'; }) || null) : null;
+    if (qpBB || qpVal || qpLS) {
+      html += '<div style="display:flex;gap:12px;flex-wrap:wrap">';
+      if (qpBB) html += '<div style="flex:1;min-width:150px;padding:12px;background:var(--green-fade);border:1px solid var(--border);border-radius:4px"><div style="font-size:9px;font-weight:700;letter-spacing:1px;color:var(--green);margin-bottom:4px">BEST BET</div><div style="font-size:14px;font-weight:800;color:var(--text)">' + esc(qpBB.player_name) + '</div><div style="font-size:18px;font-weight:900;color:var(--green);margin-top:4px">' + esc(qpBB.odds) + '</div><div style="font-size:10px;color:var(--muted);margin-top:2px">' + esc((qpBB.analysis || '').slice(0, 60)) + '</div></div>';
+      if (qpVal) html += '<div style="flex:1;min-width:150px;padding:12px;background:var(--green-fade);border:1px solid var(--border);border-radius:4px"><div style="font-size:9px;font-weight:700;letter-spacing:1px;color:var(--green);margin-bottom:4px">VALUE</div><div style="font-size:14px;font-weight:800;color:var(--text)">' + esc(qpVal.player_name) + '</div><div style="font-size:18px;font-weight:900;color:var(--green);margin-top:4px">' + esc(qpVal.odds) + '</div><div style="font-size:10px;color:var(--muted);margin-top:2px">' + esc((qpVal.analysis || '').slice(0, 60)) + '</div></div>';
+      if (qpLS) html += '<div style="flex:1;min-width:150px;padding:12px;background:var(--gold-fade);border:1px solid var(--border);border-radius:4px"><div style="font-size:9px;font-weight:700;letter-spacing:1px;color:var(--gold);margin-bottom:4px">LONGSHOT</div><div style="font-size:14px;font-weight:800;color:var(--text)">' + esc(qpLS.player_name) + '</div><div style="font-size:18px;font-weight:900;color:var(--gold);margin-top:4px">' + esc(qpLS.odds) + '</div><div style="font-size:10px;color:var(--muted);margin-top:2px">' + esc((qpLS.analysis || '').slice(0, 60)) + '</div></div>';
+      html += '</div>';
+    } else {
+      html += '<div style="padding:12px;color:var(--muted);font-style:italic;font-size:12px">Picks generating from live sportsbook odds...</div>';
+    }
+    html += '<div style="font-size:11px;color:var(--green);font-weight:700;margin-top:8px;cursor:pointer" onclick="switchTab(3)">Full picks card &rarr;</div>';
   }
   html += '</div>';
 
@@ -1818,27 +1826,42 @@ function renderInsights() {
       }).catch(function() { window._realOdds = null; });
     }
 
-    // TOURFEED BEST BET card
-    var bestBetPlayer = 'Scottie Scheffler';
-    var bestBetOdds = '+600';
-    var bestBetBook = 'DraftKings';
-    var bestBetAnalysis = 'The world number one has won two green jackets already and leads the field in strokes gained approach. His course history at Augusta is unmatched, and the current odds offer legitimate value given his form.';
-    if (window._realOdds && window._realOdds !== 'loading' && window._realOdds.length > 0) {
-      var roBest = window._realOdds[0];
-      bestBetPlayer = roBest.player_name || bestBetPlayer;
-      bestBetOdds = roBest.best_odds > 0 ? '+' + roBest.best_odds : '' + roBest.best_odds;
-      bestBetBook = roBest.best_book || bestBetBook;
-      bestBetAnalysis = bestBetPlayer + ' sits atop the odds board for good reason — elite ball-striking, major championship pedigree, and peak form heading into Augusta. At ' + bestBetOdds + ' via ' + bestBetBook + ', this is our top play of the week.';
+    // Load AI-generated picks from betting_insights (single source of truth)
+    if (!_bettingPicks) {
+      _bettingPicks = 'loading';
+      sb.from('betting_insights').select('*').order('created_at', {ascending:false}).limit(30).then(function(res) {
+        if (res.data && res.data.length > 0) { _bettingPicks = res.data; renderApp(); }
+        else { _bettingPicks = null; }
+      }).catch(function() { _bettingPicks = null; });
     }
-    html += '<div style="border-left:4px solid var(--green);background:var(--card);border:1px solid var(--border);border-radius:0 4px 4px 0;padding:16px;margin-bottom:16px;border-left:4px solid var(--green)">';
-    html += '<div style="font-size:10px;font-weight:800;letter-spacing:2px;color:var(--green);margin-bottom:8px">TOURFEED BEST BET</div>';
-    html += '<div style="font-family:Playfair Display,Georgia,serif;font-size:20px;font-weight:900;color:var(--text);margin-bottom:4px">' + esc(bestBetPlayer) + ' <span style="color:var(--green)">' + bestBetOdds + '</span></div>';
-    html += '<div style="font-size:11px;color:var(--muted);margin-bottom:8px">Best odds via ' + esc(bestBetBook) + '</div>';
-    html += '<div style="font-size:13px;color:var(--dim);line-height:1.7;margin-bottom:12px">' + esc(bestBetAnalysis) + '</div>';
-    html += '<div style="display:flex;gap:8px;flex-wrap:wrap">';
-    html += '<span style="padding:6px 12px;background:var(--green-fade);border-radius:4px;font-size:11px;font-weight:700;color:var(--green)">Confidence: 8/10</span>';
-    html += '<span style="padding:6px 12px;background:var(--gold-fade);border-radius:4px;font-size:11px;font-weight:700;color:var(--gold)">2u</span>';
-    html += '</div></div>';
+    // Helper to find a pick by type/label
+    function findPick(type, label) {
+      if (!_bettingPicks || _bettingPicks === 'loading') return null;
+      if (label) return _bettingPicks.find(function(p) { return p.bet_type === type && p.edge_label === label; });
+      return _bettingPicks.find(function(p) { return p.bet_type === type; });
+    }
+    function findPicks(type) {
+      if (!_bettingPicks || _bettingPicks === 'loading') return [];
+      return _bettingPicks.filter(function(p) { return p.bet_type === type; });
+    }
+
+    // TOURFEED BEST BET card — pulls from betting_insights (single source of truth)
+    var bbPick = findPick('outright', 'BEST BET');
+    if (bbPick) {
+      html += '<div style="border-left:4px solid var(--green);background:var(--card);border:1px solid var(--border);border-radius:0 4px 4px 0;padding:16px;margin-bottom:16px;border-left:4px solid var(--green)">';
+      html += '<div style="font-size:10px;font-weight:800;letter-spacing:2px;color:var(--green);margin-bottom:8px">TOURFEED BEST BET</div>';
+      html += '<div style="font-family:Playfair Display,Georgia,serif;font-size:20px;font-weight:900;color:var(--text);margin-bottom:4px">' + esc(bbPick.player_name) + ' <span style="color:var(--green)">' + esc(bbPick.odds) + '</span></div>';
+      html += '<div style="font-size:11px;color:var(--muted);margin-bottom:8px">Best odds via ' + esc(bbPick.sportsbook) + ' &middot; Model: ' + esc(bbPick.model_probability) + '% vs implied ' + esc(bbPick.implied_probability) + '%</div>';
+      html += '<div style="font-size:13px;color:var(--dim);line-height:1.7;margin-bottom:12px">' + esc(bbPick.analysis) + '</div>';
+      html += '<div style="display:flex;gap:8px;flex-wrap:wrap">';
+      html += '<span style="padding:6px 12px;background:var(--green-fade);border-radius:4px;font-size:11px;font-weight:700;color:var(--green)">Confidence: ' + (bbPick.confidence || 8) + '/10</span>';
+      html += '<span style="padding:6px 12px;background:var(--gold-fade);border-radius:4px;font-size:11px;font-weight:700;color:var(--gold)">' + (bbPick.units || 2) + 'u</span>';
+      html += '</div></div>';
+    } else if (_bettingPicks === 'loading') {
+      html += '<div style="padding:16px;color:var(--muted);font-style:italic">Loading picks...</div>';
+    } else {
+      html += '<div style="padding:16px;color:var(--muted);font-style:italic">Best bet picks generating — check back soon.</div>';
+    }
 
     html += '<div style="font-size:10px;font-weight:800;letter-spacing:2px;color:var(--gold);margin-bottom:8px">PRE-TOURNAMENT ODDS</div>';
 
@@ -1858,7 +1881,7 @@ function renderInsights() {
     } else {
     var preFavs = [
       {pos:1,name:'Scottie Scheffler',odds:'+500',label:'FAVORITE',lc:'var(--gold)',note:'World #1. Two-time Masters champion. Won the Open Championship last year.'},
-      {pos:2,name:'Rory McIlroy',odds:'+700',label:'DEFENDING',lc:'var(--green)',note:'Defending champion. Completed the career Grand Slam here last year.'},
+      {pos:2,name:'Rory McIlroy',odds:'+900',label:'DEFENDING',lc:'var(--green)',note:'Defending champion. Completed the career Grand Slam here last year.'},
       {pos:3,name:'Xander Schauffele',odds:'+1000',label:'CONTENDER',lc:'var(--green)',note:'Won the PGA and Open in 2024. Elite ball-striker.'},
       {pos:4,name:'Bryson DeChambeau',odds:'+1400',label:'HOT',lc:'var(--red)',note:'Back-to-back LIV wins. 2020 US Open champion. Red hot form.'},
       {pos:5,name:'Jon Rahm',odds:'+1600',label:'PAST CHAMP',lc:'var(--gold)',note:'Won the 2023 Masters. Knows Augusta. LIV Golf.'},
@@ -1882,123 +1905,104 @@ function renderInsights() {
 
     } // end else (hardcoded fallback)
 
-    // ── FULL BETTING CARD ──
-    // Determine players source
-    var bcPlayers = [];
-    var preFavsFallback = [
-      {name:'Scottie Scheffler',odds:500},{name:'Rory McIlroy',odds:700},{name:'Xander Schauffele',odds:1000},
-      {name:'Bryson DeChambeau',odds:1400},{name:'Jon Rahm',odds:1600},{name:'Collin Morikawa',odds:2000},
-      {name:'Ludvig Aberg',odds:2000},{name:'Viktor Hovland',odds:2500},{name:'Patrick Cantlay',odds:2800},
-      {name:'Tommy Fleetwood',odds:3000},{name:'Hideki Matsuyama',odds:3500},{name:'Cameron Smith',odds:4000},
-      {name:'Sahith Theegala',odds:4000},{name:'Jordan Spieth',odds:4500},{name:'Tony Finau',odds:5000},
-      {name:'Min Woo Lee',odds:5000},{name:'Sungjae Im',odds:6000},{name:'Adam Scott',odds:8000}
-    ];
-    if (window._realOdds && window._realOdds !== 'loading' && window._realOdds.length > 0) {
-      bcPlayers = window._realOdds.map(function(o) { return {name:o.player_name, odds:o.best_odds, book:o.best_book||'Sportsbook'}; });
-    } else {
-      bcPlayers = preFavsFallback.map(function(f) { return {name:f.name, odds:f.odds, book:'DraftKings'}; });
-    }
-    function bcOddsStr(o) { return o > 0 ? '+' + o : '' + o; }
+    // ── FULL BETTING CARD — all from betting_insights ──
+    var t5Data = findPicks('top5');
+    var t10Data = findPicks('top10');
+    var h2hData = findPicks('matchup');
+    var propsData = findPicks('prop');
+    var lsData = findPick('longshot');
+    var parlayData = findPicks('parlay');
+    var hasPicks = t5Data.length > 0 || t10Data.length > 0;
 
+    if (hasPicks) {
     // A) TOP 5 FINISH
-    html += '<div style="font-size:10px;font-weight:800;letter-spacing:2px;color:var(--green);margin:16px 0 8px">TOP 5 FINISH</div>';
-    var t5picks = bcPlayers.slice(2, 8);
-    t5picks.slice(0, 2).forEach(function(p) {
-      var t5odds = Math.round(p.odds * 0.4);
-      html += '<div style="background:var(--card);border:1px solid var(--border);border-radius:4px;padding:14px;margin-bottom:6px">';
-      html += '<span class="tag tag-betting" style="font-size:9px">TOP 5 FINISH</span>';
-      html += '<div style="font-family:Playfair Display,Georgia,serif;font-size:16px;font-weight:800;color:var(--text);margin-top:6px">' + esc(p.name) + ' <span style="color:var(--green)">' + bcOddsStr(t5odds) + '</span></div>';
-      html += '<div style="font-size:12px;color:var(--muted);line-height:1.5;margin-top:4px">' + esc(p.name) + ' has the ball-striking profile to contend at Augusta. At ' + bcOddsStr(t5odds) + ', a top-5 finish offers solid value given recent form and course fit.</div>';
-      html += '<div style="font-size:10px;color:var(--green);font-weight:700;margin-top:6px">Confidence: 7/10 &middot; via ' + esc(p.book) + '</div>';
-      html += '</div>';
-    });
+    if (t5Data.length > 0) {
+      html += '<div style="font-size:10px;font-weight:800;letter-spacing:2px;color:var(--green);margin:16px 0 8px">TOP 5 FINISH</div>';
+      t5Data.slice(0, 2).forEach(function(p) {
+        html += '<div style="background:var(--card);border:1px solid var(--border);border-radius:4px;padding:14px;margin-bottom:6px">';
+        html += '<span class="tag tag-betting" style="font-size:9px">TOP 5 FINISH</span>';
+        html += '<div style="font-family:Playfair Display,Georgia,serif;font-size:16px;font-weight:800;color:var(--text);margin-top:6px">' + esc(p.player_name) + ' <span style="color:var(--green)">' + esc(p.odds) + '</span></div>';
+        html += '<div style="font-size:12px;color:var(--muted);line-height:1.5;margin-top:4px">' + esc(p.analysis) + '</div>';
+        html += '<div style="font-size:10px;color:var(--green);font-weight:700;margin-top:6px">Confidence: ' + (p.confidence || 7) + '/10 &middot; via ' + esc(p.sportsbook) + '</div>';
+        html += '</div>';
+      });
+    }
 
     // B) TOP 10 FINISH
-    html += '<div style="font-size:10px;font-weight:800;letter-spacing:2px;color:var(--green);margin:16px 0 8px">TOP 10 FINISH</div>';
-    var t10picks = bcPlayers.slice(7, 15);
-    t10picks.slice(0, 2).forEach(function(p) {
-      var t10odds = Math.round(p.odds * 0.25);
-      html += '<div style="background:var(--card);border:1px solid var(--border);border-radius:4px;padding:14px;margin-bottom:6px">';
-      html += '<span class="tag tag-recap" style="font-size:9px">TOP 10 FINISH</span>';
-      html += '<div style="font-family:Playfair Display,Georgia,serif;font-size:16px;font-weight:800;color:var(--text);margin-top:6px">' + esc(p.name) + ' <span style="color:var(--green)">' + bcOddsStr(t10odds) + '</span></div>';
-      html += '<div style="font-size:12px;color:var(--muted);line-height:1.5;margin-top:4px">' + esc(p.name) + ' consistently performs in major championships and has the game to grind out a top-10 finish on a course that rewards patience and precision.</div>';
-      html += '<div style="font-size:10px;color:var(--green);font-weight:700;margin-top:6px">Confidence: 6/10 &middot; via ' + esc(p.book) + '</div>';
-      html += '</div>';
-    });
+    if (t10Data.length > 0) {
+      html += '<div style="font-size:10px;font-weight:800;letter-spacing:2px;color:var(--green);margin:16px 0 8px">TOP 10 FINISH</div>';
+      t10Data.slice(0, 2).forEach(function(p) {
+        html += '<div style="background:var(--card);border:1px solid var(--border);border-radius:4px;padding:14px;margin-bottom:6px">';
+        html += '<span class="tag tag-recap" style="font-size:9px">TOP 10 FINISH</span>';
+        html += '<div style="font-family:Playfair Display,Georgia,serif;font-size:16px;font-weight:800;color:var(--text);margin-top:6px">' + esc(p.player_name) + ' <span style="color:var(--green)">' + esc(p.odds) + '</span></div>';
+        html += '<div style="font-size:12px;color:var(--muted);line-height:1.5;margin-top:4px">' + esc(p.analysis) + '</div>';
+        html += '<div style="font-size:10px;color:var(--green);font-weight:700;margin-top:6px">Confidence: ' + (p.confidence || 6) + '/10 &middot; via ' + esc(p.sportsbook) + '</div>';
+        html += '</div>';
+      });
+    }
 
     // C) HEAD TO HEAD MATCHUPS
-    html += '<div style="font-size:10px;font-weight:800;letter-spacing:2px;color:var(--gold);margin:16px 0 8px">HEAD TO HEAD MATCHUPS</div>';
-    var h2hPairs = [[2,3],[4,5],[6,7]];
-    h2hPairs.forEach(function(pair) {
-      var pA = bcPlayers[pair[0]], pB = bcPlayers[pair[1]];
-      if (!pA || !pB) return;
-      var pick = pA.odds <= pB.odds ? pA : pB;
-      var opp = pick === pA ? pB : pA;
-      html += '<div style="background:var(--card);border:1px solid var(--border);border-radius:4px;padding:14px;margin-bottom:6px">';
-      html += '<span class="tag tag-analysis" style="font-size:9px">HEAD TO HEAD</span>';
-      html += '<div style="font-family:Playfair Display,Georgia,serif;font-size:16px;font-weight:800;color:var(--text);margin-top:6px">' + esc(pick.name) + ' over ' + esc(opp.name) + ' <span style="color:var(--green)">-110</span></div>';
-      html += '<div style="font-size:12px;color:var(--muted);line-height:1.5;margin-top:4px">' + esc(pick.name) + ' holds the edge in recent form and course history. In a head-to-head at near even money, we lean toward the player with more Augusta experience.</div>';
-      html += '<div style="font-size:10px;color:var(--gold);font-weight:700;margin-top:6px">Confidence: 7/10</div>';
-      html += '</div>';
-    });
+    if (h2hData.length > 0) {
+      html += '<div style="font-size:10px;font-weight:800;letter-spacing:2px;color:var(--gold);margin:16px 0 8px">HEAD TO HEAD MATCHUPS</div>';
+      h2hData.slice(0, 3).forEach(function(m) {
+        var meta = typeof m.meta === 'string' ? JSON.parse(m.meta || '{}') : (m.meta || {});
+        html += '<div style="background:var(--card);border:1px solid var(--border);border-radius:4px;padding:14px;margin-bottom:6px">';
+        html += '<span class="tag tag-analysis" style="font-size:9px">HEAD TO HEAD</span>';
+        html += '<div style="font-family:Playfair Display,Georgia,serif;font-size:16px;font-weight:800;color:var(--text);margin-top:6px">' + esc(m.player_name) + ' over ' + esc(meta.opponent || '') + ' <span style="color:var(--green)">' + esc(m.odds) + '</span></div>';
+        html += '<div style="font-size:12px;color:var(--muted);line-height:1.5;margin-top:4px">' + esc(m.analysis) + '</div>';
+        html += '<div style="font-size:10px;color:var(--gold);font-weight:700;margin-top:6px">Confidence: ' + (m.confidence || 7) + '/10</div>';
+        html += '</div>';
+      });
+    }
 
     // D) PROPS
-    html += '<div style="font-size:10px;font-weight:800;letter-spacing:2px;color:var(--gold);margin:16px 0 8px">PROPS</div>';
-    var propsData = [
-      {type:'PROP',title:'Winning Score UNDER 275.5 (-12)',odds:'-115',analysis:'Augusta has played softer in recent years with five of the last eight winners finishing at -12 or better. Course setup and modern distance suggest low scoring again.'},
-      {type:'PROP',title:'Hole in One During Tournament — YES',odds:'+110',analysis:'The par-3s at Augusta — especially the 12th (Golden Bell) and 16th — produce aces nearly every year. At plus money, this is a strong historical play.'},
-      {type:'PROP',title:'Playoff — YES',odds:'+500',analysis:'Three of the last ten Masters have gone to a playoff or been decided on the final hole. At +500, the value is there for a dramatic Sunday finish.'}
-    ];
-    propsData.forEach(function(prop) {
-      html += '<div style="background:var(--card);border:1px solid var(--border);border-radius:4px;padding:14px;margin-bottom:6px">';
-      html += '<span class="tag tag-betting" style="font-size:9px">' + prop.type + '</span>';
-      html += '<div style="font-family:Playfair Display,Georgia,serif;font-size:16px;font-weight:800;color:var(--text);margin-top:6px">' + prop.title + ' <span style="color:var(--green)">' + prop.odds + '</span></div>';
-      html += '<div style="font-size:12px;color:var(--muted);line-height:1.5;margin-top:4px">' + prop.analysis + '</div>';
-      html += '<div style="font-size:10px;color:var(--gold);font-weight:700;margin-top:6px">Confidence: 6/10</div>';
-      html += '</div>';
-    });
+    if (propsData.length > 0) {
+      html += '<div style="font-size:10px;font-weight:800;letter-spacing:2px;color:var(--gold);margin:16px 0 8px">PROPS</div>';
+      propsData.slice(0, 3).forEach(function(p) {
+        var meta = typeof p.meta === 'string' ? JSON.parse(p.meta || '{}') : (p.meta || {});
+        var title = meta.prop_description || p.pick || '';
+        html += '<div style="background:var(--card);border:1px solid var(--border);border-radius:4px;padding:14px;margin-bottom:6px">';
+        html += '<span class="tag tag-betting" style="font-size:9px">PROP</span>';
+        html += '<div style="font-family:Playfair Display,Georgia,serif;font-size:16px;font-weight:800;color:var(--text);margin-top:6px">' + esc(title) + ' <span style="color:var(--green)">' + esc(p.odds) + '</span></div>';
+        html += '<div style="font-size:12px;color:var(--muted);line-height:1.5;margin-top:4px">' + esc(p.analysis) + '</div>';
+        html += '<div style="font-size:10px;color:var(--gold);font-weight:700;margin-top:6px">Confidence: ' + (p.confidence || 6) + '/10</div>';
+        html += '</div>';
+      });
+    }
 
     // E) LONGSHOT OF THE WEEK
-    html += '<div style="font-size:10px;font-weight:800;letter-spacing:2px;color:#3A6EA5;margin:16px 0 8px">LONGSHOT OF THE WEEK</div>';
-    var longshot = bcPlayers.find(function(p) { return p.odds >= 4000; }) || bcPlayers[bcPlayers.length - 1];
-    if (longshot) {
+    if (lsData) {
+      html += '<div style="font-size:10px;font-weight:800;letter-spacing:2px;color:#3A6EA5;margin:16px 0 8px">LONGSHOT OF THE WEEK</div>';
       html += '<div style="background:var(--card);border:1px solid var(--border);border-left:4px solid #3A6EA5;border-radius:0 4px 4px 0;padding:16px;margin-bottom:6px">';
       html += '<span class="tag" style="background:#3A6EA5;font-size:9px">LONGSHOT</span>';
-      html += '<div style="font-family:Playfair Display,Georgia,serif;font-size:18px;font-weight:900;color:var(--text);margin-top:6px">' + esc(longshot.name) + ' <span style="color:#3A6EA5">' + bcOddsStr(longshot.odds) + '</span></div>';
-      html += '<div style="font-size:13px;color:var(--dim);line-height:1.7;margin-top:6px">' + esc(longshot.name) + ' has flown under the radar but owns the kind of game that translates at Augusta National — elite putting, solid course management, and the ability to attack par 5s. At ' + bcOddsStr(longshot.odds) + ', a small-unit sprinkle could pay off handsomely.</div>';
-      html += '<div style="display:flex;gap:8px;margin-top:8px"><span style="padding:6px 12px;background:rgba(58,110,165,0.08);border-radius:4px;font-size:11px;font-weight:700;color:#3A6EA5">Confidence: 4/10</span><span style="padding:6px 12px;background:var(--gold-fade);border-radius:4px;font-size:11px;font-weight:700;color:var(--gold)">0.5u</span></div>';
+      html += '<div style="font-family:Playfair Display,Georgia,serif;font-size:18px;font-weight:900;color:var(--text);margin-top:6px">' + esc(lsData.player_name) + ' <span style="color:#3A6EA5">' + esc(lsData.odds) + '</span></div>';
+      html += '<div style="font-size:13px;color:var(--dim);line-height:1.7;margin-top:6px">' + esc(lsData.analysis) + '</div>';
+      html += '<div style="display:flex;gap:8px;margin-top:8px"><span style="padding:6px 12px;background:rgba(58,110,165,0.08);border-radius:4px;font-size:11px;font-weight:700;color:#3A6EA5">Confidence: ' + (lsData.confidence || 4) + '/10</span><span style="padding:6px 12px;background:var(--gold-fade);border-radius:4px;font-size:11px;font-weight:700;color:var(--gold)">' + (lsData.units || 0.5) + 'u</span></div>';
       html += '</div>';
     }
 
     // F) PARLAY BUILDER
-    html += '<div style="font-size:10px;font-weight:800;letter-spacing:2px;color:var(--gold);margin:16px 0 8px">PARLAY BUILDER</div>';
-    var parlayLegs1 = bcPlayers.slice(0, 3);
-    var parlayLegs2 = bcPlayers.slice(3, 6);
-    if (parlayLegs1.length >= 2) {
-      html += '<div style="background:var(--card);border:1px solid var(--border);border-radius:4px;padding:14px;margin-bottom:6px">';
-      html += '<span class="tag tag-major" style="font-size:9px">PARLAY</span>';
-      html += '<div style="font-family:Playfair Display,Georgia,serif;font-size:16px;font-weight:800;color:var(--text);margin-top:6px">Chalk Parlay</div>';
-      html += '<div style="font-size:12px;color:var(--dim);line-height:1.6;margin-top:4px">';
-      parlayLegs1.slice(0, 3).forEach(function(p) {
-        html += '<div style="margin:2px 0">&bull; ' + esc(p.name) + ' Top 10 Finish (' + bcOddsStr(Math.round(p.odds * 0.25)) + ')</div>';
+    if (parlayData.length > 0) {
+      html += '<div style="font-size:10px;font-weight:800;letter-spacing:2px;color:var(--gold);margin:16px 0 8px">PARLAY BUILDER</div>';
+      parlayData.slice(0, 2).forEach(function(p) {
+        var meta = typeof p.meta === 'string' ? JSON.parse(p.meta || '{}') : (p.meta || {});
+        var legs = meta.legs || [];
+        html += '<div style="background:var(--card);border:1px solid var(--border);border-radius:4px;padding:14px;margin-bottom:6px">';
+        html += '<span class="tag tag-major" style="font-size:9px">PARLAY</span>';
+        html += '<div style="font-family:Playfair Display,Georgia,serif;font-size:16px;font-weight:800;color:var(--text);margin-top:6px">' + esc(p.pick) + '</div>';
+        html += '<div style="font-size:12px;color:var(--dim);line-height:1.6;margin-top:4px">';
+        legs.forEach(function(leg) {
+          html += '<div style="margin:2px 0">&bull; ' + esc(leg.player) + ' ' + esc(leg.market) + ' (' + esc(leg.odds) + ')</div>';
+        });
+        html += '</div>';
+        html += '<div style="font-size:12px;color:var(--muted);line-height:1.5;margin-top:6px">' + esc(p.analysis) + '</div>';
+        html += '<div style="font-size:10px;color:var(--gold);font-weight:700;margin-top:6px">Combined odds: ' + esc(p.odds) + ' &middot; Confidence: ' + (p.confidence || 4) + '/10</div>';
+        html += '</div>';
       });
-      html += '</div>';
-      html += '<div style="font-size:12px;color:var(--muted);line-height:1.5;margin-top:6px">Three favorites who all have elite Augusta pedigree. Combining top-10 finishes keeps the probability reasonable while boosting the payout.</div>';
-      html += '<div style="font-size:10px;color:var(--gold);font-weight:700;margin-top:6px">Combined odds: ~+450 &middot; Confidence: 5/10</div>';
-      html += '</div>';
     }
-    if (parlayLegs2.length >= 2) {
-      html += '<div style="background:var(--card);border:1px solid var(--border);border-radius:4px;padding:14px;margin-bottom:6px">';
-      html += '<span class="tag tag-major" style="font-size:9px">PARLAY</span>';
-      html += '<div style="font-family:Playfair Display,Georgia,serif;font-size:16px;font-weight:800;color:var(--text);margin-top:6px">Value Parlay</div>';
-      html += '<div style="font-size:12px;color:var(--dim);line-height:1.6;margin-top:4px">';
-      parlayLegs2.slice(0, 3).forEach(function(p) {
-        html += '<div style="margin:2px 0">&bull; ' + esc(p.name) + ' Top 5 Finish (' + bcOddsStr(Math.round(p.odds * 0.4)) + ')</div>';
-      });
-      html += '</div>';
-      html += '<div style="font-size:12px;color:var(--muted);line-height:1.5;margin-top:6px">Mixing mid-range contenders in top-5 markets. Higher risk but each of these players has shown major championship form this season.</div>';
-      html += '<div style="font-size:10px;color:var(--gold);font-weight:700;margin-top:6px">Combined odds: ~+1200 &middot; Confidence: 4/10</div>';
-      html += '</div>';
+    } else {
+      // No picks yet — show placeholder
+      html += '<div style="padding:20px;text-align:center;color:var(--muted);font-style:italic;margin:16px 0">Full betting card generating from live sportsbook odds — check back soon.</div>';
     }
 
     // Key Storylines
@@ -2130,6 +2134,15 @@ fetchESPNScores(currentScoresTour);
 fetchAllArticles();
 fetchESPNSchedule();
 startAutoRefresh();
+
+// Load betting picks early for Home Quick Picks + Picks tab
+if (!_bettingPicks) {
+  _bettingPicks = 'loading';
+  sb.from('betting_insights').select('*').order('created_at', {ascending:false}).limit(30).then(function(res) {
+    if (res.data && res.data.length > 0) { _bettingPicks = res.data; renderApp(); }
+    else { _bettingPicks = null; }
+  }).catch(function() { _bettingPicks = null; });
+}
 
 // URL routing for /article/slug
 const pathMatch = window.location.pathname.match(/^\/article\/(.+)/);

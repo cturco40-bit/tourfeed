@@ -113,6 +113,9 @@ exports.handler = async (event) => {
       upserted++;
     }
 
+    // Trigger picks regeneration after odds update
+    try { await fetch('https://tourfeed.co/.netlify/functions/generate-picks'); } catch(e) {}
+
     return {
       statusCode: 200, headers,
       body: JSON.stringify({

@@ -25,7 +25,7 @@ function hashText(text) {
 const ALL_CONTENT = {
   power_rankings: { type: 'article_analysis', prompt: 'Write a POWER RANKINGS article ranking the top 15 golfers heading into this week\'s tournament. Include recent form, key stats, and reasoning. ONLY rank players confirmed in the field — check PLAYER FACTS for who is NOT playing. If a player is marked NOT in the field, do NOT include them. 800+ words.' },
   course_preview: { type: 'article_preview', prompt: 'Write a detailed COURSE PREVIEW for this week\'s tournament. Cover course layout, key holes, signature moments, what type of player the course rewards, par 5 strategy, green complexes, historical scoring trends, and past champions. Include course-specific stats that matter. 800+ words.' },
-  betting_preview: { type: 'article_betting', prompt: 'Write a comprehensive BETTING PREVIEW. Include: outright winner picks (3 with odds, confidence 1-10, unit sizing), top 5 picks (3), top 10 picks (3), first round leader (2), head-to-head matchups (3 with pick and reasoning), longshot of the week (50:1+), prop bets (3), and a parlay suggestion. ONLY include players in the field. 800+ words.' },
+  betting_preview: { type: 'article_betting', prompt: 'Write a comprehensive BETTING PREVIEW. LEAD WITH OUR BEST BET: {BEST_BET}. Then include: outright winner picks (3 with odds, confidence 1-10, unit sizing), top 5 picks (3), top 10 picks (3), first round leader (2), head-to-head matchups (3 with pick and reasoning), longshot of the week (50:1+), prop bets (3), and a parlay suggestion. ONLY include players in the field. 800+ words.' },
   cut_line: { type: 'article_betting', prompt: 'Write a CUT LINE ANALYSIS. Who is on the bubble? Which bubble players are worth betting on for the weekend? Include specific players, scores, projected cut line, and weekend outright odds.' },
   field_breakdown: { type: 'article_analysis', prompt: 'Write a FIELD BREAKDOWN article. Group the field into tiers: favorites, contenders, dark horses, and longshots. For each tier, explain why those players are placed there. Include recent form, course history, and key stats. Focus on players actually IN the field. 800+ words.' },
   storylines: { type: 'article_preview', prompt: 'Write a TOP STORYLINES article for this week\'s tournament. Cover the 5-7 biggest narratives: defending champion drama, injury comebacks, rivalry matchups, LIV players competing, record chases, personal stories (new babies, comebacks from surgery, etc.). Each storyline gets 2-3 paragraphs. Make it the article fans share with friends. 800+ words.' },
@@ -119,6 +119,14 @@ exports.handler = async (event) => {
       }
     } catch(e) {}
 
+    // Fetch current best bet from betting_insights for dynamic prompt injection
+    var bestBetStr = 'our top value pick from the analysis';
+    try {
+      var bestBets = await sb('betting_insights?bet_type=eq.outright&edge_label=eq.BEST BET&order=created_at.desc&limit=1');
+      if (bestBets.length > 0) bestBetStr = bestBets[0].player_name + ' ' + bestBets[0].odds + ' — ' + (bestBets[0].analysis || '').slice(0, 100);
+    } catch(e) {}
+    var dynamicPrompt = config.prompt.replace('{BEST_BET}', bestBetStr);
+
     // Generate the article
     const res = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -133,7 +141,7 @@ Year is 2026. Rory McIlroy WON the 2025 Masters. DEFENDING champion. Career Gran
 ${playerFacts}`,
         messages: [{
           role: 'user',
-          content: `${config.prompt}\n\nContext:\n${tournament ? `Recent tournament: ${tournament.name} at ${tournament.course}` : 'No recent tournament data.'}\n${leaderboard}\n${upcoming}\n\nReturn ONLY valid JSON:\n{"title":"headline","body":"full HTML article"}`
+          content: `${dynamicPrompt}\n\nContext:\n${tournament ? `Recent tournament: ${tournament.name} at ${tournament.course}` : 'No recent tournament data.'}\n${leaderboard}\n${upcoming}\n\nReturn ONLY valid JSON:\n{"title":"headline","body":"full HTML article"}`
         }],
       }),
     });

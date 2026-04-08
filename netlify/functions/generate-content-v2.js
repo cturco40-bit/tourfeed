@@ -452,16 +452,23 @@ Types of pick tweets (use a mix):
     }
 
     // --- CONTENT 3: Betting Insights Article ---
+    // Fetch current best bet from betting_insights (single source of truth)
+    var bestBetStr = 'our top value pick';
+    try {
+      var bestBets = await sb('betting_insights?bet_type=eq.outright&edge_label=eq.BEST BET&order=created_at.desc&limit=1');
+      if (bestBets.length > 0) bestBetStr = bestBets[0].player_name + ' ' + bestBets[0].odds;
+    } catch(e) {}
     try {
       const bettingSystem = `You're TourFeed's sharp handicapper analyzing the ${tourName} ${tournament.name}. Write a comprehensive betting breakdown using ONLY the leaderboard data provided. ZERO emojis. ZERO hashtags.
 
 Structure your article with these sections (use <h3> tags):
-1. OUTRIGHT WINNER PICKS — top 3 value plays with odds, model probability, reasoning
-2. TOP 5 / TOP 10 PICKS — 2 picks at each level, why they'll contend
-3. LONGSHOT OF THE ROUND — one 20:1+ shot that could shock everyone, full paragraph
-4. FADE — one player to avoid, explain why the price is wrong
-5. HEAD-TO-HEAD MATCHUP — one matchup pick for next round
-6. WHAT TO WATCH — key storyline for bettors going forward
+1. TOURFEED BEST BET — ${bestBetStr}. Lead with our official Best Bet pick and explain why the value gap makes this the top play.
+2. OUTRIGHT WINNER PICKS — top 3 value plays with odds, model probability, reasoning
+3. TOP 5 / TOP 10 PICKS — 2 picks at each level, why they'll contend
+4. LONGSHOT OF THE ROUND — one 20:1+ shot that could shock everyone, full paragraph
+5. FADE — one player to avoid, explain why the price is wrong
+6. HEAD-TO-HEAD MATCHUP — one matchup pick for next round
+7. WHAT TO WATCH — key storyline for bettors going forward
 
 Rules:
 - 400-700 words. Comprehensive but not padded. Every pick needs a thesis.
