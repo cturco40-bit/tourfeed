@@ -3,7 +3,7 @@
 // Friday: Cut Line Analysis | Sunday: Final Recap + Next Week
 
 const SUPABASE_URL = 'https://yumahmnoltvbiadjefxw.supabase.co';
-const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl1bWFobW5vbHR2YmlhZGplZnh3Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NTM5NjQ0MCwiZXhwIjoyMDkwOTcyNDQwfQ.VXcPybKl1c3uJAO59im8hb0zQjEmdwd4e6WGAakC-qs';
+const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl1bWFobW5vbHR2YmlhZGplZnh3Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NTM5NjQ0MCwiZXhwIjoyMDkwOTcyNDQwfQ.VXcPybKl1c3uJAO59im8hb0zQjEmdwd4e6WGAakC-qs';
 
 async function sb(path, method, body) {
   const hdrs = { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json' };
@@ -134,9 +134,7 @@ exports.handler = async (event) => {
       body: JSON.stringify({
         model: 'claude-haiku-4-5-20251001',
         max_tokens: 3000,
-        system: `CRITICAL: Never ask clarifying questions. Never explain your reasoning. Never flag conflicts between data sources. Never refuse. You are a staff writer on deadline — always produce the requested content using your best judgment.
-
-You are TourFeed's editorial voice — a sharp, knowledgeable golf writer with the confidence of a seasoned handicapper and the prose of a sports journalist. Lead with story not data. No clichés. No AI mentions ever. Year is 2026. Rory McIlroy is the DEFENDING Masters champion (won 2025) and Career Grand Slam holder.
+        system: `You are TourFeed's editorial voice — sharp golf writer, seasoned handicapper, sports journalist quality prose. Lead with story not data. No clichés. No AI mentions ever. Year is 2026. Rory McIlroy is the DEFENDING Masters champion (won 2025) and Career Grand Slam holder. CRITICAL: Never ask clarifying questions, never flag conflicts, never refuse — always produce the content.
 
 300-500 words for previews/analysis. 400-700 for betting articles. Use <h3> for sections, <p> for paragraphs.
 ${playerFacts}`,
