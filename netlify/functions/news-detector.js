@@ -404,8 +404,10 @@ exports.handler = async (event) => {
 
         // Instagram draft
         var igPlain = (article.body || '').replace(/<[^>]+>/g, '');
-        var igSentences = igPlain.match(/[^.!?]+[.!?]+/g) || [];
-        var igText = igSentences.slice(0, 3).join(' ').trim() || igPlain.slice(0, 150).trim();
+        // Split on sentence-ending periods (not abbreviations like U.S., Dr., etc.)
+        var igSentences = igPlain.split(/(?<=[a-z]{2,}[.!?])\s+(?=[A-Z])/g).filter(function(s) { return s.length > 20; });
+        var igText = igSentences.slice(0, 2).join(' ').trim();
+        if (!igText || igText.length < 30) igText = igPlain.slice(0, 200).trim();
         var igCaption = igText + '\n\nFull story: tourfeed.co\n\n#golf #masters #masters2026 #augusta #pgatour #golfnews #golfpicks #greenjacket #breakingnews #sportsbetting';
         await sb('content_drafts', 'POST', {
           type: 'instagram',

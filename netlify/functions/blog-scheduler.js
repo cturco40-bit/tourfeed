@@ -172,8 +172,9 @@ ${playerFacts}`,
     // Instagram draft
     var igTiming = config.type === 'article_betting' ? 'Prepare today, post tomorrow morning' : 'Prepare today, post tomorrow evening';
     var igPlain = article.body.replace(/<[^>]+>/g, '');
-    var igSentences = igPlain.match(/[^.!?]+[.!?]+/g) || [];
-    var igText = igSentences.slice(0, 3).join(' ').trim() || igPlain.slice(0, 150).trim();
+    var igSentences = igPlain.split(/(?<=[a-z]{2,}[.!?])\s+(?=[A-Z])/g).filter(function(s) { return s.length > 20; });
+    var igText = igSentences.slice(0, 2).join(' ').trim();
+    if (!igText || igText.length < 30) igText = igPlain.slice(0, 200).trim();
     var igCaption = igText + '\n\nFull story: tourfeed.co\n\n#golf #masters #masters2026 #augusta #pgatour #golfbetting #golfpicks #greenjacket #sportsbetting';
     await sb('content_drafts', 'POST', {
       type: 'instagram',

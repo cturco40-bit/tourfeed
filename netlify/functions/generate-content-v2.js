@@ -188,9 +188,9 @@ exports.handler = async (event) => {
       var igHashtags = '#golf #masters #masters2026 #augusta #pgatour #golfpicks #golfbetting #greenjacket #sportsbetting';
       // Extract 2-3 COMPLETE sentences (never cut mid-sentence)
       var plainBody = body.replace(/<[^>]+>/g, '');
-      var sentences = plainBody.match(/[^.!?]+[.!?]+/g) || [];
-      var igText = sentences.slice(0, 3).join(' ').trim();
-      if (!igText) igText = plainBody.slice(0, 150).trim();
+      var sentences = plainBody.split(/(?<=[a-z]{2,}[.!?])\s+(?=[A-Z])/g).filter(function(s) { return s.length > 20; });
+      var igText = sentences.slice(0, 2).join(' ').trim();
+      if (!igText || igText.length < 30) igText = plainBody.slice(0, 200).trim();
       var igCaption = igText + '\n\nFull story: tourfeed.co\n\n' + igHashtags;
       await sb('content_drafts', 'POST', {
         type: 'instagram',
