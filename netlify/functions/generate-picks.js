@@ -73,115 +73,36 @@ exports.handler = async (event) => {
       }
     } catch(e) {}
 
-    // 5. Build player context for the prompt
-    const playerLines = odds.map(function(o) {
-      const impliedPct = o.best_odds > 0
-        ? (100 / (o.best_odds + 100) * 100).toFixed(1)
-        : (Math.abs(o.best_odds) / (Math.abs(o.best_odds) + 100) * 100).toFixed(1);
-      const oddsStr = o.best_odds > 0 ? '+' + o.best_odds : '' + o.best_odds;
-
-      // Find matching player facts
-      const name = o.player_name.toLowerCase();
-      const facts = playerFacts.find(function(f) {
-        return f.player_name.toLowerCase() === name ||
-               name.includes(f.player_name.toLowerCase().split(' ').pop());
-      });
-
-      let line = o.player_name + ' | Odds: ' + oddsStr + ' (implied ' + impliedPct + '%) | Book: ' + (o.best_book || 'Sportsbook');
-      if (o.draftkings_odds) line += ' | DK: ' + (o.draftkings_odds > 0 ? '+' : '') + o.draftkings_odds;
-      if (o.fanduel_odds) line += ' | FD: ' + (o.fanduel_odds > 0 ? '+' : '') + o.fanduel_odds;
-
-      if (facts) {
-        line += '\n  Context: #' + (facts.world_ranking || '?') + ' world ranking, ' + (facts.total_majors || 0) + ' majors';
-        if (facts.masters_wins) line += ', ' + facts.masters_wins + 'x Masters champ';
-        if (facts.career_grand_slam) line += ', Career Grand Slam holder';
-        if (facts.season_wins) line += ', ' + facts.season_wins + ' wins this season';
-        if (facts.recent_notes) line += '. Recent: ' + facts.recent_notes;
-        if (facts.hot_topics) line += '. Current: ' + facts.hot_topics;
-      }
-      return line;
-    }).join('\n\n');
+    // 5. Build compact odds string
+    const oddsStr = odds.map(function(o) {
+      var s = o.best_odds > 0 ? '+' + o.best_odds : '' + o.best_odds;
+      return o.player_name + ' ' + s;
+    }).join(', ');
 
     // 6. Call Claude Haiku for analysis
     console.log('Calling Anthropic API now...');
-    const systemPrompt = `You are TourFeed's expert golf handicapper. You analyze sportsbook odds vs player form to find VALUE — picks where the true probability exceeds the market's implied probability.
+    const systemPrompt = 'You are a sharp sports handicapper. Analyze these Masters odds and return ONLY valid JSON — no explanation, no markdown, just the JSON object. Be fast and precise.';
 
-Your job: for each player, estimate their TRUE win probability based on current form, course fit, major championship pedigree, and momentum. Compare that to the implied probability from the odds. The biggest POSITIVE gaps (true > implied) are the best value bets.
+    const userPrompt = `Given these 20 players and their American odds, return a JSON object with exactly these picks:
+- best_bet: { player_name, odds, analysis (1 sentence) }
+- value_plays: array of 3 { player_name, odds, analysis (1 sentence) }
+- longshot: { player_name, odds, analysis (1 sentence) }
+- fade: { player_name, odds, analysis (1 sentence) }
 
-Rules:
-- The best bet is NOT necessarily the favorite — it's the player with the biggest value gap
-- All picks must reference real odds from the data provided
-- Be specific: "His strokes gained approach ranks top 5 on tour" not vague praise
-- Confidence scale: 1-10. Only use 8+ for genuine conviction
-- Year is 2026. Rory McIlroy won the 2025 Masters (defending champion, career Grand Slam)
-- For matchups, pick the player with the better value proposition
-- For props, use tournament-level props (scoring, playoffs, aces, etc.)
-- For parlays, combine 2-3 legs that correlate (e.g., two players with similar course fit profiles)
-- Longshot must be 30:1 or longer (+3000 or higher odds)`;
+Only pick players where true probability exceeds implied probability. Return raw JSON only.
 
-    const userPrompt = `Here are the top 20 players with real sportsbook odds for ${tournament.name}:
-
-${playerLines}
-
-${courseContext ? 'COURSE CONTEXT: ' + courseContext : ''}
-
-Analyze each player's true probability vs their implied odds probability. Then generate picks.
-
-Return ONLY valid JSON (no markdown fences, no extra text):
-{
-  "best_bet": {
-    "player_name": "Name",
-    "odds": "+XXX",
-    "implied_pct": "X.X",
-    "model_pct": "X.X",
-    "edge": "X.X",
-    "analysis": "2-3 sentences on why this is the best value",
-    "confidence": 8,
-    "sportsbook": "BookName"
-  },
-  "top5": [
-    {"player_name": "Name", "odds": "+XXX", "implied_pct": "X.X", "model_pct": "X.X", "analysis": "1-2 sentences", "confidence": 7, "sportsbook": "Book"},
-    {"player_name": "Name", "odds": "+XXX", "implied_pct": "X.X", "model_pct": "X.X", "analysis": "1-2 sentences", "confidence": 7, "sportsbook": "Book"}
-  ],
-  "top10": [
-    {"player_name": "Name", "odds": "+XXX", "implied_pct": "X.X", "model_pct": "X.X", "analysis": "1-2 sentences", "confidence": 6, "sportsbook": "Book"},
-    {"player_name": "Name", "odds": "+XXX", "implied_pct": "X.X", "model_pct": "X.X", "analysis": "1-2 sentences", "confidence": 6, "sportsbook": "Book"}
-  ],
-  "matchups": [
-    {"player_name": "PlayerA", "opponent": "PlayerB", "odds": "-110", "analysis": "1-2 sentences why A beats B", "confidence": 7},
-    {"player_name": "PlayerA", "opponent": "PlayerB", "odds": "-110", "analysis": "1-2 sentences", "confidence": 7},
-    {"player_name": "PlayerA", "opponent": "PlayerB", "odds": "-110", "analysis": "1-2 sentences", "confidence": 6}
-  ],
-  "longshot": {
-    "player_name": "Name",
-    "odds": "+3000",
-    "implied_pct": "X.X",
-    "model_pct": "X.X",
-    "analysis": "2-3 sentences on the upside case",
-    "confidence": 4,
-    "sportsbook": "Book"
-  },
-  "props": [
-    {"pick": "Winning Score UNDER 275.5", "odds": "-115", "analysis": "1-2 sentences", "confidence": 6},
-    {"pick": "Hole in One — YES", "odds": "+110", "analysis": "1-2 sentences", "confidence": 5},
-    {"pick": "Playoff — YES", "odds": "+500", "analysis": "1-2 sentences", "confidence": 4}
-  ],
-  "parlays": [
-    {"name": "Parlay name", "legs": [{"player": "Name", "market": "Top 10", "odds": "+150"}, {"player": "Name", "market": "Top 10", "odds": "+200"}], "combined_odds": "+450", "analysis": "Why these legs correlate", "confidence": 4},
-    {"name": "Parlay name", "legs": [{"player": "Name", "market": "Top 5", "odds": "+200"}, {"player": "Name", "market": "Top 5", "odds": "+250"}], "combined_odds": "+650", "analysis": "Why these legs correlate", "confidence": 3}
-  ]
-}`;
+${tournament.name} odds: ${oddsStr}`;
 
     const res = await fetchT('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-api-key': ANTHROPIC_KEY, 'anthropic-version': '2023-06-01' },
       body: JSON.stringify({
         model: 'claude-haiku-4-5-20251001',
-        max_tokens: 4000,
+        max_tokens: 800,
         system: systemPrompt,
         messages: [{ role: 'user', content: userPrompt }],
       }),
-    }, 25000);
+    }, 40000);
     console.log('Anthropic response received');
 
     if (!res.ok) {
@@ -241,28 +162,11 @@ Return ONLY valid JSON (no markdown fences, no extra text):
       await insertPick('outright', 'BEST BET', picks.best_bet);
     }
 
-    // Top 5 picks
-    if (picks.top5) {
-      for (const p of picks.top5.slice(0, 2)) {
+    // Value plays → store as top5 type for frontend compatibility
+    if (picks.value_plays) {
+      for (const p of picks.value_plays.slice(0, 3)) {
         p.pick = p.player_name + ' Top 5 finish';
         await insertPick('top5', 'VALUE', p);
-      }
-    }
-
-    // Top 10 picks
-    if (picks.top10) {
-      for (const p of picks.top10.slice(0, 2)) {
-        p.pick = p.player_name + ' Top 10 finish';
-        await insertPick('top10', 'VALUE', p);
-      }
-    }
-
-    // Matchups
-    if (picks.matchups) {
-      for (const m of picks.matchups.slice(0, 3)) {
-        m.pick = m.player_name + ' over ' + m.opponent;
-        m.meta = { opponent: m.opponent };
-        await insertPick('matchup', 'MATCHUP', m);
       }
     }
 
@@ -272,24 +176,10 @@ Return ONLY valid JSON (no markdown fences, no extra text):
       await insertPick('longshot', 'LONGSHOT', picks.longshot);
     }
 
-    // Props
-    if (picks.props) {
-      for (const p of picks.props.slice(0, 3)) {
-        p.player_name = null;
-        p.meta = { prop_description: p.pick };
-        await insertPick('prop', 'PROP', p);
-      }
-    }
-
-    // Parlays
-    if (picks.parlays) {
-      for (const p of picks.parlays.slice(0, 2)) {
-        p.player_name = null;
-        p.pick = p.name || 'Parlay';
-        p.odds = p.combined_odds || '';
-        p.meta = { legs: p.legs };
-        await insertPick('parlay', 'PARLAY', p);
-      }
+    // Fade → store as top10 type with FADE label
+    if (picks.fade) {
+      picks.fade.pick = 'Fade ' + picks.fade.player_name;
+      await insertPick('top10', 'FADE', picks.fade);
     }
 
     console.log('Supabase write complete');
