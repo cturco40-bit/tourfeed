@@ -93,7 +93,7 @@ ${standings}
 
 Generate:
 1. OUTRIGHT WINNER analysis — top 3 value plays with realistic odds, implied vs model probability, and why
-2. BEST BET — your single strongest pick with detailed reasoning. Query the betting_insights table for the current best bet. Include stats, course history, form, and matchup advantages
+2. BEST BET — your single strongest pick with detailed reasoning. Query the betting_picks table for the current best bet. Include stats, course history, form, and matchup advantages
 3. TWO PROP BETS — top 5 finish, head-to-head, top 10, etc. with analysis
 4. If not the final round, include NEXT ROUND picks
 

@@ -1,5 +1,5 @@
 // Generate AI-powered betting picks from real sportsbook odds + player analysis
-// Stores picks in betting_insights table — single source of truth for all picks across the site
+// Stores picks in betting_picks table — single source of truth for all picks across the site
 
 const SB_URL = 'https://yumahmnoltvbiadjefxw.supabase.co';
 const SB_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl1bWFobW5vbHR2YmlhZGplZnh3Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NTM5NjQ0MCwiZXhwIjoyMDkwOTcyNDQwfQ.VXcPybKl1c3uJAO59im8hb0zQjEmdwd4e6WGAakC-qs';
@@ -124,7 +124,7 @@ ${tournament.name} odds: ${oddsStr}`;
       else return { statusCode: 200, headers, body: JSON.stringify({ error: 'Parse failed', raw: rawText.slice(0, 500) }) };
     }
 
-    // 8. Insert into betting_insights
+    // 8. Insert into betting_picks
     console.log('Saving to Supabase...');
     const batchId = new Date().toISOString();
     const tournamentId = tournament.id;
@@ -151,9 +151,9 @@ ${tournament.name} odds: ${oddsStr}`;
         meta: JSON.stringify(pick.meta || {}),
         created_at: batchId,
       };
-      console.log('Inserting into table: betting_insights');
+      console.log('Inserting into table: betting_picks');
       console.log('Attempting Supabase insert, row:', JSON.stringify(row, null, 2));
-      const insertRes = await fetchT(SB_URL + '/rest/v1/betting_insights', {
+      const insertRes = await fetchT(SB_URL + '/rest/v1/betting_picks', {
         method: 'POST',
         headers: { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY, 'Content-Type': 'application/json', 'Prefer': 'return=representation' },
         body: JSON.stringify(row),

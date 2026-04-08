@@ -1356,7 +1356,7 @@ function renderHome() {
       html += '</div>';
     }
   } else {
-    // Quick picks — pull from betting_insights (single source of truth)
+    // Quick picks — pull from betting_picks (single source of truth)
     var qpBB = _bettingPicks && _bettingPicks !== 'loading' ? (_bettingPicks.find(function(p) { return p.edge_label === 'BEST BET'; }) || null) : null;
     var qpVal = _bettingPicks && _bettingPicks !== 'loading' ? (_bettingPicks.find(function(p) { return p.bet_type === 'top5'; }) || null) : null;
     var qpLS = _bettingPicks && _bettingPicks !== 'loading' ? (_bettingPicks.find(function(p) { return p.bet_type === 'longshot'; }) || null) : null;
@@ -1826,10 +1826,10 @@ function renderInsights() {
       }).catch(function() { window._realOdds = null; });
     }
 
-    // Load AI-generated picks from betting_insights (single source of truth)
+    // Load AI-generated picks from betting_picks (single source of truth)
     if (!_bettingPicks) {
       _bettingPicks = 'loading';
-      sb.from('betting_insights').select('*').order('created_at', {ascending:false}).limit(30).then(function(res) {
+      sb.from('betting_picks').select('*').order('created_at', {ascending:false}).limit(30).then(function(res) {
         if (res.data && res.data.length > 0) { _bettingPicks = res.data; renderApp(); }
         else { _bettingPicks = null; }
       }).catch(function() { _bettingPicks = null; });
@@ -1845,7 +1845,7 @@ function renderInsights() {
       return _bettingPicks.filter(function(p) { return p.bet_type === type; });
     }
 
-    // TOURFEED BEST BET card — pulls from betting_insights (single source of truth)
+    // TOURFEED BEST BET card — pulls from betting_picks (single source of truth)
     var bbPick = findPick('outright', 'BEST BET');
     if (bbPick) {
       html += '<div style="border-left:4px solid var(--green);background:var(--card);border:1px solid var(--border);border-radius:0 4px 4px 0;padding:16px;margin-bottom:16px;border-left:4px solid var(--green)">';
@@ -1905,7 +1905,7 @@ function renderInsights() {
 
     } // end else (hardcoded fallback)
 
-    // ── FULL BETTING CARD — all from betting_insights ──
+    // ── FULL BETTING CARD — all from betting_picks ──
     var t5Data = findPicks('top5');
     var t10Data = findPicks('top10');
     var h2hData = findPicks('matchup');
@@ -2138,7 +2138,7 @@ startAutoRefresh();
 // Load betting picks early for Home Quick Picks + Picks tab
 if (!_bettingPicks) {
   _bettingPicks = 'loading';
-  sb.from('betting_insights').select('*').order('created_at', {ascending:false}).limit(30).then(function(res) {
+  sb.from('betting_picks').select('*').order('created_at', {ascending:false}).limit(30).then(function(res) {
     if (res.data && res.data.length > 0) { _bettingPicks = res.data; renderApp(); }
     else { _bettingPicks = null; }
   }).catch(function() { _bettingPicks = null; });

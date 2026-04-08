@@ -456,10 +456,10 @@ Types of pick tweets (use a mix):
     }
 
     // --- CONTENT 3: Betting Insights Article ---
-    // Fetch current best bet from betting_insights (single source of truth)
+    // Fetch current best bet from betting_picks (single source of truth)
     var bestBetStr = 'our top value pick';
     try {
-      var bestBets = await sb('betting_insights?bet_type=eq.outright&edge_label=eq.BEST BET&order=created_at.desc&limit=1');
+      var bestBets = await sb('betting_picks?bet_type=eq.outright&edge_label=eq.BEST BET&order=created_at.desc&limit=1');
       if (bestBets.length > 0) bestBetStr = bestBets[0].player_name + ' ' + bestBets[0].odds;
     } catch(e) {}
     try {

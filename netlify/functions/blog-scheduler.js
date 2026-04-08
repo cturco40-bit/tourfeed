@@ -119,10 +119,10 @@ exports.handler = async (event) => {
       }
     } catch(e) {}
 
-    // Fetch current best bet from betting_insights for dynamic prompt injection
+    // Fetch current best bet from betting_picks for dynamic prompt injection
     var bestBetStr = 'our top value pick from the analysis';
     try {
-      var bestBets = await sb('betting_insights?bet_type=eq.outright&edge_label=eq.BEST BET&order=created_at.desc&limit=1');
+      var bestBets = await sb('betting_picks?bet_type=eq.outright&edge_label=eq.BEST BET&order=created_at.desc&limit=1');
       if (bestBets.length > 0) bestBetStr = bestBets[0].player_name + ' ' + bestBets[0].odds + ' — ' + (bestBets[0].analysis || '').slice(0, 100);
     } catch(e) {}
     var dynamicPrompt = config.prompt.replace('{BEST_BET}', bestBetStr);
