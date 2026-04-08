@@ -348,11 +348,14 @@ exports.handler = async (event) => {
         const articleSlug = articleTitle.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 80);
         const articleUrl = 'https://tourfeed.co/article/' + articleSlug;
         const articleImage = null; // Images added manually via admin editor
+        var imgHL = articleTitle.split(/\s+/).slice(0, 8).join(' ');
+        if (imgHL.length > 50) imgHL = imgHL.split(/\s+/).slice(0, 6).join(' ');
         await sb('content_drafts', 'POST', {
           type: 'article_news',
           title: articleTitle,
           body: article.body || '',
           image_url: articleImage,
+          image_headline: imgHL,
           article_url: articleUrl,
           source_event: item.title,
           status: 'pending',

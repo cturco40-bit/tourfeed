@@ -1744,34 +1744,7 @@ function renderInsights() {
     recentBettingArticles.forEach(function(a) { html += renderArticleRow(a); });
   }
 
-  // SEASON RECORD
-  html += '<div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px;margin:20px 0">';
-  var recordData = [['0-0','Record'],['--','Win %'],['0%','ROI'],['0u','Units']];
-  if (!window._bettingRecord) {
-    window._bettingRecord = 'loading';
-    sb.from('betting_record').select('*').eq('season', 2026).limit(1).then(function(res) {
-      if (res.data && res.data[0]) {
-        var r = res.data[0];
-        window._bettingRecord = r;
-        renderApp();
-      } else { window._bettingRecord = null; }
-    }).catch(function() { window._bettingRecord = null; });
-  }
-  if (window._bettingRecord && window._bettingRecord !== 'loading') {
-    var br = window._bettingRecord;
-    recordData = [
-      [br.wins + '-' + br.losses, 'Record'],
-      [(br.total_picks > 0 ? Math.round(br.wins / br.total_picks * 100) : '--') + '%', 'Win %'],
-      [(br.roi_pct || 0) + '%', 'ROI'],
-      [(br.units_won || 0) + 'u', 'Units']
-    ];
-  }
-  recordData.forEach(function(d) {
-    html += '<div style="background:var(--card);border:1px solid var(--border);border-radius:4px;padding:14px;text-align:center">';
-    html += '<div style="font-family:Playfair Display,Georgia,serif;font-size:20px;font-weight:900;color:var(--text)">' + d[0] + '</div>';
-    html += '<div style="font-size:9px;color:var(--muted);margin-top:3px;letter-spacing:1px;text-transform:uppercase">' + d[1] + '</div>';
-    html += '</div>';
-  });
+  // Season record removed — tracking begins when picks resolve
   html += '</div>';
 
   // ━━ MODE B: NO LIVE TOURNAMENT — MASTERS WEEK CONTENT ━━

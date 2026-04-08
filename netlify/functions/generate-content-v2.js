@@ -154,11 +154,15 @@ exports.handler = async (event) => {
     if (topicCheck.blocked) {
       return { skipped: true, reason: topicCheck.reason };
     }
-    // Generate image and save
+    // Generate short image headline (max 8 words for Canva)
+    var imgHL = (title || body.replace(/<[^>]+>/g,'')).split(/\s+/).slice(0, 8).join(' ');
+    if (imgHL.length > 50) imgHL = imgHL.split(/\s+/).slice(0, 6).join(' ');
+
     const imageUrl = null; // Images added manually via admin editor
     const draft = await sb('content_drafts', 'POST', {
       type, title, body,
       image_url: imageUrl,
+      image_headline: imgHL,
       tournament_id: tournamentId,
       round,
       status: 'pending',

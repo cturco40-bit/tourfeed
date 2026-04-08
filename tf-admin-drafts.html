@@ -256,6 +256,11 @@ async function loadDrafts() {
       const isInstagram = d.type === 'instagram';
       let content = '';
 
+      // Image headline — big bold text for Canva
+      if (d.image_headline) {
+        content += '<div style="font-family:\'Playfair Display\',Georgia,serif;font-size:20px;font-weight:900;color:#1A472A;line-height:1.2;margin-bottom:10px;padding:10px 12px;background:rgba(26,71,42,0.04);border-left:3px solid #D4A853;border-radius:0 4px 4px 0">' + escHtml(d.image_headline) + '</div>';
+      }
+
       // Image
       if (d.image_url) content += '<img src="' + d.image_url + '" class="draft-image" loading="lazy" alt="" onerror="this.style.display=\'none\'">';
 
