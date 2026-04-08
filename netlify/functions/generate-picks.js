@@ -4,14 +4,14 @@
 const SB_URL = 'https://yumahmnoltvbiadjefxw.supabase.co';
 const SB_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl1bWFobW5vbHR2YmlhZGplZnh3Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NTM5NjQ0MCwiZXhwIjoyMDkwOTcyNDQwfQ.VXcPybKl1c3uJAO59im8hb0zQjEmdwd4e6WGAakC-qs';
 
-function fetchT(url, options) {
+function fetchT(url, options, ms) {
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 8000);
+  const timeout = setTimeout(() => controller.abort(), ms || 8000);
   return fetch(url, { ...options, signal: controller.signal })
     .then(function(res) { clearTimeout(timeout); return res; })
     .catch(function(e) {
       clearTimeout(timeout);
-      if (e.name === 'AbortError') console.log('Fetch timed out:', url.slice(0, 120));
+      if (e.name === 'AbortError') console.log('Fetch timed out after ' + (ms || 8000) + 'ms:', url.slice(0, 120));
       throw e;
     });
 }
@@ -49,7 +49,7 @@ exports.handler = async (event) => {
     console.log('Fetching odds from Supabase');
     const odds = await sb('player_odds?order=best_odds.asc&limit=20');
     if (!odds.length) return { statusCode: 200, headers, body: JSON.stringify({ skipped: 'No odds data — run fetch-odds first' }) };
-    console.log('Got', odds.length, 'players with odds');
+    console.log('Odds fetch complete, processing', odds.length, 'events');
 
     // 3. Get player facts for context
     let playerFacts = [];
@@ -103,7 +103,7 @@ exports.handler = async (event) => {
     }).join('\n\n');
 
     // 6. Call Claude Haiku for analysis
-    console.log('Calling Anthropic API');
+    console.log('Calling Anthropic API now...');
     const systemPrompt = `You are TourFeed's expert golf handicapper. You analyze sportsbook odds vs player form to find VALUE — picks where the true probability exceeds the market's implied probability.
 
 Your job: for each player, estimate their TRUE win probability based on current form, course fit, major championship pedigree, and momentum. Compare that to the implied probability from the odds. The biggest POSITIVE gaps (true > implied) are the best value bets.
@@ -181,7 +181,8 @@ Return ONLY valid JSON (no markdown fences, no extra text):
         system: systemPrompt,
         messages: [{ role: 'user', content: userPrompt }],
       }),
-    });
+    }, 25000);
+    console.log('Anthropic response received');
 
     if (!res.ok) {
       const err = await res.text();
@@ -191,7 +192,6 @@ Return ONLY valid JSON (no markdown fences, no extra text):
 
     const data = await res.json();
     const rawText = (data.content?.[0]?.text || '').trim();
-    console.log('Anthropic API response length:', rawText.length);
 
     // 7. Parse JSON response
     let picks;
@@ -204,7 +204,7 @@ Return ONLY valid JSON (no markdown fences, no extra text):
     }
 
     // 8. Insert into betting_insights
-    console.log('Saving picks to database');
+    console.log('Saving to Supabase...');
     const batchId = new Date().toISOString();
     const tournamentId = tournament.id;
     const inserted = [];
@@ -292,7 +292,7 @@ Return ONLY valid JSON (no markdown fences, no extra text):
       }
     }
 
-    console.log('Saved', inserted.length, 'picks to database');
+    console.log('Supabase write complete');
 
     // 9. Notify
     try {
