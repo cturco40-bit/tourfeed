@@ -287,7 +287,8 @@ async function loadDrafts() {
         '<textarea class="draft-edit" id="edit-' + d.id + '" rows="4">' + (d.body||'') + '</textarea>' +
         '<div class="draft-actions" id="actions-' + d.id + '">' +
           '<button class="btn-action btn-approve" onclick="approveDraft(' + d.id + ')">' + (isInstagram ? 'Mark Posted' : 'Approve') + '</button>' +
-          '<button class="btn-action btn-edit" onclick="document.getElementById(\'edit-'+d.id+'\').classList.toggle(\'show\')">Edit</button>' +
+          '<button class="btn-action btn-edit" onclick="toggleEdit('+d.id+')">Edit</button>' +
+          '<button class="btn-action btn-edit" id="save-'+d.id+'" style="display:none;border-color:#1A472A;color:#1A472A" onclick="saveEdit('+d.id+')">Save</button>' +
           '<button class="btn-action btn-reject" onclick="rejectDraft(' + d.id + ')">Reject</button>' +
           '<button class="btn-add-img" onclick="openImageEditor(' + d.id + ')">' + (d.image_url ? 'Replace Image' : '+ Image') + '</button>' +
         '</div></div>';
@@ -307,6 +308,33 @@ async function batchApprove() {
   selectedIds.clear();
   updateBatchBar();
   setTimeout(loadDrafts, 500);
+}
+
+function toggleEdit(id) {
+  var ta = document.getElementById('edit-' + id);
+  if (!ta) return;
+  ta.classList.toggle('show');
+  // Show/hide save button
+  var saveBtn = document.getElementById('save-' + id);
+  if (saveBtn) saveBtn.style.display = ta.classList.contains('show') ? 'inline-block' : 'none';
+  if (ta.classList.contains('show')) ta.focus();
+}
+
+async function saveEdit(id) {
+  var ta = document.getElementById('edit-' + id);
+  if (!ta) return;
+  var newText = ta.value.trim();
+  var saveBtn = document.getElementById('save-' + id);
+  if (saveBtn) saveBtn.textContent = 'Saving...';
+  try {
+    await fetch(SB_URL + '/rest/v1/content_drafts?id=eq.' + id, {
+      method: 'PATCH',
+      headers: { 'apikey': SB_SERVICE, 'Authorization': 'Bearer ' + SB_SERVICE, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ body: newText }),
+    });
+    if (saveBtn) { saveBtn.textContent = 'Saved!'; setTimeout(function() { saveBtn.textContent = 'Save'; }, 1500); }
+    if (loadedDrafts[id]) loadedDrafts[id].body = newText;
+  } catch(e) { if (saveBtn) saveBtn.textContent = 'Error'; }
 }
 
 async function markPosted(id) {

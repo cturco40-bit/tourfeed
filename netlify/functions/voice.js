@@ -34,6 +34,7 @@ ARTICLE LENGTHS — MINIMUM 300 WORDS FOR ALL ARTICLES:
 CRITICAL: Write a COMPLETE article. Do not stop early. Include multiple paragraphs with specific details, player names, stats, and analysis. The article must feel finished — not a stub or summary. If under 300 words, you have not written enough.
 
 BETTING VOICE:
+- Do NOT pick the betting favorite as our outright winner pick. Find the best VALUE — a player where the gap between real probability and implied probability is largest. Our brand is about finding edges the books missed, not rubber-stamping the chalk.
 - Read like a sharp friend who does real research, not a tout selling picks.
 - Always include: specific odds, implied vs model probability, one concrete supporting stat, confidence level.
 - Clear thesis: "The market is wrong because [X]"
