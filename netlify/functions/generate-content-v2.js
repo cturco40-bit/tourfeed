@@ -192,10 +192,15 @@ exports.handler = async (event) => {
       } catch(e) {
         var igCaption = title + '\n\nFull picks at tourfeed.co';
       }
+      // Generate image headline — max 8 words, bold hook
+      var igWords = title.split(/\s+/);
+      var igHL = igWords.length <= 8 ? title : igWords.slice(0, 7).join(' ') + '...';
+      if (igHL === title && igHL.length > 50) igHL = igWords.slice(0, 6).join(' ') + '...';
       await sb('content_drafts', 'POST', {
         type: 'instagram',
         title: title,
         body: igCaption,
+        image_headline: igHL,
         meta: JSON.stringify({ timing: igTiming }),
         tournament_id: tournamentId,
         status: 'pending',
@@ -351,14 +356,22 @@ If PLAYER CONTEXT is not provided for a player, use ONLY leaderboard data. No bi
 
     // Fetch current picks from betting_picks — all content must reference these players only
     var picksContext = '';
+    var currentPicks = [];
     try {
-      var currentPicks = await sb('betting_picks?tournament_id=eq.' + encodeURIComponent(tournamentId) + '&order=created_at.desc');
+      currentPicks = await sb('betting_picks?tournament_id=eq.' + encodeURIComponent(tournamentId) + '&order=created_at.asc');
+      if (!currentPicks.length) currentPicks = await sb('betting_picks?order=created_at.asc&limit=10');
+      console.log('Fetched betting_picks:', currentPicks.length, 'picks found');
       if (currentPicks.length > 0) {
         picksContext = '\n\nOUR CURRENT PICKS (ONLY reference these players as betting recommendations):\n' + currentPicks.map(function(p) {
           return (p.edge_label || '') + ': ' + (p.player_name || p.pick || '') + ' ' + (p.odds || '') + ' — ' + (p.analysis || '');
         }).join('\n') + '\n\nCRITICAL: You may ONLY reference players that appear in OUR CURRENT PICKS list. Do not mention any other players as betting recommendations. Every pick you write about must match exactly what is in our picks database.';
       }
-    } catch(e) {}
+    } catch(e) { console.log('betting_picks fetch error:', e.message); }
+
+    if (!currentPicks.length) {
+      console.log('No betting_picks found — aborting content generation');
+      return { statusCode: 200, headers, body: JSON.stringify({ skipped: 'No picks in betting_picks — cannot generate content without picks' }) };
+    }
 
     // --- CONTENT 1: Round Recap Article ---
     try {

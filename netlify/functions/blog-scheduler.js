@@ -122,8 +122,10 @@ exports.handler = async (event) => {
     // Fetch all current picks from betting_picks for prompt injection
     var bestBetStr = 'our top value pick from the analysis';
     var picksContext = '';
+    var allPicks = [];
     try {
-      var allPicks = await sb('betting_picks?order=created_at.desc&limit=20');
+      allPicks = await sb('betting_picks?order=created_at.asc&limit=20');
+      console.log('Fetched betting_picks:', allPicks.length, 'picks found');
       var bb = allPicks.find(function(p) { return p.edge_label === 'BEST BET'; });
       if (bb) bestBetStr = bb.player_name + ' ' + bb.odds + ' — ' + (bb.analysis || '').slice(0, 100);
       if (allPicks.length > 0) {
@@ -131,7 +133,12 @@ exports.handler = async (event) => {
           return (p.edge_label || '') + ': ' + (p.player_name || p.pick || '') + ' ' + (p.odds || '') + ' — ' + (p.analysis || '');
         }).join('\n') + '\n\nCRITICAL: You may ONLY reference players that appear in OUR CURRENT PICKS list as betting recommendations.';
       }
-    } catch(e) {}
+    } catch(e) { console.log('betting_picks fetch error:', e.message); }
+    if (!allPicks.length) {
+      console.log('No betting_picks found — aborting blog-scheduler');
+      results.push({ skipped: key, reason: 'No picks in betting_picks' });
+      continue;
+    }
     var dynamicPrompt = config.prompt.replace('{BEST_BET}', bestBetStr);
 
     // Generate the article
@@ -186,10 +193,15 @@ ${playerFacts}${picksContext}`,
     // Instagram draft — promote our picks, not article summary
     var igTiming = config.type === 'article_betting' ? 'Prepare today, post tomorrow morning' : 'Prepare today, post tomorrow evening';
     var igCaption = article.title + '\n\nOur full breakdown and picks are live.\n\nFull picks at tourfeed.co';
+    // Generate image headline — max 8 words, bold hook
+    var igWords = article.title.split(/\s+/);
+    var igHL = igWords.length <= 8 ? article.title : igWords.slice(0, 7).join(' ') + '...';
+    if (igHL === article.title && igHL.length > 50) igHL = igWords.slice(0, 6).join(' ') + '...';
     await sb('content_drafts', 'POST', {
       type: 'instagram',
       title: article.title,
       body: igCaption,
+      image_headline: igHL,
       meta: JSON.stringify({ timing: igTiming }),
       status: 'pending',
       created_at: new Date().toISOString(),

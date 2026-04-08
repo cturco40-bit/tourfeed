@@ -404,10 +404,15 @@ exports.handler = async (event) => {
 
         // Instagram draft — promote our picks, not article summary
         var igCaption = articleTitle + '\n\nWe broke down what this means for the betting market.\n\nFull picks at tourfeed.co';
+        // Generate image headline — max 8 words, bold hook
+        var ndIgWords = articleTitle.split(/\s+/);
+        var ndIgHL = ndIgWords.length <= 8 ? articleTitle : ndIgWords.slice(0, 7).join(' ') + '...';
+        if (ndIgHL === articleTitle && ndIgHL.length > 50) ndIgHL = ndIgWords.slice(0, 6).join(' ') + '...';
         await sb('content_drafts', 'POST', {
           type: 'instagram',
           title: articleTitle,
           body: igCaption,
+          image_headline: ndIgHL,
           meta: JSON.stringify({ timing: 'Prepare now, post within 2 hours' }),
           status: 'pending',
           created_at: new Date().toISOString(),

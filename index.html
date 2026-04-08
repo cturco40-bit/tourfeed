@@ -370,6 +370,7 @@ function esc(str) {
   if (!str) return '';
   return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/`/g,'&#96;').replace(/\$/g,'&#36;');
 }
+function formatOdds(o) { if (!o) return ''; o = String(o); return o.startsWith('+') || o.startsWith('-') ? o : '+' + o; }
 
 function timeAgo(dateStr) {
   if (!dateStr) return '';
@@ -1362,9 +1363,9 @@ function renderHome() {
     var qpLS = _bettingPicks && _bettingPicks !== 'loading' ? (_bettingPicks.find(function(p) { return p.edge_label === 'LONGSHOT'; }) || null) : null;
     if (qpBB || qpVal || qpLS) {
       html += '<div style="display:flex;gap:12px;flex-wrap:wrap">';
-      if (qpBB) html += '<div style="flex:1;min-width:150px;padding:12px;background:var(--green-fade);border:1px solid var(--border);border-radius:4px"><div style="font-size:9px;font-weight:700;letter-spacing:1px;color:var(--green);margin-bottom:4px">BEST BET</div><div style="font-size:14px;font-weight:800;color:var(--text)">' + esc(qpBB.player_name) + '</div><div style="font-size:18px;font-weight:900;color:var(--green);margin-top:4px">' + esc(qpBB.odds) + '</div><div style="font-size:10px;color:var(--muted);margin-top:2px">' + esc((qpBB.analysis || '').slice(0, 60)) + '</div></div>';
-      if (qpVal) html += '<div style="flex:1;min-width:150px;padding:12px;background:var(--green-fade);border:1px solid var(--border);border-radius:4px"><div style="font-size:9px;font-weight:700;letter-spacing:1px;color:var(--green);margin-bottom:4px">VALUE</div><div style="font-size:14px;font-weight:800;color:var(--text)">' + esc(qpVal.player_name) + '</div><div style="font-size:18px;font-weight:900;color:var(--green);margin-top:4px">' + esc(qpVal.odds) + '</div><div style="font-size:10px;color:var(--muted);margin-top:2px">' + esc((qpVal.analysis || '').slice(0, 60)) + '</div></div>';
-      if (qpLS) html += '<div style="flex:1;min-width:150px;padding:12px;background:var(--gold-fade);border:1px solid var(--border);border-radius:4px"><div style="font-size:9px;font-weight:700;letter-spacing:1px;color:var(--gold);margin-bottom:4px">LONGSHOT</div><div style="font-size:14px;font-weight:800;color:var(--text)">' + esc(qpLS.player_name) + '</div><div style="font-size:18px;font-weight:900;color:var(--gold);margin-top:4px">' + esc(qpLS.odds) + '</div><div style="font-size:10px;color:var(--muted);margin-top:2px">' + esc((qpLS.analysis || '').slice(0, 60)) + '</div></div>';
+      if (qpBB) html += '<div style="flex:1;min-width:150px;padding:12px;background:var(--green-fade);border:1px solid var(--border);border-radius:4px"><div style="font-size:9px;font-weight:700;letter-spacing:1px;color:var(--green);margin-bottom:4px">BEST BET</div><div style="font-size:14px;font-weight:800;color:var(--text)">' + esc(qpBB.player_name) + '</div><div style="font-size:18px;font-weight:900;color:var(--green);margin-top:4px">' + esc(formatOdds(qpBB.odds)) + '</div><div style="font-size:10px;color:var(--muted);margin-top:2px">' + esc((qpBB.analysis || '').slice(0, 60)) + '</div></div>';
+      if (qpVal) html += '<div style="flex:1;min-width:150px;padding:12px;background:var(--green-fade);border:1px solid var(--border);border-radius:4px"><div style="font-size:9px;font-weight:700;letter-spacing:1px;color:var(--green);margin-bottom:4px">VALUE</div><div style="font-size:14px;font-weight:800;color:var(--text)">' + esc(qpVal.player_name) + '</div><div style="font-size:18px;font-weight:900;color:var(--green);margin-top:4px">' + esc(formatOdds(qpVal.odds)) + '</div><div style="font-size:10px;color:var(--muted);margin-top:2px">' + esc((qpVal.analysis || '').slice(0, 60)) + '</div></div>';
+      if (qpLS) html += '<div style="flex:1;min-width:150px;padding:12px;background:var(--gold-fade);border:1px solid var(--border);border-radius:4px"><div style="font-size:9px;font-weight:700;letter-spacing:1px;color:var(--gold);margin-bottom:4px">LONGSHOT</div><div style="font-size:14px;font-weight:800;color:var(--text)">' + esc(qpLS.player_name) + '</div><div style="font-size:18px;font-weight:900;color:var(--gold);margin-top:4px">' + esc(formatOdds(qpLS.odds)) + '</div><div style="font-size:10px;color:var(--muted);margin-top:2px">' + esc((qpLS.analysis || '').slice(0, 60)) + '</div></div>';
       html += '</div>';
     } else {
       html += '<div style="padding:12px;color:var(--muted);font-style:italic;font-size:12px">Picks generating from live sportsbook odds...</div>';
@@ -1838,11 +1839,11 @@ function renderInsights() {
       h += '</div>';
       if (pick.player_name) {
         h += '<div style="font-family:Playfair Display,Georgia,serif;font-size:18px;font-weight:900;color:var(--text);margin-bottom:4px">' + esc(pick.player_name);
-        if (pick.odds) h += ' <span style="color:' + c + '">' + esc(pick.odds) + '</span>';
+        if (pick.odds) h += ' <span style="color:' + c + '">' + esc(formatOdds(pick.odds)) + '</span>';
         h += '</div>';
       } else if (pick.pick) {
         h += '<div style="font-family:Playfair Display,Georgia,serif;font-size:16px;font-weight:800;color:var(--text);margin-bottom:4px">' + esc(pick.pick);
-        if (pick.odds) h += ' <span style="color:' + c + '">' + esc(pick.odds) + '</span>';
+        if (pick.odds) h += ' <span style="color:' + c + '">' + esc(formatOdds(pick.odds)) + '</span>';
         h += '</div>';
       }
       if (pick.analysis) h += '<div style="font-size:13px;color:var(--dim);line-height:1.7">' + esc(pick.analysis) + '</div>';
