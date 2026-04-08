@@ -395,7 +395,7 @@ Rules:
 - If this is a ${tourName} event, write for that tour's audience`;
       const recapPrompt = `Write a FULL round recap article (minimum 500 words, aim for 600+) based on this leaderboard data. This will be published on tourfeed.co as a standalone article. Make it worth reading — not a summary, a real article with analysis and narrative.\n\nReturn your response in this exact format:\n\nHEADLINE: <your headline here>\n\nBODY:\n<your HTML article here using <p> tags>\n\n${dataBlock}\n${contextBlock}`;
 
-      const recapRaw = await askClaude(recapSystem, recapPrompt, 2500);
+      const recapRaw = await askClaude(recapSystem, recapPrompt, 2000);
 
       let recapTitle = 'Round ' + currentRound + ' Recap';
       let recapBody = recapRaw;
@@ -502,7 +502,7 @@ Rules:
 - Author is "TourFeed Staff"`;
       const bettingPrompt = `Write a FULL betting analysis article (minimum 600 words) based on this leaderboard data. This is the main betting content on tourfeed.co — make it comprehensive.\n\nReturn your response in this exact format:\n\nHEADLINE: <your headline here>\n\nBODY:\n<your HTML article here using <p> and <h3> tags>\n\n${dataBlock}\n${contextBlock}`;
 
-      const bettingRaw = await askClaude(bettingSystem, bettingPrompt, 2500);
+      const bettingRaw = await askClaude(bettingSystem, bettingPrompt, 2000);
 
       let bettingTitle = 'Betting Insights - Round ' + currentRound;
       let bettingBody = bettingRaw;

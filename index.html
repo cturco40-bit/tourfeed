@@ -1368,7 +1368,7 @@ function renderHome() {
       if (qpLS) html += '<div style="flex:1;min-width:150px;padding:12px;background:var(--gold-fade);border:1px solid var(--border);border-radius:4px"><div style="font-size:9px;font-weight:700;letter-spacing:1px;color:var(--gold);margin-bottom:4px">LONGSHOT</div><div style="font-size:14px;font-weight:800;color:var(--text)">' + esc(qpLS.player_name) + '</div><div style="font-size:18px;font-weight:900;color:var(--gold);margin-top:4px">' + esc(formatOdds(qpLS.odds)) + '</div><div style="font-size:10px;color:var(--muted);margin-top:2px">' + esc((qpLS.analysis || '').slice(0, 60)) + '</div></div>';
       html += '</div>';
     } else {
-      html += '<div style="padding:12px;color:var(--muted);font-style:italic;font-size:12px">Picks generating from live sportsbook odds...</div>';
+      html += '<div style="padding:12px;color:var(--muted);font-style:italic;font-size:12px">Picks update daily from live sportsbook odds.</div>';
     }
     html += '<div style="font-size:11px;color:var(--green);font-weight:700;margin-top:8px;cursor:pointer" onclick="switchTab(3)">Full picks card &rarr;</div>';
   }
@@ -1818,13 +1818,20 @@ function renderInsights() {
       }).catch(function() { _bettingPicks = null; });
     }
 
-    // Group picks by edge_label
+    // Group picks by edge_label, deduplicate by player_name (first occurrence wins)
     var picks = _bettingPicks && _bettingPicks !== 'loading' ? _bettingPicks : [];
-    var bestBets = picks.filter(function(p) { return p.edge_label === 'BEST BET'; });
-    var valuePlays = picks.filter(function(p) { return p.edge_label === 'VALUE'; });
-    var longshots = picks.filter(function(p) { return p.edge_label === 'LONGSHOT'; });
-    var fades = picks.filter(function(p) { return p.edge_label === 'FADE'; });
-    var hasPicks = picks.length > 0;
+    var seenPlayers = {};
+    var dedupedPicks = picks.filter(function(p) {
+      var key = (p.player_name || p.pick || '').toLowerCase();
+      if (!key || seenPlayers[key]) return false;
+      seenPlayers[key] = true;
+      return true;
+    });
+    var bestBets = dedupedPicks.filter(function(p) { return p.edge_label === 'BEST BET'; });
+    var valuePlays = dedupedPicks.filter(function(p) { return p.edge_label === 'VALUE'; });
+    var longshots = dedupedPicks.filter(function(p) { return p.edge_label === 'LONGSHOT'; });
+    var fades = dedupedPicks.filter(function(p) { return p.edge_label === 'FADE'; });
+    var hasPicks = dedupedPicks.length > 0;
 
     // Pick card renderer
     function renderPickCard(pick, accentColor, badgeBg) {
@@ -1855,7 +1862,7 @@ function renderInsights() {
     if (_bettingPicks === 'loading') {
       html += '<div style="padding:40px;text-align:center;color:var(--muted);font-style:italic">Loading picks...</div>';
     } else if (!hasPicks) {
-      html += '<div style="padding:40px;text-align:center;color:var(--muted);font-style:italic">Picks generating from live sportsbook odds — check back soon.</div>';
+      html += '<div style="padding:40px;text-align:center;color:var(--muted);font-style:italic">Picks update daily from live sportsbook odds.</div>';
     } else {
 
       // ── BEST BET ──

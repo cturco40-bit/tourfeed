@@ -17,11 +17,11 @@
 
 [functions."generate-tweets"]
   timeout = 60
-  schedule = "0 14 * * *"
+  schedule = "0 10 * * *"
 
 [functions."blog-scheduler"]
   timeout = 60
-  schedule = "0 10 * * *"
+  schedule = "0 6 * * *"
 
 [functions."publish-approved"]
   timeout = 30

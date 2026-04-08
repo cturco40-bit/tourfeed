@@ -83,7 +83,6 @@ exports.handler = async (event) => {
 
   try {
     // 1. Get active tournament
-    console.log('Fetching tournament from Supabase');
     var tournaments = await sb('tournaments?tour_id=eq.pga&status=neq.completed&order=start_date.desc&limit=1');
     if (!tournaments.length) tournaments = await sb('tournaments?tour_id=eq.pga&order=start_date.desc&limit=1');
     var tournament = tournaments[0];
@@ -98,10 +97,8 @@ exports.handler = async (event) => {
     }
 
     // 2. Get real sportsbook odds — top 20 players
-    console.log('Fetching odds from Supabase');
     var odds = await sb('player_odds?order=best_odds.asc&limit=20');
     if (!odds.length) return { statusCode: 200, headers, body: JSON.stringify({ skipped: 'No odds data — run fetch-odds first' }) };
-    console.log('Odds fetch complete, processing', odds.length, 'players');
 
     // 3. Get player facts for context
     var playerFactsRaw = [];
@@ -129,7 +126,6 @@ exports.handler = async (event) => {
     var sport = 'golf';
 
     // 5. Build dynamic user prompt
-    console.log('Calling Anthropic API now...');
     var userPrompt = 'Analyze this ' + sport + ' event and find real edges using the handicapping framework.\n\n' +
       'Tournament: ' + tournament.name + '\n' +
       'Sport: ' + sport + '\n' +
@@ -159,8 +155,6 @@ exports.handler = async (event) => {
         messages: [{ role: 'user', content: userPrompt }],
       }),
     }, 40000);
-    console.log('Anthropic response received');
-
     if (!res.ok) {
       var err = await res.text();
       console.log('Anthropic API error:', res.status, err.slice(0, 200));
@@ -184,8 +178,6 @@ exports.handler = async (event) => {
     var conf = picks.confidence || {};
 
     // 8. Insert picks (only runs if none exist yet — checked above)
-    console.log('Saving to Supabase...');
-    console.log('Parsed picks:', JSON.stringify(picks, null, 2));
     var tournamentId = tournament.id;
     var inserted = [];
 
@@ -205,15 +197,13 @@ exports.handler = async (event) => {
         sportsbook: 'DraftKings',
         created_at: new Date().toISOString(),
       };
-      console.log('Inserting:', edgeLabel, row.player_name, row.odds);
       var insertRes = await fetchT(SB_URL + '/rest/v1/betting_picks', {
         method: 'POST',
         headers: { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY, 'Content-Type': 'application/json', 'Prefer': 'return=representation' },
         body: JSON.stringify(row),
       });
-      console.log('Insert status:', insertRes.status);
       var insertBody = await insertRes.text();
-      if (insertRes.status >= 400) console.log('Insert error:', insertBody.slice(0, 300));
+      if (insertRes.status >= 400) console.log('Insert error for ' + edgeLabel + ':', insertBody.slice(0, 300));
       inserted.push({ pick_type: pickType, edge_label: edgeLabel, player: pick.player_name || pick.pick });
     }
 
