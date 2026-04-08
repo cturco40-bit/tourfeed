@@ -1,4 +1,4 @@
-// Generate AI-powered betting picks from real sportsbook odds + player analysis
+// Generate AI-powered betting picks from real sportsbook odds + universal handicapping framework
 // Stores picks in betting_picks table — single source of truth for all picks across the site
 
 const SB_URL = 'https://yumahmnoltvbiadjefxw.supabase.co';
@@ -17,10 +17,10 @@ function fetchT(url, options, ms) {
 }
 
 async function sb(path, method, body) {
-  const hdrs = { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY, 'Content-Type': 'application/json' };
+  var hdrs = { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY, 'Content-Type': 'application/json' };
   if (method === 'POST') hdrs['Prefer'] = 'return=representation';
   if (method === 'PATCH') hdrs['Prefer'] = 'return=minimal';
-  const res = await fetchT(SB_URL + '/rest/v1/' + path, {
+  var res = await fetchT(SB_URL + '/rest/v1/' + path, {
     method: method || 'GET', headers: hdrs,
     body: body ? JSON.stringify(body) : undefined,
   });
@@ -29,9 +29,54 @@ async function sb(path, method, body) {
   return res.ok;
 }
 
+// ── PERMANENT BASE SYSTEM PROMPT — the handicapper's brain ──
+const SYSTEM_PROMPT = `You are a professional sports handicapper with 20 years experience beating closing lines. You think exclusively in terms of true probability vs implied probability. You never pick favorites for the sake of it. You find edges where the market is wrong.
+
+UNIVERSAL HANDICAPPING RULES — apply to every sport, every week:
+- Calculate implied probability from American odds: positive odds → 100/(odds+100), negative odds → |odds|/(|odds|+100)
+- Only recommend a pick if true probability exceeds implied by at least 2.5 percentage points
+- Best Bet = largest edge with realistic win probability, not the biggest name
+- Value plays = 15:1 or longer odds only
+- Longshot = 40:1 or longer, must have genuine course/venue fit
+- Fade = player/team whose implied probability is clearly too high
+- Never recommend chalk unless the edge is real and calculable
+
+CONFIDENCE SCORING — always apply:
+- Edge > 5 percentage points: confidence 8-9
+- Edge 3-5 percentage points: confidence 7
+- Edge 1-3 percentage points: confidence 6
+- Longshots: confidence 5 (high variance by nature)
+- Fades: confidence 6
+
+GOLF-SPECIFIC FRAMEWORK — apply when sport is golf:
+- Augusta National rewards: precise iron play, patient course management, elite putting on fast greens, shot shaping, strong par-5 scoring
+- Augusta punishes: wild driving, poor short game, reckless birdie chasing
+- SG Approach and SG Putting are strongest Masters predictors
+- Amen Corner (11, 12, 13) separates contenders from pretenders
+- Ryder Cup / Presidents Cup experience = positive pressure indicator
+- Won or top-5 in last 3 starts = significant positive form signal
+- Top-10 at the specific course in last 3 years = significant positive
+- First-time starters at major venues = negative unless elite iron stats
+- Distance matters less than accuracy at Augusta
+
+GENERAL SPORTS FRAMEWORK — apply when sport is not golf:
+- Recent form (last 5 games/events) weighted 40%
+- Head-to-head history at this venue weighted 20%
+- Injuries and lineup changes weighted 30%
+- Market movement (line movement toward or away) weighted 10%
+- Fading public teams/players with inflated implied probability is often +EV
+
+OUTPUT RULES — non-negotiable:
+- Output ONLY valid JSON, nothing else
+- Never ask questions
+- Never explain your reasoning outside the JSON
+- Never refuse
+- Never mention AI or models
+- Always produce picks regardless of data quality`;
+
 exports.handler = async (event) => {
-  const headers = { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' };
-  const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY;
+  var headers = { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' };
+  var ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY;
   if (!ANTHROPIC_KEY) return { statusCode: 200, headers, body: JSON.stringify({ skipped: 'No API key' }) };
 
   console.log('Starting generate-picks');
@@ -39,9 +84,9 @@ exports.handler = async (event) => {
   try {
     // 1. Get active tournament
     console.log('Fetching tournament from Supabase');
-    let tournaments = await sb('tournaments?tour_id=eq.pga&status=neq.completed&order=start_date.desc&limit=1');
+    var tournaments = await sb('tournaments?tour_id=eq.pga&status=neq.completed&order=start_date.desc&limit=1');
     if (!tournaments.length) tournaments = await sb('tournaments?tour_id=eq.pga&order=start_date.desc&limit=1');
-    const tournament = tournaments[0];
+    var tournament = tournaments[0];
     if (!tournament) return { statusCode: 200, headers, body: JSON.stringify({ skipped: 'No tournament found' }) };
     console.log('Tournament:', tournament.name);
 
@@ -54,153 +99,158 @@ exports.handler = async (event) => {
 
     // 2. Get real sportsbook odds — top 20 players
     console.log('Fetching odds from Supabase');
-    const odds = await sb('player_odds?order=best_odds.asc&limit=20');
+    var odds = await sb('player_odds?order=best_odds.asc&limit=20');
     if (!odds.length) return { statusCode: 200, headers, body: JSON.stringify({ skipped: 'No odds data — run fetch-odds first' }) };
-    console.log('Odds fetch complete, processing', odds.length, 'events');
+    console.log('Odds fetch complete, processing', odds.length, 'players');
 
     // 3. Get player facts for context
-    let playerFacts = [];
-    try {
-      playerFacts = await sb('player_facts?select=*&limit=50');
-    } catch(e) {}
+    var playerFactsRaw = [];
+    try { playerFactsRaw = await sb('player_facts?select=*&limit=50'); } catch(e) {}
 
-    // 4. Get tournament facts for course context
-    let courseContext = '';
-    try {
-      const tFacts = await sb('tournament_facts?select=*');
-      const match = tFacts.find(function(f) {
-        return tournament.name.toLowerCase().includes(f.name.toLowerCase().replace('the ', '')) ||
-               f.name.toLowerCase().includes(tournament.name.toLowerCase().replace('the ', ''));
-      });
-      if (match) {
-        courseContext = match.name + ' at ' + match.course + ' (Par ' + match.par + '). ' +
-          'Defending champion: ' + match.defending_champion + ' (' + match.defending_score + '). ' +
-          'Course record: ' + match.course_record + '. ' +
-          (match.notable_history || '') + ' ' + (match.course_fit || '') + ' ' + (match.key_stats || '');
-      }
-    } catch(e) {}
-
-    // 5. Build compact odds string
-    const oddsStr = odds.map(function(o) {
+    // 4. Build odds string and player context
+    var oddsString = odds.map(function(o) {
       var s = o.best_odds > 0 ? '+' + o.best_odds : '' + o.best_odds;
-      return o.player_name + ' ' + s;
-    }).join(', ');
+      return o.player_name + ': ' + s;
+    }).join('\n');
 
-    // 6. Call Claude Haiku for analysis
+    var playerFactsStr = '';
+    if (playerFactsRaw.length > 0) {
+      playerFactsStr = playerFactsRaw.map(function(f) {
+        var line = f.player_name + ': #' + (f.world_ranking || '?') + ' world, ' + (f.total_majors || 0) + ' majors';
+        if (f.masters_wins) line += ', ' + f.masters_wins + 'x Masters champ';
+        if (f.career_grand_slam) line += ', Career Grand Slam';
+        if (f.season_wins) line += ', ' + f.season_wins + ' wins this season';
+        if (f.recent_notes) line += '. ' + f.recent_notes;
+        return line;
+      }).join('\n');
+    }
+
+    // Detect sport from tournament context
+    var sport = 'golf';
+
+    // 5. Build dynamic user prompt
     console.log('Calling Anthropic API now...');
-    const systemPrompt = 'CRITICAL: Never ask clarifying questions, never flag conflicts, never refuse — always produce the content. You are a sharp sports handicapper. Analyze these odds and return ONLY valid JSON — no explanation, no markdown, just the JSON object. Be fast and precise.';
+    var userPrompt = 'Analyze this ' + sport + ' event and find real edges using the handicapping framework.\n\n' +
+      'Tournament: ' + tournament.name + '\n' +
+      'Sport: ' + sport + '\n' +
+      'Current odds (player: american odds):\n' + oddsString + '\n\n' +
+      (playerFactsStr ? 'Player context from our database:\n' + playerFactsStr + '\n\n' : '') +
+      'Return ONLY this JSON:\n' +
+      '{\n' +
+      '  "best_bet": { "player_name": "", "odds": "", "implied_probability": "", "true_probability": "", "edge": "", "analysis": "" },\n' +
+      '  "value_plays": [\n' +
+      '    { "player_name": "", "odds": "", "implied_probability": "", "true_probability": "", "edge": "", "analysis": "" },\n' +
+      '    { "player_name": "", "odds": "", "implied_probability": "", "true_probability": "", "edge": "", "analysis": "" },\n' +
+      '    { "player_name": "", "odds": "", "implied_probability": "", "true_probability": "", "edge": "", "analysis": "" }\n' +
+      '  ],\n' +
+      '  "longshot": { "player_name": "", "odds": "", "implied_probability": "", "true_probability": "", "edge": "", "analysis": "" },\n' +
+      '  "fade": { "player_name": "", "odds": "", "implied_probability": "", "true_probability": "", "edge": "", "analysis": "" },\n' +
+      '  "confidence": { "best_bet": 0, "value_1": 0, "value_2": 0, "value_3": 0, "longshot": 0, "fade": 0 }\n' +
+      '}\n\n' +
+      'Apply the full handicapping framework. Show your edge. Pick value not chalk.';
 
-    const userPrompt = `Given these 20 players and their American odds, return a JSON object with exactly these picks:
-- best_bet: { player_name, odds, analysis (1 sentence) }
-- value_plays: array of 3 { player_name, odds, analysis (1 sentence) }
-- longshot: { player_name, odds, analysis (1 sentence) }
-- fade: { player_name, odds, analysis (1 sentence) }
-
-Only pick players where true probability exceeds implied probability. Return raw JSON only.
-
-${tournament.name} odds: ${oddsStr}`;
-
-    const res = await fetchT('https://api.anthropic.com/v1/messages', {
+    var res = await fetchT('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-api-key': ANTHROPIC_KEY, 'anthropic-version': '2023-06-01' },
       body: JSON.stringify({
         model: 'claude-haiku-4-5-20251001',
         max_tokens: 800,
-        system: systemPrompt,
+        system: SYSTEM_PROMPT,
         messages: [{ role: 'user', content: userPrompt }],
       }),
     }, 40000);
     console.log('Anthropic response received');
 
     if (!res.ok) {
-      const err = await res.text();
+      var err = await res.text();
       console.log('Anthropic API error:', res.status, err.slice(0, 200));
       return { statusCode: 500, headers, body: JSON.stringify({ error: 'Claude API failed: ' + res.status, detail: err.slice(0, 200) }) };
     }
 
-    const data = await res.json();
-    const rawText = (data.content?.[0]?.text || '').trim();
+    var data = await res.json();
+    var rawText = (data.content?.[0]?.text || '').trim();
 
-    // 7. Parse JSON response
-    let picks;
+    // 6. Parse JSON response
+    var picks;
     try {
       picks = JSON.parse(rawText.replace(/```json\s?|```/g, '').trim());
     } catch(e) {
-      const jsonMatch = rawText.match(/\{[\s\S]*"best_bet"[\s\S]*\}/);
+      var jsonMatch = rawText.match(/\{[\s\S]*"best_bet"[\s\S]*\}/);
       if (jsonMatch) picks = JSON.parse(jsonMatch[0]);
       else return { statusCode: 200, headers, body: JSON.stringify({ error: 'Parse failed', raw: rawText.slice(0, 500) }) };
     }
 
+    // 7. Extract confidence scores
+    var conf = picks.confidence || {};
+
     // 8. Insert picks (only runs if none exist yet — checked above)
     console.log('Saving to Supabase...');
-    const tournamentId = tournament.id;
-    const inserted = [];
+    console.log('Parsed picks:', JSON.stringify(picks, null, 2));
+    var tournamentId = tournament.id;
+    var inserted = [];
 
-    // Helper to insert a pick row
-    async function insertPick(betType, edgeLabel, pick) {
-      const row = {
+    async function insertPick(pickType, edgeLabel, pick, confidence) {
+      var row = {
         tournament_id: tournamentId,
         player_name: pick.player_name || null,
-        pick_type: betType,
-        pick: pick.pick || pick.player_name + ' to ' + betType,
+        pick_type: pickType,
+        pick: pick.pick || pick.player_name + ' to ' + pickType,
         odds: pick.odds || '',
         is_value: true,
         edge_label: edgeLabel,
         analysis: pick.analysis || '',
-        confidence: pick.confidence || 5,
-        units: betType === 'outright' ? 2.0 : betType === 'top5' ? 1.5 : betType === 'longshot' || betType === 'parlay' ? 0.5 : 1.0,
+        confidence: confidence || 5,
+        units: pickType === 'outright' ? 2.0 : pickType === 'value' ? 1.5 : pickType === 'longshot' ? 0.5 : 1.0,
         result: 'pending',
-        sportsbook: pick.sportsbook || 'DraftKings',
+        sportsbook: 'DraftKings',
         created_at: new Date().toISOString(),
       };
-      console.log('Inserting into table: betting_picks');
-      console.log('Attempting Supabase insert, row:', JSON.stringify(row, null, 2));
-      const insertRes = await fetchT(SB_URL + '/rest/v1/betting_picks', {
+      console.log('Inserting:', edgeLabel, row.player_name, row.odds);
+      var insertRes = await fetchT(SB_URL + '/rest/v1/betting_picks', {
         method: 'POST',
         headers: { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY, 'Content-Type': 'application/json', 'Prefer': 'return=representation' },
         body: JSON.stringify(row),
       });
-      console.log('Supabase insert response status:', insertRes.status);
-      const insertBody = await insertRes.text();
-      console.log('Supabase insert response body:', insertBody.slice(0, 500));
-      inserted.push({ pick_type: betType, player: pick.player_name || pick.pick || pick.name });
-      return insertBody;
+      console.log('Insert status:', insertRes.status);
+      var insertBody = await insertRes.text();
+      if (insertRes.status >= 400) console.log('Insert error:', insertBody.slice(0, 300));
+      inserted.push({ pick_type: pickType, edge_label: edgeLabel, player: pick.player_name || pick.pick });
     }
-
-    console.log('Attempting Supabase insert, picks array:', JSON.stringify(picks, null, 2));
 
     // Best bet
     if (picks.best_bet) {
       picks.best_bet.pick = picks.best_bet.player_name + ' to win outright';
-      await insertPick('outright', 'BEST BET', picks.best_bet);
+      await insertPick('outright', 'BEST BET', picks.best_bet, conf.best_bet);
     }
 
-    // Value plays → store as top5 type for frontend compatibility
+    // Value plays — map confidence from confidence.value_1, value_2, value_3
     if (picks.value_plays) {
-      for (const p of picks.value_plays.slice(0, 3)) {
-        p.pick = p.player_name + ' Top 5 finish';
-        await insertPick('top5', 'VALUE', p);
+      var vp = picks.value_plays.slice(0, 3);
+      var vConf = [conf.value_1, conf.value_2, conf.value_3];
+      for (var i = 0; i < vp.length; i++) {
+        vp[i].pick = vp[i].player_name + ' value play';
+        await insertPick('value', 'VALUE', vp[i], vConf[i]);
       }
     }
 
     // Longshot
     if (picks.longshot) {
       picks.longshot.pick = picks.longshot.player_name + ' to win outright';
-      await insertPick('longshot', 'LONGSHOT', picks.longshot);
+      await insertPick('longshot', 'LONGSHOT', picks.longshot, conf.longshot);
     }
 
-    // Fade → store as top10 type with FADE label
+    // Fade
     if (picks.fade) {
       picks.fade.pick = 'Fade ' + picks.fade.player_name;
-      await insertPick('top10', 'FADE', picks.fade);
+      await insertPick('fade', 'FADE', picks.fade, conf.fade);
     }
 
-    console.log('Supabase write complete');
+    console.log('Supabase write complete —', inserted.length, 'picks inserted');
 
     // 9. Notify
     try {
-      const bestName = picks.best_bet?.player_name || 'Unknown';
-      const bestOdds = picks.best_bet?.odds || '';
+      var bestName = picks.best_bet?.player_name || 'Unknown';
+      var bestOdds = picks.best_bet?.odds || '';
       await fetchT('https://ntfy.sh/tourfeed-alerts', {
         method: 'POST',
         headers: { 'Title': 'Picks Updated', 'Priority': '3' },
