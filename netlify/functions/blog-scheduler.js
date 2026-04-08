@@ -163,7 +163,7 @@ ${playerFacts}`,
       title: article.title,
       body: article.body,
       image_url: null,
-      image_headline: article.title.split(/\s+/).slice(0, 8).join(' '),
+      image_headline: article.title, // Will be overwritten by Haiku below
       tournament_id: tournament?.id,
       source_event: 'blog-scheduler-' + key,
       content_hash: hash,

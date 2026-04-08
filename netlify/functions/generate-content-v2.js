@@ -154,9 +154,17 @@ exports.handler = async (event) => {
     if (topicCheck.blocked) {
       return { skipped: true, reason: topicCheck.reason };
     }
-    // Generate short image headline (max 8 words for Canva)
-    var imgHL = (title || body.replace(/<[^>]+>/g,'')).split(/\s+/).slice(0, 8).join(' ');
-    if (imgHL.length > 50) imgHL = imgHL.split(/\s+/).slice(0, 6).join(' ');
+    // Generate image headline via Haiku (bold hook, NOT truncated title)
+    var imgHL = title; // fallback
+    try {
+      var hlRes = await askClaude(
+        'Write a single image headline. Max 8 words. Bold hook that works on an Instagram image. NOT the article title shortened. Think billboard. No quotes around it. Just the headline.',
+        'Article title: ' + title + '\nFirst sentence: ' + body.replace(/<[^>]+>/g, '').split('.')[0] + '\n\nWrite one image headline (max 8 words):',
+        50
+      );
+      var cleaned = hlRes.replace(/[""]/g, '').trim();
+      if (cleaned.length > 3 && cleaned.length < 60) imgHL = cleaned;
+    } catch(e) {}
 
     const imageUrl = null; // Images added manually via admin editor
     const draft = await sb('content_drafts', 'POST', {
