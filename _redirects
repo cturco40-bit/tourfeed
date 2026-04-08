@@ -7,6 +7,7 @@
 /api/blog-scheduler   /.netlify/functions/blog-scheduler  200
 /api/fetch-odds       /.netlify/functions/fetch-odds  200
 /api/generate-content /.netlify/functions/generate-content-v2  200
+/sitemap.xml      /.netlify/functions/sitemap  200
 /tf-admin-drafts  /tf-admin-drafts.html  200
 /article/*  /index.html  200
 /*        /index.html    200

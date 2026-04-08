@@ -24,6 +24,21 @@
   <meta property="og:image" content="https://tourfeed.co/og-image.png">
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
+  <link rel="canonical" href="https://tourfeed.co/">
+  <script type="application/ld+json" id="jsonld-site">
+  {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    "name": "TourFeed",
+    "url": "https://tourfeed.co",
+    "description": "Live golf scores, betting picks, and original analysis across every tour.",
+    "publisher": {
+      "@type": "Organization",
+      "name": "TourFeed",
+      "url": "https://tourfeed.co"
+    }
+  }
+  </script>
   <link rel="icon" type="image/png" href="/favicon.png">
   <link rel="manifest" href="/manifest.json">
   <meta name="theme-color" content="#1A472A">
@@ -858,6 +873,40 @@ function renderNav() {
   }).join('');
 }
 
+function updateSEO(opts) {
+  document.title = opts.title || 'TourFeed \u2014 Your Daily Golf Fix';
+  var desc = document.querySelector('meta[name="description"]');
+  if (desc) desc.setAttribute('content', opts.description || 'Live golf scores, betting picks, and original analysis. PGA Tour, LIV, DP World, LPGA \u2014 all in one feed.');
+  var canon = document.querySelector('link[rel="canonical"]');
+  if (canon) canon.setAttribute('href', opts.canonical || 'https://tourfeed.co/');
+  // Article JSON-LD
+  var existing = document.getElementById('jsonld-article');
+  if (existing) existing.remove();
+  if (opts.article) {
+    var s = document.createElement('script');
+    s.type = 'application/ld+json';
+    s.id = 'jsonld-article';
+    s.textContent = JSON.stringify({
+      '@context': 'https://schema.org',
+      '@type': 'Article',
+      'headline': opts.article.title,
+      'datePublished': opts.article.published_at || '',
+      'author': {'@type': 'Organization', 'name': 'TourFeed'},
+      'publisher': {'@type': 'Organization', 'name': 'TourFeed', 'url': 'https://tourfeed.co'}
+    });
+    document.head.appendChild(s);
+  }
+}
+
+var TAB_SEO = [
+  { title: 'TourFeed \u2014 Your Daily Golf Fix', description: 'Live golf scores, betting picks, and original analysis. PGA Tour, LIV, DP World, LPGA \u2014 all in one feed.' },
+  { title: 'Live Golf Scores \u2014 TourFeed', description: 'Live golf scores and leaderboards. PGA Tour, LIV Golf, DP World Tour, LPGA \u2014 updated every minute.' },
+  { title: 'Golf News & Recaps \u2014 TourFeed', description: 'Breaking golf news, round recaps, and tournament coverage across every tour.' },
+  { title: 'Golf Betting Picks & Odds \u2014 TourFeed', description: 'Masters 2026 betting picks with real sportsbook odds. Outright winners, top 5, head to head, props, and longshots.' },
+  { title: 'Golf Standings \u2014 TourFeed', description: 'FedEx Cup, LIV Golf, DP World Tour, and LPGA standings updated live.' },
+  { title: 'Golf Schedule \u2014 TourFeed', description: 'Full PGA Tour, LIV Golf, DP World Tour, and LPGA schedule with purses and courses.' },
+];
+
 function switchTab(i) {
   currentTab = i;
   expandedCard = null;
@@ -871,6 +920,9 @@ function switchTab(i) {
   renderApp();
   // Update URL
   if (i === 0) history.pushState(null, '', '/');
+  // Update SEO
+  var seo = TAB_SEO[i] || TAB_SEO[0];
+  updateSEO({ title: seo.title, description: seo.description });
   window.scrollTo(0, 0);
 }
 
@@ -1005,7 +1057,8 @@ function openArticleDetail(article) {
 
 function closeArticleDetail() {
   currentArticle = null;
-  document.title = 'TourFeed \u2014 Live Golf Scores, Recaps & Betting Insights';
+  var seo = TAB_SEO[currentTab] || TAB_SEO[0];
+  updateSEO({ title: seo.title, description: seo.description });
   history.pushState(null, '', '/');
   renderApp();
   window.scrollTo(0, 0);
@@ -1018,6 +1071,14 @@ function renderArticleDetail(a) {
   var backLabel = currentTab === 2 ? 'News' : currentTab === 3 ? 'Insights' : currentTab === 4 ? 'Blog' : 'Back';
   var tagText = esc(a.tag || 'NEWS');
   var tClass = tagClass(a.tag);
+  // SEO for article detail
+  var plainDesc = (a.body || a.summary || '').replace(/<[^>]+>/g, '').slice(0, 155).trim();
+  updateSEO({
+    title: a.title + ' \u2014 TourFeed',
+    description: plainDesc,
+    canonical: 'https://tourfeed.co/article/' + (a.slug || ''),
+    article: { title: a.title, published_at: a.published_at }
+  });
 
   var html = '<div class="article-detail">';
 
