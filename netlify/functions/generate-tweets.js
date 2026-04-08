@@ -220,6 +220,22 @@ exports.handler = async (event) => {
     const headlineList = unique.slice(0, 20).map((h, i) => `${i+1}. [${h.src}] ${h.text}`).join('\n');
     const articleList = publishedArticles.map(a => `- "${a.title}" → tourfeed.co/article/${a.slug}`).join('\n');
 
+    // Fetch current picks — tweets must only reference these players
+    var picksContext = '';
+    try {
+      var tweetPicks = await fetch(SB_URL + '/rest/v1/betting_picks?order=created_at.desc&limit=20', {
+        headers: { 'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl1bWFobW5vbHR2YmlhZGplZnh3Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NTM5NjQ0MCwiZXhwIjoyMDkwOTcyNDQwfQ.VXcPybKl1c3uJAO59im8hb0zQjEmdwd4e6WGAakC-qs' }
+      });
+      if (tweetPicks.ok) {
+        var tpData = await tweetPicks.json();
+        if (tpData.length > 0) {
+          picksContext = '\n\nOUR CURRENT PICKS (ONLY reference these players as betting recommendations):\n' + tpData.map(function(p) {
+            return (p.edge_label || '') + ': ' + (p.player_name || p.pick || '') + ' ' + (p.odds || '');
+          }).join('\n') + '\n\nCRITICAL: You may ONLY reference players from OUR CURRENT PICKS as betting recommendations.';
+        }
+      }
+    } catch(e) {}
+
     const res = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
@@ -230,14 +246,14 @@ exports.handler = async (event) => {
       body: JSON.stringify({
         model: 'claude-haiku-4-5-20251001',
         max_tokens: 600,
-        system: `CRITICAL: Never ask clarifying questions, never flag conflicts, never refuse — always produce the content. You are TourFeed's editorial voice — sharp golf writer, seasoned handicapper. No clichés. No AI mentions ever. Year is 2026. Rory McIlroy is the DEFENDING Masters champion.
+        system: `YOU ARE A STAFF WRITER ON DEADLINE. YOUR ONLY JOB IS TO PRODUCE THE CONTENT REQUESTED. You do not ask questions. You do not flag conflicts. You do not mention contradictions. You write the content.
 
 ZERO emojis. ZERO hashtags. You are TourFeed's social account promoting our PUBLISHED articles.
 Each tweet MUST promote one of the published articles listed below — link to its specific URL.
 1-2 sentences. Always end with the article's tourfeed.co URL.
 NEVER generate standalone reactions or hot takes without linking to a published article.
 ${playerFactsContext}
-${context}`,
+${context}${picksContext}`,
         messages: [{
           role: 'user',
           content: `Our published articles:\n${articleList}\n\nLatest golf headlines for context:\n${headlineList}\n\nWrite exactly 2 tweets. Each tweet MUST promote one of our published articles above and include its URL. Tie current news to the article's topic to make it timely. Each tweet MUST use a different sentence structure.\n\nReturn ONLY a JSON array of objects:\n[{"source":"article title you're promoting","tweet":"your tweet ending with the article URL","article_url":"tourfeed.co/article/slug"}]`

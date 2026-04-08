@@ -231,21 +231,13 @@ exports.handler = async (event) => {
   }
 
   try {
-    // 1. Get latest tournament
-    // Always prioritize PGA Tour, then others
-    let tournaments = await sb('tournaments?select=*&tour_id=eq.pga&status=neq.scheduled&order=start_date.desc&limit=1');
-    if (!tournaments.length) tournaments = await sb('tournaments?select=*&status=neq.scheduled&order=start_date.desc&limit=1');
+    // 1. Get active tournament only — must be in_progress
+    let tournaments = await sb('tournaments?select=*&status=eq.in_progress&order=start_date.desc&limit=1');
     if (!tournaments.length) {
-      return { statusCode: 200, headers, body: JSON.stringify({ message: 'No tournaments found' }) };
+      return { statusCode: 200, headers, body: JSON.stringify({ skipped: 'No active tournament in progress' }) };
     }
     const tournament = tournaments[0];
     const tournamentId = tournament.id;
-
-    // Skip if tournament is completed — no more recaps for finished events
-    const tStatus = (tournament.status || '').toLowerCase();
-    if (tStatus === 'final' || tStatus === 'complete' || tStatus === 'closed') {
-      return { statusCode: 200, headers, body: JSON.stringify({ message: 'Tournament ' + tournament.name + ' is completed. No new recaps needed.' }) };
-    }
 
     // 2. Get top 15 leaderboard entries for this tournament
     // Join leaderboard with players to get names
@@ -353,9 +345,20 @@ If PLAYER CONTEXT is not provided for a player, use ONLY leaderboard data. No bi
     const playerNames = validPlayers.map(p => p.players?.name).filter(Boolean);
     const playerContext = await getPlayerContext(playerNames);
     const tournamentContext = await getTournamentContext(tournament.name);
-    const contextBlock = playerContext + tournamentContext + '\n' + FACT_CHECK_RULES;
+    const contextBlock = playerContext + tournamentContext + '\n' + FACT_CHECK_RULES + picksContext;
 
     const results = { tournament: tournament.name, round: currentRound, generated: [], skipped: [] };
+
+    // Fetch current picks from betting_picks — all content must reference these players only
+    var picksContext = '';
+    try {
+      var currentPicks = await sb('betting_picks?tournament_id=eq.' + encodeURIComponent(tournamentId) + '&order=created_at.desc');
+      if (currentPicks.length > 0) {
+        picksContext = '\n\nOUR CURRENT PICKS (ONLY reference these players as betting recommendations):\n' + currentPicks.map(function(p) {
+          return (p.edge_label || '') + ': ' + (p.player_name || p.pick || '') + ' ' + (p.odds || '') + ' — ' + (p.analysis || '');
+        }).join('\n') + '\n\nCRITICAL: You may ONLY reference players that appear in OUR CURRENT PICKS list. Do not mention any other players as betting recommendations. Every pick you write about must match exactly what is in our picks database.';
+      }
+    } catch(e) {}
 
     // --- CONTENT 1: Round Recap Article ---
     try {

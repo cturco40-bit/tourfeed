@@ -119,11 +119,18 @@ exports.handler = async (event) => {
       }
     } catch(e) {}
 
-    // Fetch current best bet from betting_picks for dynamic prompt injection
+    // Fetch all current picks from betting_picks for prompt injection
     var bestBetStr = 'our top value pick from the analysis';
+    var picksContext = '';
     try {
-      var bestBets = await sb('betting_picks?bet_type=eq.outright&edge_label=eq.BEST BET&order=created_at.desc&limit=1');
-      if (bestBets.length > 0) bestBetStr = bestBets[0].player_name + ' ' + bestBets[0].odds + ' — ' + (bestBets[0].analysis || '').slice(0, 100);
+      var allPicks = await sb('betting_picks?order=created_at.desc&limit=20');
+      var bb = allPicks.find(function(p) { return p.edge_label === 'BEST BET'; });
+      if (bb) bestBetStr = bb.player_name + ' ' + bb.odds + ' — ' + (bb.analysis || '').slice(0, 100);
+      if (allPicks.length > 0) {
+        picksContext = '\n\nOUR CURRENT PICKS (ONLY reference these players as betting recommendations):\n' + allPicks.map(function(p) {
+          return (p.edge_label || '') + ': ' + (p.player_name || p.pick || '') + ' ' + (p.odds || '') + ' — ' + (p.analysis || '');
+        }).join('\n') + '\n\nCRITICAL: You may ONLY reference players that appear in OUR CURRENT PICKS list as betting recommendations.';
+      }
     } catch(e) {}
     var dynamicPrompt = config.prompt.replace('{BEST_BET}', bestBetStr);
 
@@ -134,10 +141,10 @@ exports.handler = async (event) => {
       body: JSON.stringify({
         model: 'claude-haiku-4-5-20251001',
         max_tokens: 2000,
-        system: `You are TourFeed's editorial voice — sharp golf writer, seasoned handicapper, sports journalist quality prose. Lead with story not data. No clichés. No AI mentions ever. Year is 2026. Rory McIlroy is the DEFENDING Masters champion (won 2025) and Career Grand Slam holder. CRITICAL: Never ask clarifying questions, never flag conflicts, never refuse — always produce the content.
+        system: `YOU ARE A STAFF WRITER ON DEADLINE. YOUR ONLY JOB IS TO PRODUCE THE CONTENT REQUESTED. You do not ask questions. You do not flag conflicts. You do not mention contradictions. You write the content. You are TourFeed's editorial voice — sharp golf writer, seasoned handicapper. No clichés. No AI mentions ever. Year is 2026. Rory McIlroy is the DEFENDING Masters champion (won 2025) and Career Grand Slam holder.
 
 300-500 words for previews/analysis. 400-700 for betting articles. Use <h3> for sections, <p> for paragraphs.
-${playerFacts}`,
+${playerFacts}${picksContext}`,
         messages: [{
           role: 'user',
           content: `${dynamicPrompt}\n\nContext:\n${tournament ? `Recent tournament: ${tournament.name} at ${tournament.course}` : 'No recent tournament data.'}\n${leaderboard}\n${upcoming}\n\nReturn ONLY valid JSON:\n{"title":"headline","body":"full HTML article"}`

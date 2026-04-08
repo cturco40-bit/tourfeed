@@ -124,9 +124,17 @@ ${tournament.name} odds: ${oddsStr}`;
       else return { statusCode: 200, headers, body: JSON.stringify({ error: 'Parse failed', raw: rawText.slice(0, 500) }) };
     }
 
-    // 8. Insert into betting_picks
+    // 8. Delete old picks for this tournament, then insert new batch
     console.log('Saving to Supabase...');
     const tournamentId = tournament.id;
+
+    // Clear existing picks for this tournament first — one clean set at all times
+    var deleteRes = await fetchT(SB_URL + '/rest/v1/betting_picks?tournament_id=eq.' + encodeURIComponent(tournamentId), {
+      method: 'DELETE',
+      headers: { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY, 'Content-Type': 'application/json' },
+    });
+    console.log('Cleared old picks, status:', deleteRes.status);
+
     const inserted = [];
 
     // Helper to insert a pick row
