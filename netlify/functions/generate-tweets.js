@@ -75,6 +75,30 @@ exports.handler = async (event) => {
   if (!apiKey) return { statusCode: 200, headers, body: JSON.stringify({ skipped: 'No API key' }) };
 
   try {
+    // CHECK 1: If 5+ pending tweet drafts exist, skip this run entirely
+    let pendingCount = 0;
+    try {
+      const pendingRes = await fetch(SB_URL + '/rest/v1/content_drafts?type=like.tweet*&status=eq.pending&select=id', {
+        headers: { 'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl1bWFobW5vbHR2YmlhZGplZnh3Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NTM5NjQ0MCwiZXhwIjoyMDkwOTcyNDQwfQ.VXcPybKl1c3uJAO59im8hb0zQjEmdwd4e6WGAakC-qs' }
+      });
+      if (pendingRes.ok) pendingCount = (await pendingRes.json()).length;
+    } catch(e) {}
+    if (pendingCount >= 5) {
+      return { statusCode: 200, headers, body: JSON.stringify({ skipped: 'Already ' + pendingCount + ' pending tweet drafts — skipping run' }) };
+    }
+
+    // CHECK 2: Only generate tweets that promote PUBLISHED articles
+    let publishedArticles = [];
+    try {
+      const artRes = await fetch(SB_URL + '/rest/v1/articles?select=id,title,slug,tag&order=published_at.desc&limit=10', {
+        headers: { 'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl1bWFobW5vbHR2YmlhZGplZnh3Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NTM5NjQ0MCwiZXhwIjoyMDkwOTcyNDQwfQ.VXcPybKl1c3uJAO59im8hb0zQjEmdwd4e6WGAakC-qs' }
+      });
+      if (artRes.ok) publishedArticles = await artRes.json();
+    } catch(e) {}
+    if (!publishedArticles.length) {
+      return { statusCode: 200, headers, body: JSON.stringify({ skipped: 'No published articles to promote' }) };
+    }
+
     const allHeadlines = [];
 
     // 1. ESPN Golf
@@ -192,8 +216,9 @@ exports.handler = async (event) => {
       }
     } catch(e) {}
 
-    // Feed ALL headlines to AI — let it pick the most interesting ones
+    // Feed headlines + published articles to AI — tweets must promote real articles
     const headlineList = unique.slice(0, 20).map((h, i) => `${i+1}. [${h.src}] ${h.text}`).join('\n');
+    const articleList = publishedArticles.map(a => `- "${a.title}" → tourfeed.co/article/${a.slug}`).join('\n');
 
     const res = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -204,16 +229,18 @@ exports.handler = async (event) => {
       },
       body: JSON.stringify({
         model: 'claude-haiku-4-5-20251001',
-        max_tokens: 1200,
+        max_tokens: 600,
         system: require('./voice') + `
 
-ZERO emojis. ZERO hashtags. You are TourFeed's social account promoting our picks and analysis.
-Each tweet = DIFFERENT topic. 1-2 sentences. Always end with "tourfeed.co" or "Full picks at tourfeed.co" or similar CTA.
+ZERO emojis. ZERO hashtags. You are TourFeed's social account promoting our PUBLISHED articles.
+Each tweet MUST promote one of the published articles listed below — link to its specific URL.
+1-2 sentences. Always end with the article's tourfeed.co URL.
+NEVER generate standalone reactions or hot takes without linking to a published article.
 ${playerFactsContext}
 ${context}`,
         messages: [{
           role: 'user',
-          content: `Latest golf headlines:\n\n${headlineList}\n\nPick the 5 most interesting headlines and write one tweet per topic that ties the news to a BETTING ANGLE or our PICKS on the website. Each tweet should make readers want to check tourfeed.co for the full analysis. Each tweet MUST use a different sentence structure.\n\nReturn ONLY a JSON array of objects:\n[{"source":"headline you're reacting to","tweet":"your picks-focused tweet ending with tourfeed.co CTA"}]`
+          content: `Our published articles:\n${articleList}\n\nLatest golf headlines for context:\n${headlineList}\n\nWrite exactly 2 tweets. Each tweet MUST promote one of our published articles above and include its URL. Tie current news to the article's topic to make it timely. Each tweet MUST use a different sentence structure.\n\nReturn ONLY a JSON array of objects:\n[{"source":"article title you're promoting","tweet":"your tweet ending with the article URL","article_url":"tourfeed.co/article/slug"}]`
         }],
       }),
     });
@@ -235,15 +262,23 @@ ${context}`,
     if (tweets.length === 0) return { statusCode: 200, headers, body: JSON.stringify({ success: true, drafted: 0, reason: 'AI returned empty array', sourcesScraped: [...new Set(allHeadlines.map(h=>h.src))], totalHeadlines: allHeadlines.length }) };
 
     const drafted = [];
+    const MAX_TWEETS = 2;
+    const articleSlugs = publishedArticles.map(a => a.slug);
     for (const item of tweets) {
+      if (drafted.length >= MAX_TWEETS) break;
       // Support both old format (string) and new format ({source, tweet})
       const tweet = typeof item === 'string' ? item : item?.tweet;
       const source = typeof item === 'string' ? 'generate-original' : (item?.source || 'generate-original');
+      const articleUrl = typeof item === 'object' ? item?.article_url : null;
       if (!tweet || tweet.length < 15) continue;
+      // Must contain a tourfeed.co link to a real published article
+      if (!tweet.includes('tourfeed.co/article/')) continue;
+      // Verify the article URL references a real published article
+      const urlMatch = tweet.match(/tourfeed\.co\/article\/([a-z0-9-]+)/);
+      if (urlMatch && !articleSlugs.some(s => urlMatch[1].includes(s) || s.includes(urlMatch[1]))) continue;
       if (/don't have|can't see|I cannot|data limitation|broken leaderboard|no idea who|unknown.*winner|unnamed|mystery.*champion/i.test(tweet)) continue;
       // Dedup against existing drafts
       const words = tweet.toLowerCase().replace(/[^a-z0-9\s]/g, '').split(/\s+/).filter(w => w.length > 3);
-      // Only flag as dupe if 70%+ words match (was 50% — too aggressive)
       let isDupe = recentTexts.some(r => {
         const overlap = words.filter(w => r.includes(w)).length;
         return overlap >= words.length * 0.7;

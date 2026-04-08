@@ -6,18 +6,31 @@
 
 [functions."generate-content-v2"]
   timeout = 60
+  schedule = "*/30 * * * *"
 
 [functions."generate-image"]
   timeout = 30
 
 [functions."news-detector"]
   timeout = 60
+  schedule = "*/10 * * * *"
 
 [functions."generate-tweets"]
   timeout = 60
+  schedule = "0 14 * * *"
 
 [functions."blog-scheduler"]
   timeout = 60
+  schedule = "0 10 * * *"
 
 [functions."publish-approved"]
   timeout = 30
+  schedule = "*/5 * * * *"
+
+[functions."fetch-scores-v2"]
+  timeout = 60
+  schedule = "*/5 * * * *"
+
+[functions."fetch-odds"]
+  timeout = 30
+  schedule = "0 10 * * *"
