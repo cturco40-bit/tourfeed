@@ -206,7 +206,6 @@ ${tournament.name} odds: ${oddsStr}`;
       body: JSON.stringify({
         success: true,
         tournament: tournament.name,
-        batch_id: batchId,
         picks_inserted: inserted.length,
         best_bet: picks.best_bet?.player_name + ' ' + picks.best_bet?.odds,
         picks: inserted,
