@@ -401,13 +401,8 @@ exports.handler = async (event) => {
           totalTweetsThisRun++;
         }
 
-        // Instagram draft
-        var igPlain = (article.body || '').replace(/<[^>]+>/g, '');
-        // Split on sentence-ending periods (not abbreviations like U.S., Dr., etc.)
-        var igSentences = igPlain.split(/(?<=[a-z]{2,}[.!?])\s+(?=[A-Z])/g).filter(function(s) { return s.length > 20; });
-        var igText = igSentences.slice(0, 2).join(' ').trim();
-        if (!igText || igText.length < 30) igText = igPlain.slice(0, 200).trim();
-        var igCaption = igText + '\n\nFull picks and analysis at tourfeed.co';
+        // Instagram draft — promote our picks, not article summary
+        var igCaption = articleTitle + '\n\nWe broke down what this means for the betting market.\n\nFull picks at tourfeed.co';
         await sb('content_drafts', 'POST', {
           type: 'instagram',
           title: articleTitle,

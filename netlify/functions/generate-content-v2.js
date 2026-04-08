@@ -179,18 +179,23 @@ exports.handler = async (event) => {
     });
     await recordHash(hash, type);
 
-    // Generate Instagram draft — promote our picks
+    // Generate Instagram draft — promote our picks only
     if (type.startsWith('article')) {
       var igTiming = type === 'article_recap' ? 'Prepare now, post within 1 hour' :
                      type === 'article_betting' ? 'Prepare today, post tomorrow morning' :
                      type === 'article_news' ? 'Prepare now, post within 2 hours' :
                      'Prepare today, post tomorrow evening';
-      // Extract a compelling pick line from the article
-      var plainBody = body.replace(/<[^>]+>/g, '');
-      var sentences = plainBody.split(/(?<=[a-z]{2,}[.!?])\s+(?=[A-Z])/g).filter(function(s) { return s.length > 20; });
-      var igText = sentences.slice(0, 2).join(' ').trim();
-      if (!igText || igText.length < 30) igText = plainBody.slice(0, 200).trim();
-      var igCaption = igText + '\n\nFull picks and analysis at tourfeed.co';
+      try {
+        var igRaw = await askClaude(
+          'You write Instagram captions for TourFeed, a golf betting picks site. ZERO emojis. ZERO hashtags. 2-3 sentences max. The caption should ONLY promote our picks and analysis — tease a specific pick or value play from the article to make people visit the site. End with "Full picks at tourfeed.co" on its own line.',
+          'Article title: ' + title + '\nArticle type: ' + type + '\n\nWrite an Instagram caption that promotes our picks from this article. Do NOT summarize the article. Tease one specific pick or betting angle that makes people want to check the site.',
+          150
+        );
+        var igCaption = igRaw.trim();
+        if (!igCaption || igCaption.length < 20) igCaption = title + '\n\nFull picks at tourfeed.co';
+      } catch(e) {
+        var igCaption = title + '\n\nFull picks at tourfeed.co';
+      }
       await sb('content_drafts', 'POST', {
         type: 'instagram',
         title: title,

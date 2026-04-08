@@ -169,13 +169,9 @@ ${playerFacts}`,
       content_hash: hash,
     });
 
-    // Instagram draft
+    // Instagram draft — promote our picks, not article summary
     var igTiming = config.type === 'article_betting' ? 'Prepare today, post tomorrow morning' : 'Prepare today, post tomorrow evening';
-    var igPlain = article.body.replace(/<[^>]+>/g, '');
-    var igSentences = igPlain.split(/(?<=[a-z]{2,}[.!?])\s+(?=[A-Z])/g).filter(function(s) { return s.length > 20; });
-    var igText = igSentences.slice(0, 2).join(' ').trim();
-    if (!igText || igText.length < 30) igText = igPlain.slice(0, 200).trim();
-    var igCaption = igText + '\n\nFull picks and analysis at tourfeed.co';
+    var igCaption = article.title + '\n\nOur full breakdown and picks are live.\n\nFull picks at tourfeed.co';
     await sb('content_drafts', 'POST', {
       type: 'instagram',
       title: article.title,
