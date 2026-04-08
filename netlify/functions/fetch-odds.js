@@ -3,14 +3,20 @@ const ODDS_API_KEY = process.env.ODDS_API_KEY || 'e8ed97fe49b8efaf710868b29e1c6c
 const SB_URL = 'https://yumahmnoltvbiadjefxw.supabase.co';
 const SB_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl1bWFobW5vbHR2YmlhZGplZnh3Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NTM5NjQ0MCwiZXhwIjoyMDkwOTcyNDQwfQ.VXcPybKl1c3uJAO59im8hb0zQjEmdwd4e6WGAakC-qs';
 
+function fetchWithTimeout(url, options, ms) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), ms || 8000);
+  return fetch(url, { ...options, signal: controller.signal }).finally(() => clearTimeout(timeout));
+}
+
 async function sb(path, method, body) {
   const hdrs = { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY, 'Content-Type': 'application/json' };
   if (method === 'POST') hdrs['Prefer'] = 'return=minimal';
   if (method === 'PATCH') hdrs['Prefer'] = 'return=minimal';
-  const res = await fetch(SB_URL + '/rest/v1/' + path, {
+  const res = await fetchWithTimeout(SB_URL + '/rest/v1/' + path, {
     method: method || 'GET', headers: hdrs,
     body: body ? JSON.stringify(body) : undefined,
-  });
+  }, 8000);
   if (!method || method === 'GET') { try { return await res.json(); } catch(e) { return []; } }
   return res.ok;
 }
@@ -25,28 +31,33 @@ exports.handler = async (event) => {
     let sportKey = '';
 
     for (const sport of sports) {
+      const url = `https://api.the-odds-api.com/v4/sports/${sport}/odds/?apiKey=${ODDS_API_KEY}&regions=us&markets=outrights&oddsFormat=american`;
+      console.log('Fetching odds:', url.replace(ODDS_API_KEY, 'REDACTED'));
       try {
-        const res = await fetch(
-          `https://api.the-odds-api.com/v4/sports/${sport}/odds/?apiKey=${ODDS_API_KEY}&regions=us&markets=outrights&oddsFormat=american`
-        );
+        const res = await fetchWithTimeout(url, {}, 8000);
         if (res.ok) {
           const data = await res.json();
+          console.log('Odds API response for', sport, ':', data.length, 'events');
           if (data && data.length > 0) {
             oddsData = data[0];
             sportKey = sport;
             break;
           }
+        } else {
+          console.log('Odds API returned', res.status, 'for', sport);
         }
-      } catch(e) { continue; }
+      } catch(e) {
+        console.log('Odds API fetch failed for', sport, ':', e.message);
+        continue;
+      }
     }
 
     if (!oddsData || !oddsData.bookmakers) {
-      return { statusCode: 200, headers, body: JSON.stringify({ message: 'No odds data available' }) };
+      return { statusCode: 200, headers, body: JSON.stringify({ message: 'No odds data available', sports_checked: sports }) };
     }
 
     // Parse odds from all bookmakers
     const playerOdds = {};
-    const targetBooks = { draftkings: 'draftkings_odds', fanduel: 'fanduel_odds', betmgm: 'betmgm_odds' };
 
     for (const book of oddsData.bookmakers) {
       const market = book.markets.find(m => m.key === 'outrights');
@@ -114,7 +125,7 @@ exports.handler = async (event) => {
     }
 
     // Trigger picks regeneration after odds update
-    try { await fetch('https://tourfeed.co/.netlify/functions/generate-picks'); } catch(e) {}
+    try { await fetchWithTimeout('https://tourfeed.co/.netlify/functions/generate-picks', {}, 8000); } catch(e) {}
 
     return {
       statusCode: 200, headers,
@@ -132,6 +143,7 @@ exports.handler = async (event) => {
     };
 
   } catch(err) {
+    console.log('fetch-odds fatal error:', err.message);
     return { statusCode: 500, headers, body: JSON.stringify({ error: err.message }) };
   }
 };
