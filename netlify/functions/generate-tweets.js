@@ -132,9 +132,13 @@ exports.handler = async (event) => {
       return { statusCode: 200, headers, body: JSON.stringify({ skipped: 'No headlines from any source' }) };
     }
 
+    // Filter past tournaments — only Masters or breaking news
+    const PAST = /puerto rico|texas open|valero|houston open|valspar|arnold palmer|players championship|genesis|phoenix|pebble beach|farmers|torrey pines|american express/i;
+    const currentHL = allHeadlines.filter(h => !PAST.test(h.text) || /masters|augusta/i.test(h.text));
+
     // Dedup headlines
     const seen = new Set();
-    const unique = allHeadlines.filter(h => {
+    const unique = currentHL.filter(h => {
       const key = h.text.toLowerCase().slice(0, 50);
       if (seen.has(key)) return false;
       seen.add(key);

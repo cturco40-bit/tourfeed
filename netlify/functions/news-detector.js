@@ -327,10 +327,21 @@ exports.handler = async (event) => {
       return true;
     });
 
-    console.log(`${newItems.length} genuinely new items (after hash + topic + draft dedup)`);
+    // Filter out past tournaments — only Masters or breaking news this week
+    const PAST_TOURNAMENTS = /puerto rico|texas open|valero|houston open|valspar|arnold palmer|players championship|genesis|phoenix|pebble beach|farmers|torrey pines|american express/i;
+    const currentItems = newItems.filter(item => {
+      var t = (item.title + ' ' + (item.desc || '')).toLowerCase();
+      if (PAST_TOURNAMENTS.test(t) && !/masters|augusta/i.test(t)) {
+        console.log('Skipping past tournament:', item.title.slice(0, 50));
+        return false;
+      }
+      return true;
+    });
 
-    // MAX 2 articles per run (each generates up to 2 tweets = max 6 drafts total)
-    const toProcess = newItems.slice(0, 2);
+    console.log(`${currentItems.length} current items (after date filter, from ${newItems.length} new)`);
+
+    // MAX 2 articles per run
+    const toProcess = currentItems.slice(0, 2);
     const results = [];
     let totalTweetsThisRun = 0;
 

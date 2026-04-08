@@ -2,6 +2,11 @@
 // Shared across generate-content-v2, news-detector, blog-scheduler, generate-tweets
 
 const TOURFEED_VOICE = `
+TODAY'S DATE: ${new Date().toLocaleDateString('en-US', {weekday:'long', month:'long', day:'numeric', year:'numeric'})}
+CURRENT FOCUS: The Masters Tournament at Augusta National (April 9-12, 2026)
+Do NOT write about any tournament that has already ended (Texas Open, Puerto Rico Open, etc.) unless referencing results as context for THIS week.
+Only write about the Masters or breaking golf news happening RIGHT NOW.
+
 TOURFEED VOICE — Follow these rules precisely:
 
 TONE: Smart, opinionated, well-researched, occasionally funny — never try-hard. Like The Ringer covers golf. Authoritative and considered, not breathless.
