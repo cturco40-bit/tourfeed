@@ -85,7 +85,7 @@ async function tweet(text, mediaIds) {
   const oauthParams = getOAuthParams();
   oauthParams.oauth_signature = oauthSign('POST', url, oauthParams, apiSecret, accessSecret);
 
-  const body = { text: text.slice(0, 280) };
+  const body = { text: text.length > 280 ? text.slice(0, text.lastIndexOf(' ', 280)) : text };
   if (mediaIds && mediaIds.length > 0) {
     body.media = { media_ids: mediaIds };
   }

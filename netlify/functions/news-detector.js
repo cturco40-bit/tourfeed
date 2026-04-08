@@ -392,7 +392,7 @@ exports.handler = async (event) => {
           if (/arrested|charged|indicted|convicted|guilty|dui|mugshot/i.test(tweet)) continue;
           await sb('content_drafts', 'POST', {
             type: 'tweet_content',
-            body: tweet.slice(0, 250) + ' ' + articleUrl,
+            body: (tweet.length > 250 ? tweet.slice(0, tweet.lastIndexOf(' ', 250)) : tweet) + ' ' + articleUrl,
             article_url: articleUrl,
             source_event: topicKey,
             status: 'pending',

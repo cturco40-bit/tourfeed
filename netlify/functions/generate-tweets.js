@@ -41,7 +41,7 @@ async function postDraft(text, source) {
       },
       body: JSON.stringify({
         type: 'tweet_content',
-        body: text.slice(0, 280),
+        body: text.length > 280 ? text.slice(0, text.lastIndexOf(' ', 280)) : text,
         image_headline: text.split(/[.!?]/)[0].split(/\s+/).slice(0, 7).join(' '),
         source_event: source,
         image_url: imageUrl,

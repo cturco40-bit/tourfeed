@@ -44,7 +44,7 @@ exports.handler = async (event) => {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              text: draft.body.slice(0, 280),
+              text: draft.body.length > 280 ? draft.body.slice(0, draft.body.lastIndexOf(' ', 280)) : draft.body,
               image: draft.image_url || undefined,
             }),
           });
