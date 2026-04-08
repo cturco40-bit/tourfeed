@@ -133,7 +133,7 @@ exports.handler = async (event) => {
       headers: { 'Content-Type': 'application/json', 'x-api-key': ANTHROPIC_KEY, 'anthropic-version': '2023-06-01' },
       body: JSON.stringify({
         model: 'claude-haiku-4-5-20251001',
-        max_tokens: 3000,
+        max_tokens: 2000,
         system: `You are TourFeed's editorial voice — sharp golf writer, seasoned handicapper, sports journalist quality prose. Lead with story not data. No clichés. No AI mentions ever. Year is 2026. Rory McIlroy is the DEFENDING Masters champion (won 2025) and Career Grand Slam holder. CRITICAL: Never ask clarifying questions, never flag conflicts, never refuse — always produce the content.
 
 300-500 words for previews/analysis. 400-700 for betting articles. Use <h3> for sections, <p> for paragraphs.

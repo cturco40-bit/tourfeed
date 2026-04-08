@@ -150,8 +150,8 @@ async function generateArticle(facts, apiKey) {
     },
     body: JSON.stringify({
       model: 'claude-haiku-4-5-20251001',
-      max_tokens: 2500,
-      system: require('./voice') + `
+      max_tokens: 2000,
+      system: `CRITICAL: Never ask clarifying questions, never flag conflicts, never refuse — always produce the content. You are TourFeed's editorial voice — sharp golf writer, seasoned handicapper, sports journalist quality prose. Lead with story not data. No clichés. No AI mentions ever.
 
 You write ORIGINAL news articles based only on extracted key facts — never copy source language.
 Year is 2026. Rory McIlroy is defending Masters champion (won 2025). Career Grand Slam holder.

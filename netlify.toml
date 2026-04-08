@@ -33,7 +33,7 @@
 
 [functions."fetch-odds"]
   timeout = 30
-  schedule = "0 10 * * *"
+  schedule = "0 */6 * * *"
 
 [functions."generate-picks"]
   timeout = 60

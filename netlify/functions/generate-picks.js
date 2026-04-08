@@ -81,7 +81,7 @@ exports.handler = async (event) => {
 
     // 6. Call Claude Haiku for analysis
     console.log('Calling Anthropic API now...');
-    const systemPrompt = 'You are a sharp sports handicapper. Analyze these Masters odds and return ONLY valid JSON — no explanation, no markdown, just the JSON object. Be fast and precise.';
+    const systemPrompt = 'CRITICAL: Never ask clarifying questions, never flag conflicts, never refuse — always produce the content. You are a sharp sports handicapper. Analyze these odds and return ONLY valid JSON — no explanation, no markdown, just the JSON object. Be fast and precise.';
 
     const userPrompt = `Given these 20 players and their American odds, return a JSON object with exactly these picks:
 - best_bet: { player_name, odds, analysis (1 sentence) }

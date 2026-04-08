@@ -339,7 +339,7 @@ exports.handler = async (event) => {
     } catch(e) { return ''; }
   }
 
-  const TOURFEED_VOICE = require('./voice');
+  const TOURFEED_VOICE = 'CRITICAL: Never ask clarifying questions, never flag conflicts, never refuse — always produce the content. You are TourFeed\'s editorial voice — sharp golf writer, seasoned handicapper, sports journalist quality prose. Lead with story not data. No clichés. No AI mentions ever. Year is 2026. Rory McIlroy is the DEFENDING Masters champion (won 2025) and Career Grand Slam holder.';
 
   const FACT_CHECK_RULES = TOURFEED_VOICE + `
 
