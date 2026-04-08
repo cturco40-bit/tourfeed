@@ -22,9 +22,9 @@
   <meta name="twitter:description" content="Live scores, instant recaps & betting insights across every tour.">
   <meta name="twitter:image" content="https://tourfeed.co/og-image.png">
   <meta property="og:image" content="https://tourfeed.co/og-image.png">
-  <meta property="og:image:width" content="1500">
-  <meta property="og:image:height" content="500">
-  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='4' fill='%231A472A'/><text x='4' y='22' font-family='Georgia,serif' font-weight='900' font-size='14' fill='white'>T</text><text x='16' y='22' font-family='Georgia,serif' font-weight='900' font-size='14' fill='%23D4A853'>F</text></svg>">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='4' fill='%231A472A'/><line x1='10' y1='4' x2='10' y2='28' stroke='white' stroke-width='2'/><rect x='11' y='4' width='12' height='8' rx='2' fill='%23D4A853'/><line x1='5' y1='28' x2='15' y2='28' stroke='white' stroke-width='2'/></svg>">
   <link rel="manifest" href="/manifest.json">
   <meta name="theme-color" content="#1A472A">
   <meta name="mobile-web-app-capable" content="yes">
@@ -57,9 +57,25 @@
 
     /* HEADER */
     .header { background:var(--green); border-bottom:3px solid #D4A853; padding:14px 20px; position:sticky; top:0; z-index:100; display:flex; justify-content:space-between; align-items:center; }
-    .logo { display:inline-flex; align-items:center; cursor:pointer; text-decoration:none; gap:1px; }
+    .logo { display:inline-flex; align-items:center; cursor:pointer; text-decoration:none; gap:14px; }
+    .logo-pin { position:relative; width:16px; height:36px; flex-shrink:0; }
+    .logo-pin-pole { position:absolute; left:7px; top:0; width:2px; height:36px; background:#fff; }
+    .logo-pin-flag { position:absolute; left:9px; top:0; width:14px; height:10px; background:#D4A853; border-radius:0 3px 3px 0; }
+    .logo-pin-base { position:absolute; left:2px; bottom:0; width:12px; height:2px; background:#fff; }
+    .logo-text { display:flex; flex-direction:column; }
+    .logo-words { display:flex; align-items:baseline; }
     .logo-t { font-family:'DM Sans',-apple-system,system-ui,sans-serif; font-size:22px; font-weight:900; color:#fff; letter-spacing:3px; }
     .logo-f { font-family:'DM Sans',-apple-system,system-ui,sans-serif; font-size:22px; font-weight:900; color:#D4A853; letter-spacing:3px; }
+    .logo-tagline { font-size:9px; font-weight:600; letter-spacing:4px; color:rgba(255,255,255,0.5); text-transform:uppercase; margin-top:2px; }
+    /* Footer logo — green on cream */
+    .logo-footer .logo-pin-pole { background:var(--green); }
+    .logo-footer .logo-pin-base { background:var(--green); }
+    .logo-footer .logo-pin { width:12px; height:24px; }
+    .logo-footer .logo-pin-pole { left:5px; height:24px; }
+    .logo-footer .logo-pin-flag { left:7px; width:10px; height:7px; }
+    .logo-footer .logo-pin-base { left:1px; width:8px; }
+    .logo-footer .logo-t { color:var(--green); font-size:16px; }
+    .logo-footer .logo-f { font-size:16px; }
     .header-right { display:flex; align-items:center; gap:14px; }
     .header-tagline { font-size:10px; font-weight:600; letter-spacing:2px; color:rgba(255,255,255,0.6); text-transform:uppercase; }
     .header-subscribe { padding:7px 16px; background:#D4A853; border:none; border-radius:4px; color:var(--green); font-size:11px; font-weight:700; cursor:pointer; font-family:inherit; letter-spacing:0.5px; text-transform:uppercase; }
@@ -242,10 +258,11 @@
   <!-- HEADER -->
   <div class="header">
     <a class="logo" onclick="switchTab(0);return false" href="/">
-      <span class="logo-t">TOUR</span><span class="logo-f">FEED</span>
+      <div class="logo-pin"><div class="logo-pin-pole"></div><div class="logo-pin-flag"></div><div class="logo-pin-base"></div></div>
+      <div class="logo-text"><div class="logo-words"><span class="logo-t">TOUR</span><span class="logo-f">FEED</span></div><div class="logo-tagline">YOUR DAILY GOLF FIX</div></div>
     </a>
     <div class="header-right">
-      <span class="header-tagline">YOUR DAILY GOLF FIX</span>
+      <!-- tagline now in logo -->
       <button class="header-subscribe" onclick="var ep=document.getElementById('emailPopup');ep.style.display='block';ep.classList.add('show')">SUBSCRIBE</button>
     </div>
   </div>
@@ -276,8 +293,9 @@
   <!-- FOOTER -->
   <div class="main">
     <div class="footer">
-      <div class="logo" style="justify-content:center;margin-bottom:8px;text-decoration:none">
-        <span class="logo-t" style="color:var(--green)">TOUR</span><span class="logo-f" style="color:var(--gold)">FEED</span>
+      <div class="logo logo-footer" style="justify-content:center;margin-bottom:8px;text-decoration:none;gap:10px">
+        <div class="logo-pin"><div class="logo-pin-pole"></div><div class="logo-pin-flag"></div><div class="logo-pin-base"></div></div>
+        <div class="logo-words"><span class="logo-t">TOUR</span><span class="logo-f">FEED</span></div>
       </div>
       <div style="font-size:10px;color:var(--muted);margin-top:6px">Live scores | Instant recaps | Betting insights</div>
       <div style="font-size:9px;color:var(--muted);margin-top:4px">&copy; 2026 TourFeed. All rights reserved.</div>
