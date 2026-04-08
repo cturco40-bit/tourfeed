@@ -1358,8 +1358,8 @@ function renderHome() {
   } else {
     // Quick picks — pull from betting_picks (single source of truth)
     var qpBB = _bettingPicks && _bettingPicks !== 'loading' ? (_bettingPicks.find(function(p) { return p.edge_label === 'BEST BET'; }) || null) : null;
-    var qpVal = _bettingPicks && _bettingPicks !== 'loading' ? (_bettingPicks.find(function(p) { return p.bet_type === 'top5'; }) || null) : null;
-    var qpLS = _bettingPicks && _bettingPicks !== 'loading' ? (_bettingPicks.find(function(p) { return p.bet_type === 'longshot'; }) || null) : null;
+    var qpVal = _bettingPicks && _bettingPicks !== 'loading' ? (_bettingPicks.find(function(p) { return p.edge_label === 'VALUE'; }) || null) : null;
+    var qpLS = _bettingPicks && _bettingPicks !== 'loading' ? (_bettingPicks.find(function(p) { return p.edge_label === 'LONGSHOT'; }) || null) : null;
     if (qpBB || qpVal || qpLS) {
       html += '<div style="display:flex;gap:12px;flex-wrap:wrap">';
       if (qpBB) html += '<div style="flex:1;min-width:150px;padding:12px;background:var(--green-fade);border:1px solid var(--border);border-radius:4px"><div style="font-size:9px;font-weight:700;letter-spacing:1px;color:var(--green);margin-bottom:4px">BEST BET</div><div style="font-size:14px;font-weight:800;color:var(--text)">' + esc(qpBB.player_name) + '</div><div style="font-size:18px;font-weight:900;color:var(--green);margin-top:4px">' + esc(qpBB.odds) + '</div><div style="font-size:10px;color:var(--muted);margin-top:2px">' + esc((qpBB.analysis || '').slice(0, 60)) + '</div></div>';
@@ -1806,27 +1806,9 @@ function renderInsights() {
   // Season record removed — tracking begins when picks resolve
   html += '</div>';
 
-  // ━━ MODE B: NO LIVE TOURNAMENT — MASTERS WEEK CONTENT ━━
+  // ━━ MODE B: NO LIVE TOURNAMENT — PICKS FROM BETTING_PICKS TABLE ━━
   if (!isLive) {
-    // Masters Preview Header
-    html += '<div style="border-left:3px solid var(--green);background:var(--card);border:1px solid var(--border);border-radius:4px;padding:16px;margin-bottom:14px">';
-    html += '<div style="font-family:\'Playfair Display\',Georgia,serif;font-size:18px;font-weight:800;color:var(--text)">The Masters &mdash; April 9-12, 2026</div>';
-    html += '<div style="font-size:11px;color:var(--muted);margin-top:4px">Augusta National Golf Club &middot; Par 72 &middot; 7,545 yards &middot; $22M purse</div>';
-    html += '<div style="font-size:11px;color:var(--dim);margin-top:4px">Defending Champion: Rory McIlroy &middot; Favorite: Scottie Scheffler</div>';
-    html += '<div style="font-size:10px;color:var(--muted);margin-top:8px;font-style:italic">Live odds, picks, and props activate Thursday when Round 1 begins</div>';
-    html += '</div>';
-
-    // Pre-Tournament Favorites Table
-    // Try to load real odds from Supabase (fetched by fetch-odds function)
-    if (!window._realOdds) {
-      window._realOdds = 'loading';
-      sb.from('player_odds').select('*').order('best_odds', {ascending:true}).limit(15).then(function(res) {
-        if (res.data && res.data.length > 0) { window._realOdds = res.data; renderApp(); }
-        else { window._realOdds = null; }
-      }).catch(function() { window._realOdds = null; });
-    }
-
-    // Load AI-generated picks from betting_picks (single source of truth)
+    // Load picks from betting_picks if not already loaded
     if (!_bettingPicks) {
       _bettingPicks = 'loading';
       sb.from('betting_picks').select('*').order('created_at', {ascending:false}).limit(30).then(function(res) {
@@ -1834,39 +1816,83 @@ function renderInsights() {
         else { _bettingPicks = null; }
       }).catch(function() { _bettingPicks = null; });
     }
-    // Helper to find a pick by type/label
-    function findPick(type, label) {
-      if (!_bettingPicks || _bettingPicks === 'loading') return null;
-      if (label) return _bettingPicks.find(function(p) { return p.bet_type === type && p.edge_label === label; });
-      return _bettingPicks.find(function(p) { return p.bet_type === type; });
-    }
-    function findPicks(type) {
-      if (!_bettingPicks || _bettingPicks === 'loading') return [];
-      return _bettingPicks.filter(function(p) { return p.bet_type === type; });
+
+    // Group picks by edge_label
+    var picks = _bettingPicks && _bettingPicks !== 'loading' ? _bettingPicks : [];
+    var bestBets = picks.filter(function(p) { return p.edge_label === 'BEST BET'; });
+    var valuePlays = picks.filter(function(p) { return p.edge_label === 'VALUE'; });
+    var longshots = picks.filter(function(p) { return p.edge_label === 'LONGSHOT'; });
+    var fades = picks.filter(function(p) { return p.edge_label === 'FADE'; });
+    var hasPicks = picks.length > 0;
+
+    // Pick card renderer
+    function renderPickCard(pick, accentColor, badgeBg) {
+      var c = accentColor || 'var(--green)';
+      var bg = badgeBg || 'var(--green-fade)';
+      var h = '';
+      h += '<div style="background:var(--card);border:1px solid var(--border);border-left:4px solid ' + c + ';border-radius:0 4px 4px 0;padding:16px;margin-bottom:8px">';
+      h += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">';
+      h += '<span style="font-size:9px;font-weight:800;letter-spacing:1px;padding:3px 8px;border-radius:2px;color:' + c + ';background:' + bg + '">' + esc(pick.edge_label || '') + '</span>';
+      if (pick.units) h += '<span style="font-size:9px;font-weight:700;padding:3px 8px;border-radius:2px;color:var(--gold);background:var(--gold-fade)">' + pick.units + 'u</span>';
+      if (pick.sportsbook) h += '<span style="font-size:9px;color:var(--muted)">' + esc(pick.sportsbook) + '</span>';
+      h += '</div>';
+      if (pick.player_name) {
+        h += '<div style="font-family:Playfair Display,Georgia,serif;font-size:18px;font-weight:900;color:var(--text);margin-bottom:4px">' + esc(pick.player_name);
+        if (pick.odds) h += ' <span style="color:' + c + '">' + esc(pick.odds) + '</span>';
+        h += '</div>';
+      } else if (pick.pick) {
+        h += '<div style="font-family:Playfair Display,Georgia,serif;font-size:16px;font-weight:800;color:var(--text);margin-bottom:4px">' + esc(pick.pick);
+        if (pick.odds) h += ' <span style="color:' + c + '">' + esc(pick.odds) + '</span>';
+        h += '</div>';
+      }
+      if (pick.analysis) h += '<div style="font-size:13px;color:var(--dim);line-height:1.7">' + esc(pick.analysis) + '</div>';
+      if (pick.confidence) h += '<div style="font-size:10px;color:' + c + ';font-weight:700;margin-top:8px">Confidence: ' + pick.confidence + '/10</div>';
+      h += '</div>';
+      return h;
     }
 
-    // TOURFEED BEST BET card — pulls from betting_picks (single source of truth)
-    var bbPick = findPick('outright', 'BEST BET');
-    if (bbPick) {
-      html += '<div style="border-left:4px solid var(--green);background:var(--card);border:1px solid var(--border);border-radius:0 4px 4px 0;padding:16px;margin-bottom:16px;border-left:4px solid var(--green)">';
-      html += '<div style="font-size:10px;font-weight:800;letter-spacing:2px;color:var(--green);margin-bottom:8px">TOURFEED BEST BET</div>';
-      html += '<div style="font-family:Playfair Display,Georgia,serif;font-size:20px;font-weight:900;color:var(--text);margin-bottom:4px">' + esc(bbPick.player_name) + ' <span style="color:var(--green)">' + esc(bbPick.odds) + '</span></div>';
-      html += '<div style="font-size:11px;color:var(--muted);margin-bottom:8px">Best odds via ' + esc(bbPick.sportsbook) + ' &middot; Model: ' + esc(bbPick.model_probability) + '% vs implied ' + esc(bbPick.implied_probability) + '%</div>';
-      html += '<div style="font-size:13px;color:var(--dim);line-height:1.7;margin-bottom:12px">' + esc(bbPick.analysis) + '</div>';
-      html += '<div style="display:flex;gap:8px;flex-wrap:wrap">';
-      html += '<span style="padding:6px 12px;background:var(--green-fade);border-radius:4px;font-size:11px;font-weight:700;color:var(--green)">Confidence: ' + (bbPick.confidence || 8) + '/10</span>';
-      html += '<span style="padding:6px 12px;background:var(--gold-fade);border-radius:4px;font-size:11px;font-weight:700;color:var(--gold)">' + (bbPick.units || 2) + 'u</span>';
-      html += '</div></div>';
-    } else if (_bettingPicks === 'loading') {
-      html += '<div style="padding:16px;color:var(--muted);font-style:italic">Loading picks...</div>';
+    if (_bettingPicks === 'loading') {
+      html += '<div style="padding:40px;text-align:center;color:var(--muted);font-style:italic">Loading picks...</div>';
+    } else if (!hasPicks) {
+      html += '<div style="padding:40px;text-align:center;color:var(--muted);font-style:italic">Picks generating from live sportsbook odds — check back soon.</div>';
     } else {
-      html += '<div style="padding:16px;color:var(--muted);font-style:italic">Best bet picks generating — check back soon.</div>';
+
+      // ── BEST BET ──
+      if (bestBets.length > 0) {
+        html += '<div style="font-family:Playfair Display,Georgia,serif;font-size:13px;font-weight:700;color:#fff;letter-spacing:2px;text-transform:uppercase;background:var(--green);padding:8px 12px;border-radius:4px;margin-bottom:8px">TOURFEED BEST BET</div>';
+        bestBets.forEach(function(p) { html += renderPickCard(p, 'var(--green)', 'var(--green-fade)'); });
+      }
+
+      // ── VALUE PLAYS ──
+      if (valuePlays.length > 0) {
+        html += '<div style="font-family:Playfair Display,Georgia,serif;font-size:13px;font-weight:700;color:#fff;letter-spacing:2px;text-transform:uppercase;background:var(--green-light);padding:8px 12px;border-radius:4px;margin:16px 0 8px">VALUE PLAYS</div>';
+        valuePlays.forEach(function(p) { html += renderPickCard(p, 'var(--green)', 'var(--green-fade)'); });
+      }
+
+      // ── LONGSHOT ──
+      if (longshots.length > 0) {
+        html += '<div style="font-family:Playfair Display,Georgia,serif;font-size:13px;font-weight:700;color:#fff;letter-spacing:2px;text-transform:uppercase;background:#3A6EA5;padding:8px 12px;border-radius:4px;margin:16px 0 8px">LONGSHOT</div>';
+        longshots.forEach(function(p) { html += renderPickCard(p, '#3A6EA5', 'rgba(58,110,165,0.08)'); });
+      }
+
+      // ── FADE ──
+      if (fades.length > 0) {
+        html += '<div style="font-family:Playfair Display,Georgia,serif;font-size:13px;font-weight:700;color:#fff;letter-spacing:2px;text-transform:uppercase;background:var(--red,#c0392b);padding:8px 12px;border-radius:4px;margin:16px 0 8px">FADE</div>';
+        fades.forEach(function(p) { html += renderPickCard(p, 'var(--red,#c0392b)', 'rgba(192,57,43,0.08)'); });
+      }
+
+    } // end hasPicks
+
+    // ── PRE-TOURNAMENT ODDS TABLE ──
+    if (!window._realOdds) {
+      window._realOdds = 'loading';
+      sb.from('player_odds').select('*').order('best_odds', {ascending:true}).limit(15).then(function(res) {
+        if (res.data && res.data.length > 0) { window._realOdds = res.data; renderApp(); }
+        else { window._realOdds = null; }
+      }).catch(function() { window._realOdds = null; });
     }
-
-    html += '<div style="font-size:10px;font-weight:800;letter-spacing:2px;color:var(--gold);margin-bottom:8px">PRE-TOURNAMENT ODDS</div>';
-
-    // Use real odds if available, otherwise fall back to hardcoded
     if (window._realOdds && window._realOdds !== 'loading' && window._realOdds.length > 0) {
+      html += '<div style="font-size:10px;font-weight:800;letter-spacing:2px;color:var(--gold);margin:16px 0 8px">PRE-TOURNAMENT ODDS</div>';
       window._realOdds.slice(0, 10).forEach(function(o, i) {
         var odds = o.best_odds > 0 ? '+' + o.best_odds : '' + o.best_odds;
         html += '<div style="background:var(--card);border:1px solid var(--border);border-radius:4px;padding:10px 14px;margin-bottom:4px;display:flex;align-items:center">';
@@ -1878,131 +1904,6 @@ function renderInsights() {
         html += '</div>';
       });
       html += '<div style="font-size:9px;color:var(--muted);margin-top:4px;font-style:italic">Odds via DraftKings, FanDuel, BetMGM &middot; Updated ' + (window._realOdds[0]?.updated_at ? timeAgo(window._realOdds[0].updated_at) : 'recently') + '</div>';
-    } else {
-    var preFavs = [
-      {pos:1,name:'Scottie Scheffler',odds:'+500',label:'FAVORITE',lc:'var(--gold)',note:'World #1. Two-time Masters champion. Won the Open Championship last year.'},
-      {pos:2,name:'Rory McIlroy',odds:'+900',label:'DEFENDING',lc:'var(--green)',note:'Defending champion. Completed the career Grand Slam here last year.'},
-      {pos:3,name:'Xander Schauffele',odds:'+1000',label:'CONTENDER',lc:'var(--green)',note:'Won the PGA and Open in 2024. Elite ball-striker.'},
-      {pos:4,name:'Bryson DeChambeau',odds:'+1400',label:'HOT',lc:'var(--red)',note:'Back-to-back LIV wins. 2020 US Open champion. Red hot form.'},
-      {pos:5,name:'Jon Rahm',odds:'+1600',label:'PAST CHAMP',lc:'var(--gold)',note:'Won the 2023 Masters. Knows Augusta. LIV Golf.'},
-      {pos:6,name:'Collin Morikawa',odds:'+2000',label:'CONTENDER',lc:'var(--green)',note:'Two-time major winner. Playing through a back injury.'},
-      {pos:7,name:'Ludvig Aberg',odds:'+2000',label:'DEBUT',lc:'#4A90D9',note:'First Masters appearance. One of the most talented young players in golf.'},
-      {pos:8,name:'Viktor Hovland',odds:'+2500',label:'VALUE',lc:'var(--green)',note:'Elite iron play that Augusta rewards. Undervalued.'},
-      {pos:9,name:'Patrick Cantlay',odds:'+2800',label:'SLEEPER',lc:'var(--muted)',note:'Putter has been on fire. Quiet but dangerous.'},
-      {pos:10,name:'Tommy Fleetwood',odds:'+3000',label:'SLEEPER',lc:'var(--muted)',note:'Consistently contends in majors. Due for a breakthrough.'},
-    ];
-    preFavs.forEach(function(f) {
-      var imp = (100 / (parseInt(f.odds.replace('+','')) + 100) * 100).toFixed(1);
-      html += '<div style="background:var(--card);border:1px solid var(--border);border-radius:4px;padding:10px 14px;margin-bottom:4px;display:flex;align-items:center">';
-      html += '<div style="width:24px;font-size:12px;font-weight:700;color:' + (f.pos===1?'var(--gold)':'var(--muted)') + '">' + f.pos + '</div>';
-      html += '<div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:' + (f.pos<=3?'800':'600') + ';color:var(--text)">' + f.name + '</div>';
-      html += '<div style="font-size:10px;color:var(--muted)">' + f.note + '</div></div>';
-      html += '<span style="font-size:8px;font-weight:700;letter-spacing:1px;padding:2px 6px;border-radius:2px;color:' + f.lc + ';background:' + f.lc + '12;margin-right:8px;flex-shrink:0">' + f.label + '</span>';
-      html += '<div style="text-align:right;flex-shrink:0"><div style="font-size:16px;font-weight:900;color:var(--green)">' + f.odds + '</div>';
-      html += '<div style="font-size:9px;color:var(--muted)">' + imp + '%</div></div>';
-      html += '</div>';
-    });
-
-    } // end else (hardcoded fallback)
-
-    // ── FULL BETTING CARD — all from betting_picks ──
-    var t5Data = findPicks('top5');
-    var t10Data = findPicks('top10');
-    var h2hData = findPicks('matchup');
-    var propsData = findPicks('prop');
-    var lsData = findPick('longshot');
-    var parlayData = findPicks('parlay');
-    var hasPicks = t5Data.length > 0 || t10Data.length > 0;
-
-    if (hasPicks) {
-    // A) TOP 5 FINISH
-    if (t5Data.length > 0) {
-      html += '<div style="font-size:10px;font-weight:800;letter-spacing:2px;color:var(--green);margin:16px 0 8px">TOP 5 FINISH</div>';
-      t5Data.slice(0, 2).forEach(function(p) {
-        html += '<div style="background:var(--card);border:1px solid var(--border);border-radius:4px;padding:14px;margin-bottom:6px">';
-        html += '<span class="tag tag-betting" style="font-size:9px">TOP 5 FINISH</span>';
-        html += '<div style="font-family:Playfair Display,Georgia,serif;font-size:16px;font-weight:800;color:var(--text);margin-top:6px">' + esc(p.player_name) + ' <span style="color:var(--green)">' + esc(p.odds) + '</span></div>';
-        html += '<div style="font-size:12px;color:var(--muted);line-height:1.5;margin-top:4px">' + esc(p.analysis) + '</div>';
-        html += '<div style="font-size:10px;color:var(--green);font-weight:700;margin-top:6px">Confidence: ' + (p.confidence || 7) + '/10 &middot; via ' + esc(p.sportsbook) + '</div>';
-        html += '</div>';
-      });
-    }
-
-    // B) TOP 10 FINISH
-    if (t10Data.length > 0) {
-      html += '<div style="font-size:10px;font-weight:800;letter-spacing:2px;color:var(--green);margin:16px 0 8px">TOP 10 FINISH</div>';
-      t10Data.slice(0, 2).forEach(function(p) {
-        html += '<div style="background:var(--card);border:1px solid var(--border);border-radius:4px;padding:14px;margin-bottom:6px">';
-        html += '<span class="tag tag-recap" style="font-size:9px">TOP 10 FINISH</span>';
-        html += '<div style="font-family:Playfair Display,Georgia,serif;font-size:16px;font-weight:800;color:var(--text);margin-top:6px">' + esc(p.player_name) + ' <span style="color:var(--green)">' + esc(p.odds) + '</span></div>';
-        html += '<div style="font-size:12px;color:var(--muted);line-height:1.5;margin-top:4px">' + esc(p.analysis) + '</div>';
-        html += '<div style="font-size:10px;color:var(--green);font-weight:700;margin-top:6px">Confidence: ' + (p.confidence || 6) + '/10 &middot; via ' + esc(p.sportsbook) + '</div>';
-        html += '</div>';
-      });
-    }
-
-    // C) HEAD TO HEAD MATCHUPS
-    if (h2hData.length > 0) {
-      html += '<div style="font-size:10px;font-weight:800;letter-spacing:2px;color:var(--gold);margin:16px 0 8px">HEAD TO HEAD MATCHUPS</div>';
-      h2hData.slice(0, 3).forEach(function(m) {
-        var meta = typeof m.meta === 'string' ? JSON.parse(m.meta || '{}') : (m.meta || {});
-        html += '<div style="background:var(--card);border:1px solid var(--border);border-radius:4px;padding:14px;margin-bottom:6px">';
-        html += '<span class="tag tag-analysis" style="font-size:9px">HEAD TO HEAD</span>';
-        html += '<div style="font-family:Playfair Display,Georgia,serif;font-size:16px;font-weight:800;color:var(--text);margin-top:6px">' + esc(m.player_name) + ' over ' + esc(meta.opponent || '') + ' <span style="color:var(--green)">' + esc(m.odds) + '</span></div>';
-        html += '<div style="font-size:12px;color:var(--muted);line-height:1.5;margin-top:4px">' + esc(m.analysis) + '</div>';
-        html += '<div style="font-size:10px;color:var(--gold);font-weight:700;margin-top:6px">Confidence: ' + (m.confidence || 7) + '/10</div>';
-        html += '</div>';
-      });
-    }
-
-    // D) PROPS
-    if (propsData.length > 0) {
-      html += '<div style="font-size:10px;font-weight:800;letter-spacing:2px;color:var(--gold);margin:16px 0 8px">PROPS</div>';
-      propsData.slice(0, 3).forEach(function(p) {
-        var meta = typeof p.meta === 'string' ? JSON.parse(p.meta || '{}') : (p.meta || {});
-        var title = meta.prop_description || p.pick || '';
-        html += '<div style="background:var(--card);border:1px solid var(--border);border-radius:4px;padding:14px;margin-bottom:6px">';
-        html += '<span class="tag tag-betting" style="font-size:9px">PROP</span>';
-        html += '<div style="font-family:Playfair Display,Georgia,serif;font-size:16px;font-weight:800;color:var(--text);margin-top:6px">' + esc(title) + ' <span style="color:var(--green)">' + esc(p.odds) + '</span></div>';
-        html += '<div style="font-size:12px;color:var(--muted);line-height:1.5;margin-top:4px">' + esc(p.analysis) + '</div>';
-        html += '<div style="font-size:10px;color:var(--gold);font-weight:700;margin-top:6px">Confidence: ' + (p.confidence || 6) + '/10</div>';
-        html += '</div>';
-      });
-    }
-
-    // E) LONGSHOT OF THE WEEK
-    if (lsData) {
-      html += '<div style="font-size:10px;font-weight:800;letter-spacing:2px;color:#3A6EA5;margin:16px 0 8px">LONGSHOT OF THE WEEK</div>';
-      html += '<div style="background:var(--card);border:1px solid var(--border);border-left:4px solid #3A6EA5;border-radius:0 4px 4px 0;padding:16px;margin-bottom:6px">';
-      html += '<span class="tag" style="background:#3A6EA5;font-size:9px">LONGSHOT</span>';
-      html += '<div style="font-family:Playfair Display,Georgia,serif;font-size:18px;font-weight:900;color:var(--text);margin-top:6px">' + esc(lsData.player_name) + ' <span style="color:#3A6EA5">' + esc(lsData.odds) + '</span></div>';
-      html += '<div style="font-size:13px;color:var(--dim);line-height:1.7;margin-top:6px">' + esc(lsData.analysis) + '</div>';
-      html += '<div style="display:flex;gap:8px;margin-top:8px"><span style="padding:6px 12px;background:rgba(58,110,165,0.08);border-radius:4px;font-size:11px;font-weight:700;color:#3A6EA5">Confidence: ' + (lsData.confidence || 4) + '/10</span><span style="padding:6px 12px;background:var(--gold-fade);border-radius:4px;font-size:11px;font-weight:700;color:var(--gold)">' + (lsData.units || 0.5) + 'u</span></div>';
-      html += '</div>';
-    }
-
-    // F) PARLAY BUILDER
-    if (parlayData.length > 0) {
-      html += '<div style="font-size:10px;font-weight:800;letter-spacing:2px;color:var(--gold);margin:16px 0 8px">PARLAY BUILDER</div>';
-      parlayData.slice(0, 2).forEach(function(p) {
-        var meta = typeof p.meta === 'string' ? JSON.parse(p.meta || '{}') : (p.meta || {});
-        var legs = meta.legs || [];
-        html += '<div style="background:var(--card);border:1px solid var(--border);border-radius:4px;padding:14px;margin-bottom:6px">';
-        html += '<span class="tag tag-major" style="font-size:9px">PARLAY</span>';
-        html += '<div style="font-family:Playfair Display,Georgia,serif;font-size:16px;font-weight:800;color:var(--text);margin-top:6px">' + esc(p.pick) + '</div>';
-        html += '<div style="font-size:12px;color:var(--dim);line-height:1.6;margin-top:4px">';
-        legs.forEach(function(leg) {
-          html += '<div style="margin:2px 0">&bull; ' + esc(leg.player) + ' ' + esc(leg.market) + ' (' + esc(leg.odds) + ')</div>';
-        });
-        html += '</div>';
-        html += '<div style="font-size:12px;color:var(--muted);line-height:1.5;margin-top:6px">' + esc(p.analysis) + '</div>';
-        html += '<div style="font-size:10px;color:var(--gold);font-weight:700;margin-top:6px">Combined odds: ' + esc(p.odds) + ' &middot; Confidence: ' + (p.confidence || 4) + '/10</div>';
-        html += '</div>';
-      });
-    }
-    } else {
-      // No picks yet — show placeholder
-      html += '<div style="padding:20px;text-align:center;color:var(--muted);font-style:italic;margin:16px 0">Full betting card generating from live sportsbook odds — check back soon.</div>';
     }
 
     // Key Storylines
