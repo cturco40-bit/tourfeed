@@ -151,10 +151,21 @@ ${tournament.name} odds: ${oddsStr}`;
         meta: JSON.stringify(pick.meta || {}),
         created_at: batchId,
       };
-      const result = await sb('betting_insights', 'POST', row);
+      console.log('Inserting into table: betting_insights');
+      console.log('Attempting Supabase insert, row:', JSON.stringify(row, null, 2));
+      const insertRes = await fetchT(SB_URL + '/rest/v1/betting_insights', {
+        method: 'POST',
+        headers: { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY, 'Content-Type': 'application/json', 'Prefer': 'return=representation' },
+        body: JSON.stringify(row),
+      });
+      console.log('Supabase insert response status:', insertRes.status);
+      const insertBody = await insertRes.text();
+      console.log('Supabase insert response body:', insertBody.slice(0, 500));
       inserted.push({ bet_type: betType, player: pick.player_name || pick.pick || pick.name });
-      return result;
+      return insertBody;
     }
+
+    console.log('Attempting Supabase insert, picks array:', JSON.stringify(picks, null, 2));
 
     // Best bet
     if (picks.best_bet) {
