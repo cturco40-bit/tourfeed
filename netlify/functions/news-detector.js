@@ -144,7 +144,7 @@ async function fetchPlayerFacts() {
   } catch(e) { return ''; }
 }
 
-async function generateArticle(facts, apiKey) {
+async function generateArticle(facts, apiKey, picksContext) {
   const playerFacts = await fetchPlayerFacts();
   const factsText = `WHO: ${facts.who.join(', ') || 'Unknown'}\nWHAT: ${facts.what}\nWHEN: ${facts.when || 'Recent'}\nDETAILS: ${facts.details || 'No additional details.'}${playerFacts}`;
 
@@ -372,7 +372,7 @@ exports.handler = async (event) => {
       try {
         const facts = extractFacts(item.title, item.desc);
 
-        const article = await generateArticle(facts, ANTHROPIC_API_KEY);
+        const article = await generateArticle(facts, ANTHROPIC_API_KEY, picksContext);
         if (!article) { continue; }
 
         const articleTitle = article.title || 'Breaking Golf News';
