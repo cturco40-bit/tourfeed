@@ -349,16 +349,37 @@ exports.handler = async (event) => {
 
     // Filter out past tournaments — only Masters or breaking news this week
     const PAST_TOURNAMENTS = /puerto rico|texas open|valero|houston open|valspar|arnold palmer|players championship|genesis|phoenix|pebble beach|farmers|torrey pines|american express/i;
+    const TIER1_PLAYERS = /scheffler|mcilroy|rory|rahm|schauffele|fleetwood|spieth|morikawa|matsuyama|dechambeau|hovland|aberg|koepka|johnson|dustin/i;
+    const LOCAL_FILTER = /\blocal\b|northeast|jacksonville|bluffton|first coast|south georgia|eyes augusta|eyes masters|\bconnection\b/i;
+    const GEAR_FILTER = /\bcollection\b|\bgear\b|\bequipment\b|\bsponsor\b|\bpartnership\b|\bbrand\b|\bapparel\b/i;
+
     const currentItems = newItems.filter(item => {
       var t = (item.title + ' ' + (item.desc || '')).toLowerCase();
+      var titleAndDesc = item.title + ' ' + (item.desc || '');
+      // Past tournament filter
       if (PAST_TOURNAMENTS.test(t) && !/masters|augusta/i.test(t)) {
         console.log('Skipping past tournament:', item.title.slice(0, 50));
+        return false;
+      }
+      // Relevance: must mention at least one tier-1 player
+      if (!TIER1_PLAYERS.test(titleAndDesc)) {
+        console.log('Skipping no tier-1 player:', item.title.slice(0, 50));
+        return false;
+      }
+      // Local angle filter
+      if (LOCAL_FILTER.test(item.title)) {
+        console.log('Skipping local filler:', item.title.slice(0, 50));
+        return false;
+      }
+      // Gear/sponsor filter
+      if (GEAR_FILTER.test(item.title)) {
+        console.log('Skipping gear/sponsor:', item.title.slice(0, 50));
         return false;
       }
       return true;
     });
 
-    console.log(`${currentItems.length} current items (after date filter, from ${newItems.length} new)`);
+    console.log(`${currentItems.length} current items (after filters, from ${newItems.length} new)`);
 
     // MAX 2 articles per run
     const toProcess = currentItems.slice(0, 2);
@@ -374,6 +395,16 @@ exports.handler = async (event) => {
 
         const article = await generateArticle(facts, ANTHROPIC_API_KEY, picksContext);
         if (!article) { continue; }
+
+        // Post-generation quality: must mention at least 2 tier-1 players
+        var articleText = (article.title || '') + ' ' + (article.body || '');
+        var tier1Mentions = ['scheffler','mcilroy','rory','rahm','schauffele','fleetwood','spieth','morikawa','matsuyama','dechambeau','hovland','aberg','koepka','johnson'].filter(function(name) {
+          return articleText.toLowerCase().includes(name);
+        });
+        if (tier1Mentions.length < 2) {
+          console.log('Rejecting article — only ' + tier1Mentions.length + ' tier-1 players mentioned:', article.title?.slice(0, 50));
+          continue;
+        }
 
         const articleTitle = article.title || 'Breaking Golf News';
         const articleSlug = articleTitle.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 80);
