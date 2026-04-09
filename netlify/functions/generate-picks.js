@@ -113,10 +113,15 @@ exports.handler = async (event) => {
   if (!ANTHROPIC_KEY) return { statusCode: 200, headers, body: JSON.stringify({ skipped: 'No API key' }) };
 
   try {
-    // BULLETPROOF LOCK — if ANY row exists in betting_picks, never overwrite
+    // BULLETPROOF LOCK — check both betting_picks table AND content_drafts for evidence picks were already generated
     var existingPicks = await sb('betting_picks?select=id&limit=1');
     if (existingPicks.length > 0) {
       return { statusCode: 200, headers, body: JSON.stringify({ skipped: 'Picks locked — will not overwrite' }) };
+    }
+    // Secondary lock — if Instagram drafts for picks exist, picks were already generated (even if table was cleared)
+    var igDrafts = await sb('content_drafts?type=eq.instagram&title=like.*BEST BET*&created_at=gte.' + new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString() + '&select=id&limit=1');
+    if (igDrafts.length > 0) {
+      return { statusCode: 200, headers, body: JSON.stringify({ skipped: 'Picks were already generated this week (IG drafts exist) — will not regenerate' }) };
     }
 
     // 1. Get active tournament
