@@ -1424,7 +1424,7 @@ function renderTeeTimes() {
 
 function renderScores() {
   let html = '<div class="filter-bar" style="padding-top:6px">';
-  ['pga','liv','dpw','lpga','kft','champ'].forEach(function(t) {
+  ['pga'].forEach(function(t) {
     html += '<button class="filter-btn ' + (currentScoresTour===t?'active':'') + '" onclick="switchScoresTour(\'' + t + '\')">' + (TOURS.find(function(x){return x.id===t})?.short||t) + '</button>';
   });
   html += '</div>';
@@ -1759,7 +1759,7 @@ function switchStandingsTour(tour) {
 
 function renderStandings() {
   let html = '<div class="filter-bar">';
-  ['pga','lpga'].forEach(function(t) {
+  ['pga'].forEach(function(t) {
     html += '<button class="filter-btn ' + (standingsFilter===t?'active':'') + '" onclick="switchStandingsTour(\'' + t + '\')">' + (TOURS.find(function(x){return x.id===t})?.short||t) + '</button>';
   });
   html += '</div>';
@@ -1785,7 +1785,7 @@ let schedFilter = 'all';
 
 function renderSchedule() {
   let html = '<div class="filter-bar">';
-  ['all','pga','dpw','lpga'].forEach(function(t) {
+  ['pga'].forEach(function(t) {
     html += '<button class="filter-btn ' + (schedFilter===t?'active':'') + '" onclick="schedFilter=\'' + t + '\';renderApp()">' + (t==='all'?'All':TOURS.find(function(x){return x.id===t})?.short||t) + '</button>';
   });
   html += '</div>';
