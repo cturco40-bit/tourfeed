@@ -137,18 +137,18 @@ function buildArticleHeader(p) {
   // Tag badge
   drawTag(ctx, p.tag, 50, 80);
 
-  // Headline — Playfair Display
+  // Headline — Playfair Display italic
   ctx.fillStyle = TEXT;
   ctx.textAlign = 'left';
-  var endY = fitText(ctx, p.headline || '', 50, 155, W - 100, 320, 40, '800', 'pf');
+  var endY = fitText(ctx, p.headline || '', 50, 155, W - 100, 320, 40, 'italic 400', 'pf');
 
   // Gold line under headline
   ctx.fillStyle = GOLD;
   ctx.fillRect(50, endY + 16, 120, 3);
 
-  // Bottom left: tourfeed.co
-  ctx.font = dm('600', 11);
-  ctx.fillStyle = MUTED;
+  // Bottom left: tourfeed.co — DM Sans
+  ctx.font = dm('500', 16);
+  ctx.fillStyle = GOLD;
   ctx.fillText('tourfeed.co', 50, H - 30);
 
   // Watermark
@@ -187,14 +187,15 @@ function buildTweet(p) {
 
   var tc = tagColors(tag);
   var tagText = tag.toUpperCase();
-  ctx.font = dm('800', 14);
+  // Tag badge — Playfair italic in white box
+  ctx.font = pf('italic 700', 52);
   var tagW = ctx.measureText(tagText).width;
-  ctx.fillStyle = tc.bg;
+  ctx.fillStyle = '#fff';
   ctx.beginPath();
-  ctx.roundRect(60, 120, tagW + 24, 30, 4);
+  ctx.roundRect(60, 110, tagW + 40, 70, 6);
   ctx.fill();
-  ctx.fillStyle = tc.fg;
-  ctx.fillText(tagText, 72, 141);
+  ctx.fillStyle = GREEN;
+  ctx.fillText(tagText, 80, 163);
 
   // Short headline — MAX 5 words, never more than 35 chars
   var fullText = p.headline || p.quote || p.take || '';
@@ -202,18 +203,18 @@ function buildTweet(p) {
   if (shortText.length > 35) shortText = shortText.split(/\s+/).slice(0, 4).join(' ');
   if (shortText.length > 35) shortText = shortText.slice(0, 32) + '...';
 
-  // Headline in Playfair Display
+  // Headline — Playfair italic
   ctx.fillStyle = TEXT;
   ctx.textAlign = 'left';
-  var endY = fitText(ctx, shortText, 60, 260, W - 120, 400, 52, '800', 'pf');
+  var endY = fitText(ctx, shortText, 60, 290, W - 120, 400, 52, 'italic 400', 'pf');
 
   // Gold line
   ctx.fillStyle = GOLD;
   ctx.fillRect(60, endY + 24, 140, 3);
 
-  // Bottom: tourfeed.co
-  ctx.font = dm('600', 12);
-  ctx.fillStyle = MUTED;
+  // Bottom: tourfeed.co — DM Sans gold
+  ctx.font = dm('500', 32);
+  ctx.fillStyle = GOLD;
   ctx.fillText('tourfeed.co', 60, H - 40);
 
   // Watermark
@@ -313,36 +314,36 @@ function buildPick(p) {
   var label = (p.label || 'BEST BET').toUpperCase();
   var lc = label === 'LONGSHOT' ? GOLD_D : label.includes('VALUE') ? GREEN_L : label === 'FADE' ? RED : GREEN;
 
-  // Label badge
-  ctx.font = dm('800', 14);
+  // Label badge — Playfair italic
+  ctx.font = pf('italic 700', 52);
   var lw = ctx.measureText(label).width;
-  ctx.fillStyle = lc;
-  ctx.beginPath(); ctx.roundRect(50, 100, lw + 24, 30, 4); ctx.fill();
   ctx.fillStyle = '#fff';
-  ctx.fillText(label, 62, 121);
-
-  // Player name
-  ctx.font = pf('900', 44);
-  ctx.fillStyle = TEXT;
-  ctx.fillText(p.player || '', 50, 220);
-
-  // Odds
-  ctx.font = dm('900', 60);
+  ctx.beginPath(); ctx.roundRect(50, 90, lw + 40, 70, 6); ctx.fill();
   ctx.fillStyle = GREEN;
-  ctx.fillText(p.odds || '', 50, 300);
+  ctx.fillText(label, 70, 143);
+
+  // Player name — Playfair italic headline
+  ctx.font = pf('italic 400', 80);
+  ctx.fillStyle = TEXT;
+  var nameEndY = fitText(ctx, p.player || '', 50, 240, W - 100, 300, 80, 'italic 400', 'pf');
+
+  // Odds — DM Sans gold
+  ctx.font = dm('400', 40);
+  ctx.fillStyle = GOLD;
+  ctx.fillText(p.odds || '', 50, nameEndY + 50);
 
   // Reasoning
   if (p.reasoning) {
     ctx.fillStyle = DIM;
-    fitText(ctx, p.reasoning, 50, 360, W - 100, 200, 16, '500', 'dm');
+    fitText(ctx, p.reasoning, 50, nameEndY + 100, W - 100, 200, 16, '500', 'dm');
   }
 
   // Confidence dots
   if (p.confidence) {
-    ctx.font = dm('700', 11); ctx.fillStyle = MUTED; ctx.fillText('CONFIDENCE', 50, 610);
+    ctx.font = dm('700', 11); ctx.fillStyle = MUTED; ctx.fillText('CONFIDENCE', 50, 750);
     var conf = parseInt(p.confidence) || 0;
     for (var i = 0; i < 10; i++) {
-      ctx.beginPath(); ctx.arc(65 + i * 28, 640, 9, 0, Math.PI * 2);
+      ctx.beginPath(); ctx.arc(65 + i * 28, 780, 9, 0, Math.PI * 2);
       ctx.fillStyle = i < conf ? GREEN : BORDER; ctx.fill();
     }
   }
@@ -351,8 +352,9 @@ function buildPick(p) {
   ctx.fillStyle = GOLD;
   ctx.fillRect(50, H - 100, 120, 3);
 
-  ctx.font = dm('600', 12); ctx.fillStyle = MUTED;
-  ctx.fillText((p.tournament || '').toUpperCase(), 50, H - 60);
+  // tourfeed.co — DM Sans
+  ctx.font = dm('500', 32); ctx.fillStyle = GOLD;
+  ctx.fillText('tourfeed.co', 50, H - 45);
 
   drawWatermark(ctx, W, H);
   return c.toBuffer('image/png');
@@ -375,18 +377,18 @@ function buildBreaking(p) {
 
   drawLogo(ctx, 50, 52, 22);
 
-  // BREAKING badge
-  ctx.font = dm('900', 16);
+  // BREAKING badge — Playfair italic
+  ctx.font = pf('italic 700', 52);
   var bw = ctx.measureText('BREAKING').width;
-  ctx.fillStyle = RED;
-  ctx.beginPath(); ctx.roundRect(50, 100, bw + 24, 32, 4); ctx.fill();
   ctx.fillStyle = '#fff';
-  ctx.fillText('BREAKING', 62, 123);
+  ctx.beginPath(); ctx.roundRect(50, 90, bw + 40, 70, 6); ctx.fill();
+  ctx.fillStyle = RED;
+  ctx.fillText('BREAKING', 70, 143);
 
-  // Headline
+  // Headline — Playfair italic
   ctx.fillStyle = TEXT;
   ctx.textAlign = 'left';
-  var endY = fitText(ctx, (p.headline || '').toUpperCase(), 50, 240, W - 100, 400, 44, '800', 'pf');
+  var endY = fitText(ctx, p.headline || '', 50, 240, W - 100, 400, 44, 'italic 400', 'pf');
 
   // Gold line
   ctx.fillStyle = GOLD;
@@ -417,17 +419,21 @@ function buildWinner(p) {
   drawLogo(ctx, 50, 52, 22);
 
   ctx.textAlign = 'center';
-  ctx.font = dm('700', 14); ctx.fillStyle = GOLD_D;
-  ctx.fillText('C H A M P I O N', W / 2, 300);
+  // CHAMPION badge
+  ctx.font = pf('italic 700', 52); ctx.fillStyle = GOLD_D;
+  ctx.fillText('CHAMPION', W / 2, 300);
 
-  ctx.font = pf('900', 52); ctx.fillStyle = TEXT;
-  ctx.fillText(p.player || '', W / 2, 400);
+  // Player name — Playfair italic
+  ctx.font = pf('italic 400', 80); ctx.fillStyle = TEXT;
+  ctx.fillText(p.player || '', W / 2, 420);
 
-  ctx.font = dm('900', 48); ctx.fillStyle = GREEN;
-  ctx.fillText(p.score || '', W / 2, 475);
+  // Score — DM Sans gold
+  ctx.font = dm('400', 40); ctx.fillStyle = GOLD;
+  ctx.fillText(p.score || '', W / 2, 490);
 
-  ctx.font = dm('700', 18); ctx.fillStyle = DIM;
-  ctx.fillText((p.tournament || '').toUpperCase(), W / 2, 530);
+  // Tournament — DM Sans
+  ctx.font = dm('500', 18); ctx.fillStyle = DIM;
+  ctx.fillText((p.tournament || '').toUpperCase(), W / 2, 540);
 
   ctx.fillStyle = GOLD;
   ctx.fillRect(W / 2 - 60, 555, 120, 3);
