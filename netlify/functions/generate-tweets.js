@@ -1,6 +1,12 @@
 // Scrape ALL golf sources, generate tweets from the freshest content
 const SB_URL = 'https://yumahmnoltvbiadjefxw.supabase.co';
-const SB_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl1bWFobW5vbHR2YmlhZGplZnh3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUzOTY0NDAsImV4cCI6MjA5MDk3MjQ0MH0.FAXp2t0zaHlm1W7aaut72btMilrYPy33XO3p8MfyYlo';
+const SB_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || SB_KEY;
+
+function ft(url, opts, ms) {
+  var c = new AbortController();
+  var t = setTimeout(function() { c.abort(); }, ms || 8000);
+  return fetch(url, Object.assign({}, opts, { signal: c.signal })).finally(function() { clearTimeout(t); });
+}
 
 // Well-known players for headshot matching (name → ESPN ID)
 async function uploadTweetImage(text) {
@@ -8,12 +14,12 @@ async function uploadTweetImage(text) {
     // Only pass first 4-5 words for the image — image generator shows tag + short headline
     const headline = text.split(/\s+/).slice(0, 5).join(' ');
     const url = `https://tourfeed.co/.netlify/functions/generate-image?type=hot_take&headline=${encodeURIComponent(headline)}`;
-    const res = await fetch(url);
+    const res = await ft(url);
     if (!res.ok) return null;
     const buf = Buffer.from(await res.arrayBuffer());
     if (buf.length < 1000) return null;
     const fname = 'tweet-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6) + '.png';
-    const upRes = await fetch('https://yumahmnoltvbiadjefxw.supabase.co/storage/v1/object/images/' + fname, {
+    const upRes = await ft('https://yumahmnoltvbiadjefxw.supabase.co/storage/v1/object/images/' + fname, {
       method: 'POST',
       headers: {
         'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl1bWFobW5vbHR2YmlhZGplZnh3Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NTM5NjQ0MCwiZXhwIjoyMDkwOTcyNDQwfQ.VXcPybKl1c3uJAO59im8hb0zQjEmdwd4e6WGAakC-qs',
@@ -31,10 +37,10 @@ async function postDraft(text, source) {
   const imageUrl = null; // Images added manually via admin editor
   // Post directly to Supabase — skip draft-tweet function's extra dedup layers
   try {
-    const res = await fetch(SB_URL + '/rest/v1/content_drafts', {
+    const res = await ft(SB_URL + '/rest/v1/content_drafts', {
       method: 'POST',
       headers: {
-        'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl1bWFobW5vbHR2YmlhZGplZnh3Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NTM5NjQ0MCwiZXhwIjoyMDkwOTcyNDQwfQ.VXcPybKl1c3uJAO59im8hb0zQjEmdwd4e6WGAakC-qs',
+        'apikey': SB_KEY,
         'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl1bWFobW5vbHR2YmlhZGplZnh3Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NTM5NjQ0MCwiZXhwIjoyMDkwOTcyNDQwfQ.VXcPybKl1c3uJAO59im8hb0zQjEmdwd4e6WGAakC-qs',
         'Content-Type': 'application/json',
         'Prefer': 'return=representation',
@@ -78,8 +84,8 @@ exports.handler = async (event) => {
     // CHECK 1: If 5+ pending tweet drafts exist, skip this run entirely
     let pendingCount = 0;
     try {
-      const pendingRes = await fetch(SB_URL + '/rest/v1/content_drafts?type=like.tweet*&status=eq.pending&select=id', {
-        headers: { 'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl1bWFobW5vbHR2YmlhZGplZnh3Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NTM5NjQ0MCwiZXhwIjoyMDkwOTcyNDQwfQ.VXcPybKl1c3uJAO59im8hb0zQjEmdwd4e6WGAakC-qs' }
+      const pendingRes = await ft(SB_URL + '/rest/v1/content_drafts?type=like.tweet*&status=eq.pending&select=id', {
+        headers: { 'apikey': SB_KEY }
       });
       if (pendingRes.ok) pendingCount = (await pendingRes.json()).length;
     } catch(e) {}
@@ -90,8 +96,8 @@ exports.handler = async (event) => {
     // CHECK 2: Only generate tweets that promote PUBLISHED articles
     let publishedArticles = [];
     try {
-      const artRes = await fetch(SB_URL + '/rest/v1/articles?select=id,title,slug,tag&order=published_at.desc&limit=10', {
-        headers: { 'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl1bWFobW5vbHR2YmlhZGplZnh3Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NTM5NjQ0MCwiZXhwIjoyMDkwOTcyNDQwfQ.VXcPybKl1c3uJAO59im8hb0zQjEmdwd4e6WGAakC-qs' }
+      const artRes = await ft(SB_URL + '/rest/v1/articles?select=id,title,slug,tag&order=published_at.desc&limit=10', {
+        headers: { 'apikey': SB_KEY }
       });
       if (artRes.ok) publishedArticles = await artRes.json();
     } catch(e) {}
@@ -103,31 +109,31 @@ exports.handler = async (event) => {
 
     // 1. ESPN Golf
     try {
-      const r = await fetch('https://site.api.espn.com/apis/site/v2/sports/golf/pga/news?limit=10');
+      const r = await ft('https://site.api.espn.com/apis/site/v2/sports/golf/pga/news?limit=10');
       if (r.ok) (await r.json()).articles?.forEach(a => { if (a.headline) allHeadlines.push({ text: a.headline, src: 'ESPN' }); });
     } catch(e) {}
 
     // 2. Golf Digest RSS
     try {
-      const r = await fetch('https://www.golfdigest.com/feed/rss', { headers: { 'User-Agent': 'TourFeed/1.0' } });
+      const r = await ft('https://www.golfdigest.com/feed/rss', { headers: { 'User-Agent': 'TourFeed/1.0' } });
       if (r.ok) parseRSS(await r.text()).forEach(t => allHeadlines.push({ text: t, src: 'Golf Digest' }));
     } catch(e) {}
 
     // 3. PGA Tour RSS
     try {
-      const r = await fetch('https://www.pgatour.com/rss/news', { headers: { 'User-Agent': 'TourFeed/1.0' } });
+      const r = await ft('https://www.pgatour.com/rss/news', { headers: { 'User-Agent': 'TourFeed/1.0' } });
       if (r.ok) parseRSS(await r.text()).forEach(t => allHeadlines.push({ text: t, src: 'PGA Tour' }));
     } catch(e) {}
 
     // 4. Golf Channel RSS
     try {
-      const r = await fetch('https://www.golfchannel.com/rss/golf-central', { headers: { 'User-Agent': 'TourFeed/1.0' } });
+      const r = await ft('https://www.golfchannel.com/rss/golf-central', { headers: { 'User-Agent': 'TourFeed/1.0' } });
       if (r.ok) parseRSS(await r.text()).forEach(t => allHeadlines.push({ text: t, src: 'Golf Channel' }));
     } catch(e) {}
 
     // 5. Google News — golf
     try {
-      const r = await fetch('https://news.google.com/rss/search?q=golf+masters+pga&hl=en-US&gl=US&ceid=US:en', { headers: { 'User-Agent': 'TourFeed/1.0' } });
+      const r = await ft('https://news.google.com/rss/search?q=golf+masters+pga&hl=en-US&gl=US&ceid=US:en', { headers: { 'User-Agent': 'TourFeed/1.0' } });
       if (r.ok) parseRSS(await r.text()).forEach(t => allHeadlines.push({ text: t, src: 'Google News' }));
     } catch(e) {}
 
@@ -141,7 +147,7 @@ exports.handler = async (event) => {
           url.searchParams.set('max_results', '10');
           url.searchParams.set('start_time', new Date(Date.now() - 60 * 60 * 1000).toISOString()); // last hour only
           url.searchParams.set('tweet.fields', 'public_metrics');
-          const r = await fetch(url.toString(), { headers: { 'Authorization': `Bearer ${bearer}` } });
+          const r = await ft(url.toString(), { headers: { 'Authorization': `Bearer ${bearer}` } });
           if (r.ok) {
             (await r.json()).data?.filter(t => (t.public_metrics?.like_count || 0) >= 3).forEach(t => {
               const clean = (t.text || '').replace(/https?:\/\/\S+/g, '').trim();
@@ -173,7 +179,7 @@ exports.handler = async (event) => {
     // Only check recent TWEET drafts for dedup — skip articles (they contain too many common words)
     let recentTexts = [];
     try {
-      const dRes = await fetch(SB_URL + '/rest/v1/content_drafts?type=like.tweet*&status=eq.pending&order=created_at.desc&limit=15&select=body', {
+      const dRes = await ft(SB_URL + '/rest/v1/content_drafts?type=like.tweet*&status=eq.pending&order=created_at.desc&limit=15&select=body', {
         headers: { 'apikey': SB_ANON }
       });
       if (dRes.ok) {
@@ -184,8 +190,8 @@ exports.handler = async (event) => {
     // Player facts for accurate context
     let playerFactsContext = '';
     try {
-      const pfRes = await fetch('https://yumahmnoltvbiadjefxw.supabase.co/rest/v1/player_facts?select=player_name,world_ranking,total_majors,masters_wins,career_grand_slam,recent_notes,hot_topics&limit=30', {
-        headers: { 'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl1bWFobW5vbHR2YmlhZGplZnh3Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NTM5NjQ0MCwiZXhwIjoyMDkwOTcyNDQwfQ.VXcPybKl1c3uJAO59im8hb0zQjEmdwd4e6WGAakC-qs' }
+      const pfRes = await ft('https://yumahmnoltvbiadjefxw.supabase.co/rest/v1/player_facts?select=player_name,world_ranking,total_majors,masters_wins,career_grand_slam,recent_notes,hot_topics&limit=30', {
+        headers: { 'apikey': SB_KEY }
       });
       if (pfRes.ok) {
         const pf = await pfRes.json();
@@ -203,7 +209,7 @@ exports.handler = async (event) => {
     // Tournament context
     let context = '';
     try {
-      const r = await fetch('https://site.api.espn.com/apis/site/v2/sports/golf/pga/scoreboard');
+      const r = await ft('https://site.api.espn.com/apis/site/v2/sports/golf/pga/scoreboard');
       if (r.ok) {
         const d = await r.json();
         const evt = d.events?.[0];
@@ -223,8 +229,8 @@ exports.handler = async (event) => {
     // Fetch current picks — tweets must only reference these players
     var picksContext = '';
     try {
-      var tweetPicks = await fetch(SB_URL + '/rest/v1/betting_picks?order=created_at.desc&limit=20', {
-        headers: { 'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl1bWFobW5vbHR2YmlhZGplZnh3Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NTM5NjQ0MCwiZXhwIjoyMDkwOTcyNDQwfQ.VXcPybKl1c3uJAO59im8hb0zQjEmdwd4e6WGAakC-qs' }
+      var tweetPicks = await ft(SB_URL + '/rest/v1/betting_picks?order=created_at.desc&limit=20', {
+        headers: { 'apikey': SB_KEY }
       });
       if (tweetPicks.ok) {
         var tpData = await tweetPicks.json();
@@ -236,7 +242,7 @@ exports.handler = async (event) => {
       }
     } catch(e) {}
 
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
+    const res = await ft('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -259,7 +265,7 @@ ${context}${picksContext}`,
           content: `Our published articles:\n${articleList}\n\nLatest golf headlines for context:\n${headlineList}\n\nWrite exactly 2 tweets. Each tweet MUST promote one of our published articles above and include its URL. Tie current news to the article's topic to make it timely. Each tweet MUST use a different sentence structure.\n\nReturn ONLY a JSON array of objects:\n[{"source":"article title you're promoting","tweet":"your tweet ending with the article URL","article_url":"tourfeed.co/article/slug"}]`
         }],
       }),
-    });
+    }, 25000);
 
     if (!res.ok) return { statusCode: 200, headers, body: JSON.stringify({ skipped: 'AI failed' }) };
 
@@ -311,7 +317,7 @@ ${context}${picksContext}`,
     // Notification
     if (drafted.length > 0) {
       try {
-        await fetch('https://ntfy.sh/tourfeed-alerts', {
+        await ft('https://ntfy.sh/tourfeed-alerts', {
           method: 'POST',
           headers: { 'Title': 'New Tweets Ready', 'Priority': '3' },
           body: drafted.length + ' tweet' + (drafted.length > 1 ? 's' : '') + ' ready for review',

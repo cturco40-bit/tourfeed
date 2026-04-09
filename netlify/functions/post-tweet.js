@@ -1,5 +1,11 @@
 const crypto = require('crypto');
 
+function ft(url, opts, ms) {
+  var c = new AbortController();
+  var t = setTimeout(function() { c.abort(); }, ms || 8000);
+  return fetch(url, Object.assign({}, opts, { signal: c.signal })).finally(function() { clearTimeout(t); });
+}
+
 // OAuth 1.0a signature generation
 function oauthSign(method, url, params, consumerSecret, tokenSecret) {
   const sortedParams = Object.keys(params).sort().map(k => `${encodeURIComponent(k)}=${encodeURIComponent(params[k])}`).join('&');
@@ -34,7 +40,7 @@ async function uploadMedia(imageUrl) {
   const accessSecret = process.env.TWITTER_ACCESS_SECRET;
 
   // Download the image
-  const imgRes = await fetch(imageUrl);
+  const imgRes = await ft(imageUrl);
   if (!imgRes.ok) throw new Error(`Image fetch failed: ${imgRes.status}`);
   const buffer = Buffer.from(await imgRes.arrayBuffer());
   const base64 = buffer.toString('base64');
@@ -58,7 +64,7 @@ async function uploadMedia(imageUrl) {
   const oauthParams = getOAuthParams();
   oauthParams.oauth_signature = oauthSign('POST', url, oauthParams, apiSecret, accessSecret);
 
-  const res = await fetch(url, {
+  const res = await ft(url, {
     method: 'POST',
     headers: {
       'Authorization': buildAuthHeader(oauthParams),
@@ -90,7 +96,7 @@ async function tweet(text, mediaIds) {
     body.media = { media_ids: mediaIds };
   }
 
-  const res = await fetch(url, {
+  const res = await ft(url, {
     method: 'POST',
     headers: {
       'Authorization': buildAuthHeader(oauthParams),

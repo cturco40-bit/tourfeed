@@ -28,13 +28,20 @@ const RSS_SOURCES = [
   },
 ];
 
+// ---------- Timeout helper ----------
+const ND_SB_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || ND_SB_KEY;
+function ft(url, opts, ms) {
+  var c = new AbortController();
+  var t = setTimeout(function() { c.abort(); }, ms || 8000);
+  return fetch(url, Object.assign({}, opts, { signal: c.signal })).finally(function() { clearTimeout(t); });
+}
+
 // ---------- Supabase helper ----------
 async function sb(path, method, body) {
-  const key = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl1bWFobW5vbHR2YmlhZGplZnh3Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NTM5NjQ0MCwiZXhwIjoyMDkwOTcyNDQwfQ.VXcPybKl1c3uJAO59im8hb0zQjEmdwd4e6WGAakC-qs';
-  const hdrs = { 'apikey': key, 'Authorization': 'Bearer ' + key, 'Content-Type': 'application/json' };
+  const hdrs = { 'apikey': ND_SB_KEY, 'Authorization': 'Bearer ' + ND_SB_KEY, 'Content-Type': 'application/json' };
   if (method === 'POST') hdrs['Prefer'] = 'return=representation';
   if (method === 'PATCH') hdrs['Prefer'] = 'return=minimal';
-  const res = await fetch('https://yumahmnoltvbiadjefxw.supabase.co/rest/v1/' + path, {
+  const res = await ft('https://yumahmnoltvbiadjefxw.supabase.co/rest/v1/' + path, {
     method: method || 'GET',
     headers: hdrs,
     body: body ? JSON.stringify(body) : undefined,
@@ -49,12 +56,12 @@ async function uploadImage(tag, headline) {
   try {
     const base = 'https://tourfeed.co/.netlify/functions/generate-image';
     const url = `${base}?type=article_header&tag=${encodeURIComponent(tag)}&headline=${encodeURIComponent(headline)}&format=png`;
-    const res = await fetch(url);
+    const res = await ft(url);
     if (!res.ok) return null;
     const buf = Buffer.from(await res.arrayBuffer());
     if (buf.length < 1000) return null;
     const filename = 'news-' + Date.now() + '.png';
-    const upRes = await fetch('https://yumahmnoltvbiadjefxw.supabase.co/storage/v1/object/images/' + filename, {
+    const upRes = await ft('https://yumahmnoltvbiadjefxw.supabase.co/storage/v1/object/images/' + filename, {
       method: 'POST',
       headers: {
         'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl1bWFobW5vbHR2YmlhZGplZnh3Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NTM5NjQ0MCwiZXhwIjoyMDkwOTcyNDQwfQ.VXcPybKl1c3uJAO59im8hb0zQjEmdwd4e6WGAakC-qs',
@@ -121,8 +128,8 @@ function extractFacts(title, desc) {
 // ---------- Call Claude Haiku to generate original article ----------
 async function fetchPlayerFacts() {
   try {
-    const r = await fetch('https://yumahmnoltvbiadjefxw.supabase.co/rest/v1/player_facts?select=player_name,world_ranking,total_majors,masters_wins,masters_best,career_grand_slam,recent_notes,hot_topics&limit=30', {
-      headers: { 'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl1bWFobW5vbHR2YmlhZGplZnh3Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NTM5NjQ0MCwiZXhwIjoyMDkwOTcyNDQwfQ.VXcPybKl1c3uJAO59im8hb0zQjEmdwd4e6WGAakC-qs' }
+    const r = await ft('https://yumahmnoltvbiadjefxw.supabase.co/rest/v1/player_facts?select=player_name,world_ranking,total_majors,masters_wins,masters_best,career_grand_slam,recent_notes,hot_topics&limit=30', {
+      headers: { 'apikey': ND_SB_KEY }
     });
     if (!r.ok) return '';
     const pf = await r.json();
@@ -141,7 +148,7 @@ async function generateArticle(facts, apiKey) {
   const playerFacts = await fetchPlayerFacts();
   const factsText = `WHO: ${facts.who.join(', ') || 'Unknown'}\nWHAT: ${facts.what}\nWHEN: ${facts.when || 'Recent'}\nDETAILS: ${facts.details || 'No additional details.'}${playerFacts}`;
 
-  const res = await fetch('https://api.anthropic.com/v1/messages', {
+  const res = await ft('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -166,7 +173,7 @@ ${playerFacts}`,
         },
       ],
     }),
-  });
+  }, 25000);
 
   if (!res.ok) {
     const errText = await res.text();
@@ -209,7 +216,7 @@ async function fetchAllHeadlines() {
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 8000);
 
-      const res = await fetch(source.url, {
+      const res = await ft(source.url, {
         signal: controller.signal,
         headers: {
           'User-Agent': 'TourFeed/1.0 (Golf News Aggregator)',
@@ -363,7 +370,7 @@ exports.handler = async (event) => {
         // Generate image headline — bold hook, not truncated title
         var imgHL = articleTitle;
         try {
-          var hlRes = await fetch('https://api.anthropic.com/v1/messages', {
+          var hlRes = await ft('https://api.anthropic.com/v1/messages', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'x-api-key': ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' },
             body: JSON.stringify({ model: 'claude-haiku-4-5-20251001', max_tokens: 50, messages: [{ role: 'user', content: 'Write ONE image headline (max 8 words) for this article. Bold hook for Instagram. NOT the title shortened. Think billboard.\n\nTitle: ' + articleTitle + '\n\nImage headline:' }] }),

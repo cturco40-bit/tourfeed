@@ -1623,15 +1623,6 @@ function renderInsights() {
 
   // ━━ BETTING PICKS — always show from betting_picks table ━━
   {
-    // Load picks from betting_picks if not already loaded
-    if (!_bettingPicks) {
-      _bettingPicks = 'loading';
-      sb.from('betting_picks').select('*').order('created_at', {ascending:true}).limit(30).then(function(res) {
-        if (res.data && res.data.length > 0) { _bettingPicks = res.data; renderApp(); }
-        else { _bettingPicks = null; }
-      }).catch(function() { _bettingPicks = null; });
-    }
-
     // Group picks by edge_label, deduplicate by player_name (first occurrence wins)
     var picks = _bettingPicks && _bettingPicks !== 'loading' ? _bettingPicks : [];
     var seenPlayers = {};
@@ -1728,20 +1719,6 @@ function renderInsights() {
       html += '<div style="font-size:9px;color:var(--muted);margin-top:4px;font-style:italic">Odds via DraftKings, FanDuel, BetMGM &middot; Updated ' + (window._realOdds[0]?.updated_at ? timeAgo(window._realOdds[0].updated_at) : 'recently') + '</div>';
     }
 
-    // Key Storylines
-    html += '<div style="font-size:10px;font-weight:800;letter-spacing:2px;color:var(--muted);margin:16px 0 8px">KEY STORYLINES</div>';
-    var stories = [
-      {title:'Can Rory Defend?',body:'McIlroy won his first green jacket last year to complete the career Grand Slam. Only Tiger, Jack, and Nick Faldo have successfully defended at Augusta in the modern era.'},
-      {title:'Scheffler\'s Augusta Record',body:'Two Masters wins (2022, 2024), plus the Open Championship. He is the most dominant player in golf but arrives with a 9-day-old newborn.'},
-      {title:'No Tiger, No Phil',body:'First Masters without either since 1994. Tiger is recovering from his March car accident. Mickelson withdrew for family health reasons. End of an era at Augusta.'},
-      {title:'LIV at Augusta',body:'Bryson DeChambeau arrives red-hot off consecutive LIV wins. Rahm is a past champion. Ten LIV players in the field. The tour war plays out on the biggest stage.'},
-    ];
-    stories.forEach(function(s) {
-      html += '<div style="background:var(--card);border:1px solid var(--border);border-radius:4px;padding:14px;margin-bottom:6px">';
-      html += '<div style="font-family:DM Sans,sans-serif;font-size:14px;font-weight:700;color:var(--text);margin-bottom:4px">' + s.title + '</div>';
-      html += '<div style="font-size:12px;color:var(--dim);line-height:1.6">' + s.body + '</div>';
-      html += '</div>';
-    });
   }
 
   // DISCLAIMER

@@ -1,5 +1,5 @@
 // Fetch real sportsbook odds from The Odds API and store in Supabase
-const ODDS_API_KEY = process.env.ODDS_API_KEY || 'e8ed97fe49b8efaf710868b29e1c6c1b';
+const ODDS_API_KEY = process.env.ODDS_API_KEY;
 const SB_URL = 'https://yumahmnoltvbiadjefxw.supabase.co';
 const SB_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl1bWFobW5vbHR2YmlhZGplZnh3Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NTM5NjQ0MCwiZXhwIjoyMDkwOTcyNDQwfQ.VXcPybKl1c3uJAO59im8hb0zQjEmdwd4e6WGAakC-qs';
 

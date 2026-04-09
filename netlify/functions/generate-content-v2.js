@@ -1,3 +1,12 @@
+const SB_URL_V2 = 'https://yumahmnoltvbiadjefxw.supabase.co';
+const SB_KEY_V2 = process.env.SUPABASE_SERVICE_ROLE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl1bWFobW5vbHR2YmlhZGplZnh3Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NTM5NjQ0MCwiZXhwIjoyMDkwOTcyNDQwfQ.VXcPybKl1c3uJAO59im8hb0zQjEmdwd4e6WGAakC-qs';
+
+function ft(url, opts, ms) {
+  var c = new AbortController();
+  var t = setTimeout(function() { c.abort(); }, ms || 8000);
+  return fetch(url, Object.assign({}, opts, { signal: c.signal })).finally(function() { clearTimeout(t); });
+}
+
 exports.handler = async (event) => {
   const headers = {
     'Access-Control-Allow-Origin': '*',
@@ -17,11 +26,10 @@ exports.handler = async (event) => {
 
   // --- Supabase helper ---
   async function sb(path, method, body) {
-    const key = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl1bWFobW5vbHR2YmlhZGplZnh3Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NTM5NjQ0MCwiZXhwIjoyMDkwOTcyNDQwfQ.VXcPybKl1c3uJAO59im8hb0zQjEmdwd4e6WGAakC-qs';
-    const hdrs = { 'apikey': key, 'Authorization': 'Bearer ' + key, 'Content-Type': 'application/json' };
+    const hdrs = { 'apikey': SB_KEY_V2, 'Authorization': 'Bearer ' + SB_KEY_V2, 'Content-Type': 'application/json' };
     if (method === 'POST') hdrs['Prefer'] = 'return=representation';
     if (method === 'PATCH') hdrs['Prefer'] = 'return=minimal';
-    const res = await fetch('https://yumahmnoltvbiadjefxw.supabase.co/rest/v1/' + path, {
+    const res = await ft(SB_URL_V2 + '/rest/v1/' + path, {
       method: method || 'GET',
       headers: hdrs,
       body: body ? JSON.stringify(body) : undefined,
@@ -74,17 +82,17 @@ exports.handler = async (event) => {
       }
 
       // Download PNG from generate-image function
-      const imgRes = await fetch(imgFnUrl);
+      const imgRes = await ft(imgFnUrl);
       if (!imgRes.ok) throw new Error('Image generation failed: ' + imgRes.status);
       const pngBuffer = Buffer.from(await imgRes.arrayBuffer());
       if (pngBuffer.length < 1000) throw new Error('Image too small, likely blank');
 
       // Upload to Supabase Storage
       const filename = type.replace(/[^a-z0-9]/g, '-') + '-' + Date.now() + '.png';
-      const uploadRes = await fetch(`${SB_STORAGE_URL}/object/images/${filename}`, {
+      const uploadRes = await ft(`${SB_STORAGE_URL}/object/images/${filename}`, {
         method: 'POST',
         headers: {
-          'Authorization': 'Bearer ' + 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl1bWFobW5vbHR2YmlhZGplZnh3Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NTM5NjQ0MCwiZXhwIjoyMDkwOTcyNDQwfQ.VXcPybKl1c3uJAO59im8hb0zQjEmdwd4e6WGAakC-qs',
+          'Authorization': 'Bearer ' + SB_KEY_V2,
           'Content-Type': 'image/png',
           'x-upsert': 'true',
         },
@@ -213,7 +221,7 @@ exports.handler = async (event) => {
 
   // --- Call Claude Haiku ---
   async function askClaude(systemPrompt, userPrompt, maxTokens) {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
+    const res = await ft('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -226,7 +234,7 @@ exports.handler = async (event) => {
         system: systemPrompt,
         messages: [{ role: 'user', content: userPrompt }],
       }),
-    });
+    }, 25000);
     if (!res.ok) {
       const err = await res.text();
       throw new Error('Claude API error: ' + res.status + ' ' + err);
@@ -538,7 +546,7 @@ Rules:
       if (articles) parts.push(articles + ' article' + (articles > 1 ? 's' : ''));
       if (tweets) parts.push(tweets + ' tweet' + (tweets > 1 ? 's' : ''));
       try {
-        await fetch('https://ntfy.sh/tourfeed-alerts', {
+        await ft('https://ntfy.sh/tourfeed-alerts', {
           method: 'POST',
           headers: { 'Title': 'New Drafts Ready', 'Priority': '3' },
           body: results.generated.length + ' new drafts — ' + parts.join(', ') + ' (' + results.tournament + ' R' + results.round + ')',
@@ -554,7 +562,7 @@ Rules:
   } catch (e) {
     // Error notification
     try {
-      await fetch('https://ntfy.sh/tourfeed-alerts', {
+      await ft('https://ntfy.sh/tourfeed-alerts', {
         method: 'POST',
         headers: { 'Title': 'TourFeed Error', 'Priority': '5', 'Tags': 'rotating_light' },
         body: 'generate-content failed: ' + e.message,

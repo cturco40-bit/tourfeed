@@ -5,11 +5,17 @@
 const SUPABASE_URL = 'https://yumahmnoltvbiadjefxw.supabase.co';
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl1bWFobW5vbHR2YmlhZGplZnh3Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NTM5NjQ0MCwiZXhwIjoyMDkwOTcyNDQwfQ.VXcPybKl1c3uJAO59im8hb0zQjEmdwd4e6WGAakC-qs';
 
+function ft(url, opts, ms) {
+  var c = new AbortController();
+  var t = setTimeout(function() { c.abort(); }, ms || 8000);
+  return fetch(url, Object.assign({}, opts, { signal: c.signal })).finally(function() { clearTimeout(t); });
+}
+
 async function sb(path, method, body) {
   const hdrs = { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json' };
   if (method === 'POST') hdrs['Prefer'] = 'return=representation';
   if (method === 'PATCH') hdrs['Prefer'] = 'return=minimal';
-  const res = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, { method: method || 'GET', headers: hdrs, body: body ? JSON.stringify(body) : undefined });
+  const res = await ft(`${SUPABASE_URL}/rest/v1/${path}`, { method: method || 'GET', headers: hdrs, body: body ? JSON.stringify(body) : undefined });
   if (!method || method === 'GET') { try { const d = await res.json(); return Array.isArray(d) ? d : []; } catch(e) { return []; } }
   if (method === 'POST' && res.ok) { try { return await res.json(); } catch(e) { return []; } }
   return res.ok;
@@ -40,7 +46,7 @@ exports.handler = async (event) => {
       try {
         // Tweet types → post to Twitter
         if (draft.type?.startsWith('tweet')) {
-          const tweetRes = await fetch('https://tourfeed.co/.netlify/functions/post-tweet', {
+          const tweetRes = await ft('https://tourfeed.co/.netlify/functions/post-tweet', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -118,7 +124,7 @@ exports.handler = async (event) => {
       if (articleCount) parts.push(articleCount + ' article' + (articleCount > 1 ? 's' : ''));
       const msg = 'Published: ' + parts.join(', ');
       try {
-        await fetch('https://ntfy.sh/tourfeed-alerts', {
+        await ft('https://ntfy.sh/tourfeed-alerts', {
           method: 'POST',
           headers: { 'Title': 'TourFeed Published', 'Priority': '3' },
           body: msg,
@@ -130,7 +136,7 @@ exports.handler = async (event) => {
     const errors = results.filter(r => r.status === 'error' || r.status === 'failed');
     if (errors.length > 0) {
       try {
-        await fetch('https://ntfy.sh/tourfeed-alerts', {
+        await ft('https://ntfy.sh/tourfeed-alerts', {
           method: 'POST',
           headers: { 'Title': 'TourFeed Error', 'Priority': '4', 'Tags': 'warning' },
           body: 'Publish failed for ' + errors.length + ' draft(s): ' + errors.map(e => e.error).join(', '),

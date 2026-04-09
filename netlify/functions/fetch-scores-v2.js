@@ -22,7 +22,7 @@ const MAJOR_NAMES = [
 
 function httpGet(url) {
   return new Promise((resolve, reject) => {
-    https.get(url, { headers: { 'Accept': 'application/json' } }, (res) => {
+    const req = https.get(url, { headers: { 'Accept': 'application/json' }, timeout: 8000 }, (res) => {
       let body = '';
       res.on('data', (c) => (body += c));
       res.on('end', () => {
@@ -30,7 +30,9 @@ function httpGet(url) {
         try { resolve(JSON.parse(body)); }
         catch (e) { reject(new Error(`JSON parse error from ${url}`)); }
       });
-    }).on('error', reject);
+    });
+    req.on('timeout', () => { req.destroy(); reject(new Error('Timeout: ' + url)); });
+    req.on('error', reject);
   });
 }
 
@@ -49,6 +51,7 @@ function supabaseRequest(method, path, body) {
         'Prefer': 'resolution=merge-duplicates,return=minimal',
       },
     };
+    options.timeout = 8000;
     const req = https.request(options, (res) => {
       let data = '';
       res.on('data', (c) => (data += c));
@@ -59,6 +62,7 @@ function supabaseRequest(method, path, body) {
         resolve(data ? JSON.parse(data) : null);
       });
     });
+    req.on('timeout', () => { req.destroy(); reject(new Error('Supabase timeout on ' + method + ' ' + path)); });
     req.on('error', reject);
     if (body) req.write(JSON.stringify(body));
     req.end();

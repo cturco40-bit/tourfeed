@@ -5,10 +5,16 @@
 const SUPABASE_URL = 'https://yumahmnoltvbiadjefxw.supabase.co';
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl1bWFobW5vbHR2YmlhZGplZnh3Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NTM5NjQ0MCwiZXhwIjoyMDkwOTcyNDQwfQ.VXcPybKl1c3uJAO59im8hb0zQjEmdwd4e6WGAakC-qs';
 
+function ft(url, opts, ms) {
+  var c = new AbortController();
+  var t = setTimeout(function() { c.abort(); }, ms || 8000);
+  return fetch(url, Object.assign({}, opts, { signal: c.signal })).finally(function() { clearTimeout(t); });
+}
+
 async function sb(path, method, body) {
   const hdrs = { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json' };
   if (method === 'POST') hdrs['Prefer'] = 'return=representation';
-  const res = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, { method: method || 'GET', headers: hdrs, body: body ? JSON.stringify(body) : undefined });
+  const res = await ft(`${SUPABASE_URL}/rest/v1/${path}`, { method: method || 'GET', headers: hdrs, body: body ? JSON.stringify(body) : undefined });
   if (!method || method === 'GET') { try { const d = await res.json(); return Array.isArray(d) ? d : []; } catch(e) { return []; } }
   if (method === 'POST' && res.ok) { try { return await res.json(); } catch(e) { return []; } }
   return res.ok;
@@ -76,7 +82,7 @@ exports.handler = async (event) => {
     // Get upcoming tournament
     let upcoming = '';
     try {
-      const res = await fetch('https://site.api.espn.com/apis/site/v2/sports/golf/pga/scoreboard?dates=2026');
+      const res = await ft('https://site.api.espn.com/apis/site/v2/sports/golf/pga/scoreboard?dates=2026');
       if (res.ok) {
         const data = await res.json();
         const next = (data.events || []).find(e => new Date(e.date) > new Date());
@@ -104,7 +110,7 @@ exports.handler = async (event) => {
     // Fetch player facts for context
     let playerFacts = '';
     try {
-      const pfRes = await fetch('https://yumahmnoltvbiadjefxw.supabase.co/rest/v1/player_facts?select=player_name,world_ranking,total_majors,masters_wins,masters_best,career_grand_slam,recent_notes&limit=30', {
+      const pfRes = await ft('https://yumahmnoltvbiadjefxw.supabase.co/rest/v1/player_facts?select=player_name,world_ranking,total_majors,masters_wins,masters_best,career_grand_slam,recent_notes&limit=30', {
         headers: { 'apikey': SUPABASE_KEY }
       });
       if (pfRes.ok) {
@@ -143,7 +149,7 @@ exports.handler = async (event) => {
     var dynamicPrompt = config.prompt.replace('{BEST_BET}', bestBetStr);
 
     // Generate the article
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
+    const res = await ft('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-api-key': ANTHROPIC_KEY, 'anthropic-version': '2023-06-01' },
       body: JSON.stringify({
@@ -158,7 +164,7 @@ ${playerFacts}${picksContext}`,
           content: `${dynamicPrompt}\n\nContext:\n${tournament ? `Recent tournament: ${tournament.name} at ${tournament.course}` : 'No recent tournament data.'}\n${leaderboard}\n${upcoming}\n\nReturn ONLY valid JSON:\n{"title":"headline","body":"full HTML article"}`
         }],
       }),
-    });
+    }, 25000);
 
     if (!res.ok) { results.push({ skipped: key, reason: 'AI failed' }); continue; }
 
@@ -215,7 +221,7 @@ ${playerFacts}${picksContext}`,
     var generated = results.filter(function(r) { return r.success; });
     if (generated.length > 0) {
       try {
-        await fetch('https://ntfy.sh/tourfeed-alerts', {
+        await ft('https://ntfy.sh/tourfeed-alerts', {
           method: 'POST',
           headers: { 'Title': 'New Articles Ready', 'Priority': '3' },
           body: generated.length + ' new article' + (generated.length > 1 ? 's' : '') + ': ' + generated.map(function(r) { return r.title; }).join(' | '),
