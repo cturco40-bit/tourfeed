@@ -247,7 +247,7 @@ exports.handler = async (event) => {
     // 2. Get top 15 leaderboard entries for this tournament
     // Join leaderboard with players to get names
     const leaderboard = await sb(
-      'leaderboard?tournament_id=eq.' + tournamentId + '&select=*,players(id,name,country)&order=position.asc&limit=15'
+      'leaderboard?tournament_id=eq.' + tournamentId + '&select=*,players(id,name,country)&order=position.asc&limit=200'
     );
     if (!leaderboard.length) {
       return { statusCode: 200, headers, body: JSON.stringify({ message: 'No leaderboard data found for tournament: ' + tournament.name }) };
@@ -272,10 +272,10 @@ exports.handler = async (event) => {
       return { statusCode: 200, headers, body: JSON.stringify({ message: 'Not enough valid player data (' + validPlayers.length + ' players with names/scores). Skipping.' }) };
     }
 
-    // Wait for leaderboard to develop — need 10+ players with scores
-    var fullField = await sb('leaderboard?tournament_id=eq.' + tournamentId + '&total_score=not.is.null&total_score=not.eq.--&select=player_id');
-    if (fullField.length < 10) {
-      return { statusCode: 200, headers, body: JSON.stringify({ skipped: 'Leaderboard too sparse — only ' + fullField.length + ' players with scores' }) };
+    // Wait for leaderboard to develop — need 60+ players with scores
+    var fullField = await sb('leaderboard?tournament_id=eq.' + tournamentId + '&total_score=not.is.null&total_score=not.eq.--&select=player_id&limit=200');
+    if (fullField.length < 60) {
+      return { statusCode: 200, headers, body: JSON.stringify({ skipped: 'Not enough scores yet — only ' + fullField.length + ' players with scores, need 60+' }) };
     }
 
     const leaderboardText = validPlayers.map((p, i) => {
@@ -366,7 +366,7 @@ If PLAYER CONTEXT is not provided for a player, use ONLY leaderboard data. No bi
     try {
       var sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
       currentPicks = await sb('betting_picks?created_at=gte.' + sevenDaysAgo + '&order=created_at.asc&limit=10');
-      console.log('Fetched betting_picks:', currentPicks.length, 'picks found');
+      console.log('picks count:', currentPicks.length);
       if (currentPicks.length > 0) {
         picksContext = '\n\nOUR CURRENT PICKS (ONLY reference these players as betting recommendations):\n' + currentPicks.map(function(p) {
           return (p.edge_label || '') + ': ' + (p.player_name || p.pick || '') + ' ' + (p.odds || '') + ' — ' + (p.analysis || '');

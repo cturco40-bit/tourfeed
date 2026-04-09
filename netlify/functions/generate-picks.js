@@ -112,32 +112,19 @@ exports.handler = async (event) => {
   var ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY;
   if (!ANTHROPIC_KEY) return { statusCode: 200, headers, body: JSON.stringify({ skipped: 'No API key' }) };
 
-  console.log('Starting generate-picks');
-
   try {
+    // BULLETPROOF LOCK — if ANY row exists in betting_picks, never overwrite
+    var existingPicks = await sb('betting_picks?select=id&limit=1');
+    if (existingPicks.length > 0) {
+      return { statusCode: 200, headers, body: JSON.stringify({ skipped: 'Picks locked — will not overwrite' }) };
+    }
+
     // 1. Get active tournament
     var tournaments = await sb('tournaments?tour_id=eq.pga&status=neq.completed&order=start_date.desc&limit=1');
     if (!tournaments.length) tournaments = await sb('tournaments?tour_id=eq.pga&order=start_date.desc&limit=1');
     var tournament = tournaments[0];
     if (!tournament) return { statusCode: 200, headers, body: JSON.stringify({ skipped: 'No tournament found' }) };
     console.log('Tournament:', tournament.name);
-
-    // Check if ANY picks exist from the last 7 days — once set, never regenerate
-    var sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
-    var existing = await sb('betting_picks?created_at=gte.' + sevenDaysAgo + '&select=id,tournament_id&limit=1');
-    if (existing.length > 0) {
-      console.log('Picks already locked (found picks from last 7 days)');
-      // Still create Instagram drafts if they don't exist yet
-      var existingIg = await sb('content_drafts?type=eq.instagram&title=like.*BEST BET*&created_at=gte.' + sevenDaysAgo + '&select=id&limit=1');
-      if (existingIg.length === 0) {
-        var lockedPicks = await sb('betting_picks?created_at=gte.' + sevenDaysAgo + '&order=created_at.asc');
-        if (lockedPicks.length > 0) {
-          await createInstagramDrafts(lockedPicks);
-          return { statusCode: 200, headers, body: JSON.stringify({ skipped: 'Picks locked, created ' + lockedPicks.length + ' Instagram drafts' }) };
-        }
-      }
-      return { statusCode: 200, headers, body: JSON.stringify({ skipped: 'Picks already locked for this week' }) };
-    }
 
     // 2. Get real sportsbook odds — top 20 players
     var odds = await sb('player_odds?order=best_odds.asc&limit=20');
