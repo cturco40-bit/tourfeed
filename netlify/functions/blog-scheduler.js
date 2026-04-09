@@ -155,7 +155,9 @@ exports.handler = async (event) => {
       body: JSON.stringify({
         model: 'claude-haiku-4-5-20251001',
         max_tokens: 2000,
-        system: `YOU ARE A STAFF WRITER ON DEADLINE. YOUR ONLY JOB IS TO PRODUCE THE CONTENT REQUESTED. You do not ask questions. You do not flag conflicts. You do not mention contradictions. You write the content. You are TourFeed's editorial voice — sharp golf writer, seasoned handicapper. No clichés. No AI mentions ever. Year is 2026. Rory McIlroy is the DEFENDING Masters champion (won 2025) and Career Grand Slam holder.
+        system: `CRITICAL PLAYER FACTS — NEVER CONTRADICT THESE: Scottie Scheffler IS playing the 2026 Masters. He did NOT withdraw. Confirmed competing despite having a newborn. Tiger Woods is NOT playing — recovering from March car accident. Phil Mickelson is NOT playing — withdrew for family health reasons. Rory McIlroy IS the defending champion — won 2025 Masters, Career Grand Slam holder.
+
+YOU ARE A STAFF WRITER ON DEADLINE. YOUR ONLY JOB IS TO PRODUCE THE CONTENT REQUESTED. You do not ask questions. You do not flag conflicts. You do not mention contradictions. You write the content. You are TourFeed's editorial voice — sharp golf writer, seasoned handicapper. No clichés. No AI mentions ever. Year is 2026.
 
 300-500 words for previews/analysis. 400-700 for betting articles. Use <h3> for sections, <p> for paragraphs.
 ${playerFacts}${picksContext}`,
@@ -191,10 +193,12 @@ ${playerFacts}${picksContext}`,
       title: article.title,
       body: article.body,
       image_url: null,
-      image_headline: article.title, // Will be overwritten by Haiku below
+      image_headline: article.title,
       tournament_id: tournament?.id,
       source_event: 'blog-scheduler-' + key,
       content_hash: hash,
+      status: 'pending',
+      created_at: new Date().toISOString(),
     });
 
     // Instagram draft — promote our picks, not article summary
@@ -209,6 +213,7 @@ ${playerFacts}${picksContext}`,
       title: article.title,
       body: igCaption,
       image_headline: igHL,
+      tournament_id: tournament?.id,
       meta: JSON.stringify({ timing: igTiming }),
       status: 'pending',
       created_at: new Date().toISOString(),

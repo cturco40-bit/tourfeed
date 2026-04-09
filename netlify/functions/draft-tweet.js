@@ -3,6 +3,12 @@ const SUPABASE_URL = process.env.SUPABASE_URL || 'https://yumahmnoltvbiadjefxw.s
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl1bWFobW5vbHR2YmlhZGplZnh3Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NTM5NjQ0MCwiZXhwIjoyMDkwOTcyNDQwfQ.VXcPybKl1c3uJAO59im8hb0zQjEmdwd4e6WGAakC-qs';
 const TWITTER_BEARER = process.env.TWITTER_BEARER_TOKEN;
 
+function ft(url, opts, ms) {
+  var c = new AbortController();
+  var t = setTimeout(function() { c.abort(); }, ms || 8000);
+  return fetch(url, Object.assign({}, opts, { signal: c.signal })).finally(function() { clearTimeout(t); });
+}
+
 async function sb(path, method, body) {
   const key = SUPABASE_KEY;
   if (!key) throw new Error('No Supabase key');
@@ -13,7 +19,7 @@ async function sb(path, method, body) {
   };
   if (method === 'POST') hdrs['Prefer'] = 'return=representation';
   if (method === 'PATCH') hdrs['Prefer'] = 'return=minimal';
-  const res = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
+  const res = await ft(`${SUPABASE_URL}/rest/v1/${path}`, {
     method: method || 'GET',
     headers: hdrs,
     body: body ? JSON.stringify(body) : undefined,
@@ -42,14 +48,14 @@ function hashText(text) {
 async function isSimilarToPosted(text) {
   if (!TWITTER_BEARER) return false;
   try {
-    const uRes = await fetch('https://api.twitter.com/2/users/by/username/TourFeedGolf', {
+    const uRes = await ft('https://api.twitter.com/2/users/by/username/TourFeedGolf', {
       headers: { 'Authorization': `Bearer ${TWITTER_BEARER}` },
     });
     if (!uRes.ok) return false;
     const userId = (await uRes.json()).data?.id;
     if (!userId) return false;
 
-    const tRes = await fetch(`https://api.twitter.com/2/users/${userId}/tweets?max_results=50&tweet.fields=text`, {
+    const tRes = await ft(`https://api.twitter.com/2/users/${userId}/tweets?max_results=50&tweet.fields=text`, {
       headers: { 'Authorization': `Bearer ${TWITTER_BEARER}` },
     });
     if (!tRes.ok) return false;
@@ -124,7 +130,7 @@ exports.handler = async (event) => {
       } else {
         // Post tweet
         const tweetText = params.text || draft.body;
-        const tweetRes = await fetch('https://tourfeed.co/.netlify/functions/post-tweet', {
+        const tweetRes = await ft('https://tourfeed.co/.netlify/functions/post-tweet', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ text: tweetText, image: draft.image_url || undefined }),

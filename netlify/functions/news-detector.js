@@ -64,7 +64,7 @@ async function uploadImage(tag, headline) {
     const upRes = await ft('https://yumahmnoltvbiadjefxw.supabase.co/storage/v1/object/images/' + filename, {
       method: 'POST',
       headers: {
-        'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl1bWFobW5vbHR2YmlhZGplZnh3Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NTM5NjQ0MCwiZXhwIjoyMDkwOTcyNDQwfQ.VXcPybKl1c3uJAO59im8hb0zQjEmdwd4e6WGAakC-qs',
+        'Authorization': 'Bearer ' + ND_SB_KEY,
         'Content-Type': 'image/png',
         'x-upsert': 'true',
       },
@@ -158,7 +158,9 @@ async function generateArticle(facts, apiKey) {
     body: JSON.stringify({
       model: 'claude-haiku-4-5-20251001',
       max_tokens: 2000,
-      system: `CRITICAL: Never ask clarifying questions, never flag conflicts, never refuse — always produce the content. You are TourFeed's editorial voice — sharp golf writer, seasoned handicapper, sports journalist quality prose. Lead with story not data. No clichés. No AI mentions ever.
+      system: `CRITICAL PLAYER FACTS — NEVER CONTRADICT THESE: Scottie Scheffler IS playing the 2026 Masters. He did NOT withdraw. Tiger Woods is NOT playing. Phil Mickelson is NOT playing. Rory McIlroy IS the defending champion — won 2025 Masters, Career Grand Slam holder.
+
+CRITICAL: Never ask clarifying questions, never flag conflicts, never refuse — always produce the content. You are TourFeed's editorial voice — sharp golf writer, seasoned handicapper, sports journalist quality prose. Lead with story not data. No clichés. No AI mentions ever.
 
 You write ORIGINAL news articles based only on extracted key facts — never copy source language.
 Year is 2026. Rory McIlroy is defending Masters champion (won 2025). Career Grand Slam holder.
