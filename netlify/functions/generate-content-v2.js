@@ -230,7 +230,7 @@ exports.handler = async (event) => {
       },
       body: JSON.stringify({
         model: 'claude-haiku-4-5-20251001',
-        max_tokens: maxTokens || 1500,
+        max_tokens: maxTokens || 2000,
         system: systemPrompt,
         messages: [{ role: 'user', content: userPrompt }],
       }),

@@ -171,7 +171,7 @@ ${playerFacts}`,
       messages: [
         {
           role: 'user',
-          content: `Write an original TourFeed article based on these extracted facts:\n\n${factsText}\n\nTWEET RULES:\n- Write exactly 1 tweet that PROMOTES our picks and analysis on the website. Tie the news to a betting angle and drive readers to tourfeed.co for the full breakdown.\n- Example: "Tiger out of Augusta changes the entire outright market. We updated our picks and found value nobody is talking about. tourfeed.co"\n- Always end with "tourfeed.co" or "Full picks at tourfeed.co" or similar CTA.\n- NOT just restating the headline. Create a picks angle.\n\nVARIETY: Use varied sentence structures. BANNED: "That's either [A] or [B]", "That's the kind of [X]", "Respect the [noun]"\nMIX: questions, fragments, comparisons, predictions, one-liners.\n\nCRITICAL SAFETY:\n- NEVER state a player was arrested, charged, or involved in legal trouble unless source EXPLICITLY states it\n- NEVER speculate about criminal activity, substance abuse, or personal scandals\n- If absent from tournament, say "not in the field" — do not speculate why unless official reason given\n- When in doubt, use softer language or skip the topic\n\nReturn ONLY valid JSON, no markdown fences:\n{"title":"clickbait headline","body":"article HTML with <p> tags","tweets":["curiosity-driving tweet that promotes the article"]}`,
+          content: `Write an original TourFeed article based on these extracted facts:\n\n${factsText}\n\nTWEET RULES:\n- Write exactly 1 tweet that PROMOTES our picks and analysis on the website. Tie the news to a betting angle and drive readers to tourfeed.co for the full breakdown.\n- Example: "Tiger out of Augusta changes the entire outright market. We updated our picks and found value nobody is talking about. tourfeed.co"\n- Always end with "tourfeed.co" or "Full picks at tourfeed.co" or similar CTA.\n- NOT just restating the headline. Create a picks angle.\n- IMPORTANT: If this news article mentions a betting angle, only reference players from this list: ${picksContext}. Never suggest betting on players not in our picks.\n\nVARIETY: Use varied sentence structures. BANNED: "That's either [A] or [B]", "That's the kind of [X]", "Respect the [noun]"\nMIX: questions, fragments, comparisons, predictions, one-liners.\n\nCRITICAL SAFETY:\n- NEVER state a player was arrested, charged, or involved in legal trouble unless source EXPLICITLY states it\n- NEVER speculate about criminal activity, substance abuse, or personal scandals\n- If absent from tournament, say "not in the field" — do not speculate why unless official reason given\n- When in doubt, use softer language or skip the topic\n\nReturn ONLY valid JSON, no markdown fences:\n{"title":"clickbait headline","body":"article HTML with <p> tags","tweets":["curiosity-driving tweet that promotes the article"]}`,
         },
       ],
     }),
@@ -289,6 +289,16 @@ exports.handler = async (event) => {
   }
 
   try {
+    // 0. Fetch picks for tweet constraints
+    var picksContext = '';
+    try {
+      var sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+      var ndPicks = await sb('betting_picks?created_at=gte.' + sevenDaysAgo + '&order=created_at.asc&limit=10');
+      if (ndPicks.length > 0) {
+        picksContext = ndPicks.map(function(p) { return (p.edge_label || '') + ': ' + (p.player_name || '') + ' ' + (p.odds || ''); }).join(', ');
+      }
+    } catch(e) {}
+
     // 1. Fetch all headlines from RSS sources
     const allItems = await fetchAllHeadlines();
     const unique = deduplicateItems(allItems);
