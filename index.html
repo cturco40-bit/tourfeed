@@ -773,30 +773,47 @@ let standingsFilter = 'pga';
 
 async function fetchESPNStandings(tour) {
   if (standingsFetched[tour]) return;
-  const sport = ESPN_SPORTS[tour];
+  var sport = ESPN_SPORTS[tour];
   if (!sport) { standingsError = 'Standings not available'; renderApp(); return; }
   standingsLoading = true;
   standingsError = null;
   renderApp();
   try {
-    const res = await fetch('https://site.api.espn.com/apis/site/v2/sports/' + sport + '/standings');
+    // Use ESPN statistics endpoint — standings endpoint is empty for golf
+    var res = await fetch('https://site.api.espn.com/apis/site/v2/sports/' + sport + '/statistics');
     if (!res.ok) throw new Error('ESPN ' + res.status);
-    const data = await res.json();
-    const children = data.children || data.standings || [];
-    const standing = children[0] || data;
-    const entries = standing.entries || standing.standings?.[0]?.entries || [];
-    standingsLive[tour] = entries.map(function(e, i) {
-      const stats = {};
-      (e.stats || []).forEach(function(s) { stats[s.name || s.abbreviation] = s.displayValue || s.value; });
+    var data = await res.json();
+    var cats = (data.stats || {}).categories || [];
+
+    // Build lookup maps from each category
+    var cupMap = {}, earnMap = {}, winsMap = {}, t10Map = {};
+    cats.forEach(function(cat) {
+      var leaders = cat.leaders || [];
+      leaders.forEach(function(l) {
+        var name = l.athlete?.displayName || '';
+        if (!name) return;
+        if (cat.name === 'cupPoints') cupMap[name] = l.displayValue || '0';
+        if (cat.name === 'officialAmount') earnMap[name] = l.displayValue || '-';
+        if (cat.name === 'wins') winsMap[name] = l.displayValue || '0';
+        if (cat.name === 'topTenFinishes') t10Map[name] = l.displayValue || '0';
+      });
+    });
+
+    // Build standings from cupPoints leaders (sorted by FedEx Cup rank)
+    var cupCat = cats.find(function(c) { return c.name === 'cupPoints'; });
+    var leaders = cupCat ? cupCat.leaders || [] : [];
+    standingsLive[tour] = leaders.map(function(l, i) {
+      var name = l.athlete?.displayName || 'Unknown';
       return {
         pos: i + 1,
-        p: e.athlete?.displayName || e.team?.displayName || 'Unknown',
-        pts: stats.points || stats.cupPoints || stats.totalPoints || '-',
-        w: parseInt(stats.wins || stats.gamesWon || '0') || 0,
-        t10: parseInt(stats.top10 || stats.top10Finishes || '0') || 0,
-        earn: stats.earnings || stats.totalEarnings || stats.money || '-',
+        p: name,
+        pts: cupMap[name] || '-',
+        w: parseInt(winsMap[name] || '0') || 0,
+        t10: parseInt(t10Map[name] || '0') || 0,
+        earn: earnMap[name] || '-',
       };
     });
+
     standingsFetched[tour] = true;
     standingsLoading = false;
   } catch(e) {
