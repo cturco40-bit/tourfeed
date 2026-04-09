@@ -122,20 +122,21 @@ exports.handler = async (event) => {
     if (!tournament) return { statusCode: 200, headers, body: JSON.stringify({ skipped: 'No tournament found' }) };
     console.log('Tournament:', tournament.name);
 
-    // Check if picks already locked for this tournament
-    var existing = await sb('betting_picks?tournament_id=eq.' + encodeURIComponent(tournament.id) + '&select=id&limit=1');
+    // Check if ANY picks exist from the last 7 days — once set, never regenerate
+    var sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+    var existing = await sb('betting_picks?created_at=gte.' + sevenDaysAgo + '&select=id,tournament_id&limit=1');
     if (existing.length > 0) {
-      console.log('Picks already locked for', tournament.name);
+      console.log('Picks already locked (found picks from last 7 days)');
       // Still create Instagram drafts if they don't exist yet
-      var existingIg = await sb('content_drafts?type=eq.instagram&title=like.*BEST BET*&created_at=gte.' + new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString() + '&select=id&limit=1');
+      var existingIg = await sb('content_drafts?type=eq.instagram&title=like.*BEST BET*&created_at=gte.' + sevenDaysAgo + '&select=id&limit=1');
       if (existingIg.length === 0) {
-        var lockedPicks = await sb('betting_picks?tournament_id=eq.' + encodeURIComponent(tournament.id) + '&order=created_at.asc');
+        var lockedPicks = await sb('betting_picks?created_at=gte.' + sevenDaysAgo + '&order=created_at.asc');
         if (lockedPicks.length > 0) {
           await createInstagramDrafts(lockedPicks);
           return { statusCode: 200, headers, body: JSON.stringify({ skipped: 'Picks locked, created ' + lockedPicks.length + ' Instagram drafts' }) };
         }
       }
-      return { statusCode: 200, headers, body: JSON.stringify({ skipped: 'Picks already locked for this tournament' }) };
+      return { statusCode: 200, headers, body: JSON.stringify({ skipped: 'Picks already locked for this week' }) };
     }
 
     // 2. Get real sportsbook odds — top 20 players

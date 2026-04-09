@@ -124,7 +124,8 @@ exports.handler = async (event) => {
     var picksContext = '';
     var allPicks = [];
     try {
-      allPicks = await sb('betting_picks?order=created_at.asc&limit=20');
+      var sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+      allPicks = await sb('betting_picks?created_at=gte.' + sevenDaysAgo + '&order=created_at.asc&limit=20');
       console.log('Fetched betting_picks:', allPicks.length, 'picks found');
       var bb = allPicks.find(function(p) { return p.edge_label === 'BEST BET'; });
       if (bb) bestBetStr = bb.player_name + ' ' + bb.odds + ' — ' + (bb.analysis || '').slice(0, 100);

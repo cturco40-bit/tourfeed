@@ -272,14 +272,10 @@ exports.handler = async (event) => {
       return { statusCode: 200, headers, body: JSON.stringify({ message: 'Not enough valid player data (' + validPlayers.length + ' players with names/scores). Skipping.' }) };
     }
 
-    // Wait for leaderboard to develop — need 30+ players through 9+ holes
-    var fullField = await sb('leaderboard?tournament_id=eq.' + tournamentId + '&thru=not.eq.&thru=not.is.null&select=thru');
-    var playersThru9 = fullField.filter(function(p) {
-      var thru = parseInt(p.thru) || 0;
-      return thru >= 9 || p.thru === 'F';
-    });
-    if (playersThru9.length < 30) {
-      return { statusCode: 200, headers, body: JSON.stringify({ skipped: 'Leaderboard too sparse — waiting for field to develop (' + playersThru9.length + ' players through 9+ holes)' }) };
+    // Wait for leaderboard to develop — need 10+ players with scores
+    var fullField = await sb('leaderboard?tournament_id=eq.' + tournamentId + '&total_score=not.is.null&total_score=not.eq.--&select=player_id');
+    if (fullField.length < 10) {
+      return { statusCode: 200, headers, body: JSON.stringify({ skipped: 'Leaderboard too sparse — only ' + fullField.length + ' players with scores' }) };
     }
 
     const leaderboardText = validPlayers.map((p, i) => {
@@ -368,8 +364,8 @@ If PLAYER CONTEXT is not provided for a player, use ONLY leaderboard data. No bi
     var picksContext = '';
     var currentPicks = [];
     try {
-      currentPicks = await sb('betting_picks?tournament_id=eq.' + encodeURIComponent(tournamentId) + '&order=created_at.asc');
-      if (!currentPicks.length) currentPicks = await sb('betting_picks?order=created_at.asc&limit=10');
+      var sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+      currentPicks = await sb('betting_picks?created_at=gte.' + sevenDaysAgo + '&order=created_at.asc&limit=10');
       console.log('Fetched betting_picks:', currentPicks.length, 'picks found');
       if (currentPicks.length > 0) {
         picksContext = '\n\nOUR CURRENT PICKS (ONLY reference these players as betting recommendations):\n' + currentPicks.map(function(p) {
