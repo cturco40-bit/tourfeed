@@ -1327,37 +1327,10 @@ function renderHome() {
   html += '</div>';
   html += '</div>'; // end columns
 
-  // Quick Picks — only show live picks when tournament is actively in progress
+  // Quick Picks — always from betting_picks (locked for the tournament)
   html += '<div class="picks-strip">';
   html += '<div class="picks-strip-title">Quick Picks</div>';
-  if (state === 'live') {
-    var qActive = PLAYERS.filter(function(p) { return p.status === 'active'; });
-    if (qActive.length > 3) {
-      var qpS = function(s) { if (!s || s === 'E') return 0; return parseInt(s) || 0; };
-      var qLeader = qpS(qActive[0].score);
-      var qCalcP = function(back) { return Math.max(0.5, Math.exp(-0.55 * back) * 30); };
-      var qToOdds = function(pct) { return pct >= 50 ? '-' + Math.round(pct / (100 - pct) * 100) : '+' + Math.round((100 - pct) / pct * 100); };
-      var qTotal = qActive.slice(0, 15).reduce(function(s, p) { return s + qCalcP(Math.abs(qpS(p.score) - qLeader)); }, 0) + 10;
-      var qBest = qActive.slice(1, 6).sort(function(a,b) { return (qpS(a.today)||0) - (qpS(b.today)||0); })[0];
-      var qLong = qActive.slice(5, 15).sort(function(a,b) { return (qpS(a.today)||0) - (qpS(b.today)||0); })[0];
-      html += '<div style="display:flex;gap:12px;flex-wrap:wrap">';
-      if (qBest) {
-        var qbB = Math.abs(qpS(qBest.score) - qLeader);
-        html += '<div style="flex:1;min-width:200px;padding:12px;background:var(--green-fade);border:1px solid var(--border);border-radius:4px">';
-        html += '<div style="font-size:9px;font-weight:700;letter-spacing:1px;color:var(--green);margin-bottom:6px">BEST BET</div>';
-        html += '<div style="font-size:15px;font-weight:800;color:var(--text)">' + qBest.c + ' ' + esc(qBest.name) + '</div>';
-        html += '<div style="font-size:18px;font-weight:900;color:var(--green);margin-top:4px">' + qToOdds((qCalcP(qbB)/qTotal)*100) + '</div></div>';
-      }
-      if (qLong) {
-        var qlB = Math.abs(qpS(qLong.score) - qLeader);
-        html += '<div style="flex:1;min-width:200px;padding:12px;background:var(--gold-fade);border:1px solid var(--border);border-radius:4px">';
-        html += '<div style="font-size:9px;font-weight:700;letter-spacing:1px;color:var(--gold);margin-bottom:6px">LONGSHOT</div>';
-        html += '<div style="font-size:15px;font-weight:800;color:var(--text)">' + qLong.c + ' ' + esc(qLong.name) + '</div>';
-        html += '<div style="font-size:18px;font-weight:900;color:var(--gold);margin-top:4px">' + qToOdds((qCalcP(qlB)/qTotal)*100) + '</div></div>';
-      }
-      html += '</div>';
-    }
-  } else {
+  {
     // Quick picks — pull from betting_picks (single source of truth)
     var qpBB = _bettingPicks && _bettingPicks !== 'loading' ? (_bettingPicks.find(function(p) { return p.edge_label === 'BEST BET'; }) || null) : null;
     var qpVal = _bettingPicks && _bettingPicks !== 'loading' ? (_bettingPicks.find(function(p) { return p.edge_label === 'VALUE'; }) || null) : null;
@@ -1808,8 +1781,8 @@ function renderInsights() {
   // Season record removed — tracking begins when picks resolve
   html += '</div>';
 
-  // ━━ MODE B: NO LIVE TOURNAMENT — PICKS FROM BETTING_PICKS TABLE ━━
-  if (!isLive) {
+  // ━━ BETTING PICKS — always show from betting_picks table ━━
+  {
     // Load picks from betting_picks if not already loaded
     if (!_bettingPicks) {
       _bettingPicks = 'loading';
