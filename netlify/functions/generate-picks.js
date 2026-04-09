@@ -107,6 +107,7 @@ async function createInstagramDrafts(picksList) {
 }
 
 exports.handler = async (event) => {
+  console.log('generate-picks called at:', new Date().toISOString());
   var headers = { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' };
   var ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY;
   if (!ANTHROPIC_KEY) return { statusCode: 200, headers, body: JSON.stringify({ skipped: 'No API key' }) };

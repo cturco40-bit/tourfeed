@@ -272,6 +272,16 @@ exports.handler = async (event) => {
       return { statusCode: 200, headers, body: JSON.stringify({ message: 'Not enough valid player data (' + validPlayers.length + ' players with names/scores). Skipping.' }) };
     }
 
+    // Wait for leaderboard to develop — need 30+ players through 9+ holes
+    var fullField = await sb('leaderboard?tournament_id=eq.' + tournamentId + '&thru=not.eq.&thru=not.is.null&select=thru');
+    var playersThru9 = fullField.filter(function(p) {
+      var thru = parseInt(p.thru) || 0;
+      return thru >= 9 || p.thru === 'F';
+    });
+    if (playersThru9.length < 30) {
+      return { statusCode: 200, headers, body: JSON.stringify({ skipped: 'Leaderboard too sparse — waiting for field to develop (' + playersThru9.length + ' players through 9+ holes)' }) };
+    }
+
     const leaderboardText = validPlayers.map((p, i) => {
       const pos = p.position || (i + 1);
       const name = p.players.name;
