@@ -1759,7 +1759,7 @@ function switchStandingsTour(tour) {
 
 function renderStandings() {
   let html = '<div class="filter-bar">';
-  ['pga','dpw','lpga','kft','champ'].forEach(function(t) {
+  ['pga','lpga'].forEach(function(t) {
     html += '<button class="filter-btn ' + (standingsFilter===t?'active':'') + '" onclick="switchStandingsTour(\'' + t + '\')">' + (TOURS.find(function(x){return x.id===t})?.short||t) + '</button>';
   });
   html += '</div>';
