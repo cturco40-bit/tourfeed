@@ -714,8 +714,8 @@ let refreshInterval = null;
 function startAutoRefresh() {
   if (refreshInterval) clearInterval(refreshInterval);
   refreshInterval = setInterval(function() {
-    if (currentTab === 1 && !scoresLoading) fetchESPNScores(currentScoresTour);
-  }, 30000);
+    if (!scoresLoading) fetchESPNScores(currentScoresTour);
+  }, 60000);
 }
 
 // ============================================
