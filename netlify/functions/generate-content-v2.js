@@ -360,15 +360,7 @@ If PLAYER CONTEXT is not provided for a player, use ONLY leaderboard data. No bi
 
   // Image generator picks contextual golf photos automatically
 
-    // ── Fetch context for all players in the leaderboard ──
-    const playerNames = validPlayers.map(p => p.players?.name).filter(Boolean);
-    const playerContext = await getPlayerContext(playerNames);
-    const tournamentContext = await getTournamentContext(tournament.name);
-    const contextBlock = playerContext + tournamentContext + '\n' + FACT_CHECK_RULES + picksContext;
-
-    const results = { tournament: tournament.name, round: currentRound, generated: [], skipped: [] };
-
-    // Fetch current picks from betting_picks — all content must reference these players only
+    // ── Step 1: Fetch picks FIRST — must be defined before contextBlock ──
     var picksContext = '';
     var currentPicks = [];
     try {
@@ -386,6 +378,16 @@ If PLAYER CONTEXT is not provided for a player, use ONLY leaderboard data. No bi
       console.log('No betting_picks found — aborting content generation');
       return { statusCode: 200, headers, body: JSON.stringify({ skipped: 'No picks in betting_picks — cannot generate content without picks' }) };
     }
+
+    // ── Step 2: Fetch player/tournament context ──
+    const playerNames = validPlayers.map(p => p.players?.name).filter(Boolean);
+    const playerContext = await getPlayerContext(playerNames);
+    const tournamentContext = await getTournamentContext(tournament.name);
+
+    // ── Step 3: Build contextBlock WITH picksContext (now defined) ──
+    const contextBlock = playerContext + tournamentContext + '\n' + FACT_CHECK_RULES + picksContext;
+
+    const results = { tournament: tournament.name, round: currentRound, generated: [], skipped: [] };
 
     // --- CONTENT 1: Round Recap Article ---
     try {
@@ -489,7 +491,7 @@ Types of pick tweets (use a mix):
     // Fetch current best bet from betting_picks (single source of truth)
     var bestBetStr = 'our top value pick';
     try {
-      var bestBets = await sb('betting_picks?bet_type=eq.outright&edge_label=eq.BEST BET&order=created_at.desc&limit=1');
+      var bestBets = await sb('betting_picks?pick_type=eq.outright&edge_label=eq.BEST BET&order=created_at.desc&limit=1');
       if (bestBets.length > 0) bestBetStr = bestBets[0].player_name + ' ' + bestBets[0].odds;
     } catch(e) {}
     try {

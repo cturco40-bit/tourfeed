@@ -376,7 +376,7 @@ exports.handler = async (event) => {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'x-api-key': ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' },
             body: JSON.stringify({ model: 'claude-haiku-4-5-20251001', max_tokens: 50, messages: [{ role: 'user', content: 'Write ONE image headline (max 8 words) for this article. Bold hook for Instagram. NOT the title shortened. Think billboard.\n\nTitle: ' + articleTitle + '\n\nImage headline:' }] }),
-          });
+          }, 25000);
           if (hlRes.ok) { var hd = await hlRes.json(); var cl = (hd.content?.[0]?.text || '').replace(/[""]/g, '').trim(); if (cl.length > 3 && cl.length < 60) imgHL = cl; }
         } catch(e) {}
         await sb('content_drafts', 'POST', {
