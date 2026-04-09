@@ -389,9 +389,28 @@ If PLAYER CONTEXT is not provided for a player, use ONLY leaderboard data. No bi
 
     const results = { tournament: tournament.name, round: currentRound, generated: [], skipped: [] };
 
-    // --- CONTENT 1: Round Recap Article ---
-    try {
-      const recapSystem = `YOU ARE A STAFF WRITER ON DEADLINE. YOUR ONLY JOB IS TO PRODUCE THE CONTENT REQUESTED. You do not ask questions. You do not flag conflicts. You do not explain what you can or cannot do. You do not mention contradictions. You write the content. If data is from a past tournament, use it as context for the upcoming Masters. Always produce 4 clean tweets or a full article — nothing else.
+    // ── Round completion detection ──
+    var completedPlayers = leaderboard.filter(function(p) { return p.thru === 'F' || p.thru === '18'; }).length;
+    var roundComplete = completedPlayers >= 70 || new Date().getUTCHours() >= 22;
+    console.log('Round complete check:', completedPlayers, 'finished players, roundComplete:', roundComplete);
+
+    // ── DURING ROUND: tweets only (max 2) ──
+    // ── AFTER ROUND: recap + betting + tweets ──
+
+    // --- CONTENT 1: Round Recap Article (only after round complete) ---
+    if (!roundComplete) {
+      results.skipped.push('article_recap: round not complete');
+    } else {
+      // Dedup check — one recap per round maximum
+      var existingRecaps = await sb('content_drafts?type=eq.article_recap&tournament_id=eq.' + encodeURIComponent(tournamentId) + '&round=eq.' + currentRound + '&select=id&limit=1');
+      var recapInArticles = await sb('articles?type=eq.recap&tournament_id=eq.' + encodeURIComponent(tournamentId) + '&select=id&limit=1');
+      if (existingRecaps.length > 0) {
+        results.skipped.push('article_recap: already exists for R' + currentRound);
+      } else if (recapInArticles.length > 0) {
+        results.skipped.push('article_recap: already published for this tournament');
+      } else {
+        try {
+          const recapSystem = `YOU ARE A STAFF WRITER ON DEADLINE. YOUR ONLY JOB IS TO PRODUCE THE CONTENT REQUESTED. You do not ask questions. You do not flag conflicts. You do not explain what you can or cannot do. You do not mention contradictions. You write the content. If data is from a past tournament, use it as context for the upcoming Masters. Always produce 4 clean tweets or a full article — nothing else.
 
 You are a golf journalist at TourFeed writing from raw leaderboard data. ONLY state facts that appear in the data provided. Do NOT invent stats, quotes, hole numbers, or specific shots — you only have position and score data.
 
@@ -409,28 +428,30 @@ Rules:
 - Never mention AI, data limitations, or that you're working from data
 - Author is "TourFeed Staff" — write like a real media outlet
 - If this is a ${tourName} event, write for that tour's audience`;
-      const recapPrompt = `Write a FULL round recap article (minimum 500 words, aim for 600+) based on this leaderboard data. This will be published on tourfeed.co as a standalone article. Make it worth reading — not a summary, a real article with analysis and narrative.\n\nReturn your response in this exact format:\n\nHEADLINE: <your headline here>\n\nBODY:\n<your HTML article here using <p> tags>\n\n${dataBlock}\n${contextBlock}`;
+          const recapPrompt = `Write a FULL round recap article (minimum 500 words, aim for 600+) based on this leaderboard data. This will be published on tourfeed.co as a standalone article. Make it worth reading — not a summary, a real article with analysis and narrative.\n\nReturn your response in this exact format:\n\nHEADLINE: <your headline here>\n\nBODY:\n<your HTML article here using <p> tags>\n\n${dataBlock}\n${contextBlock}`;
 
-      const recapRaw = await askClaude(recapSystem, recapPrompt, 2000);
+          const recapRaw = await askClaude(recapSystem, recapPrompt, 2000);
 
-      let recapTitle = 'Round ' + currentRound + ' Recap';
-      let recapBody = recapRaw;
+          let recapTitle = 'Round ' + currentRound + ' Recap';
+          let recapBody = recapRaw;
 
-      const headlineMatch = recapRaw.match(/HEADLINE:\s*(.+?)(?:\n|$)/);
-      if (headlineMatch) recapTitle = headlineMatch[1].trim();
+          const headlineMatch = recapRaw.match(/HEADLINE:\s*(.+?)(?:\n|$)/);
+          if (headlineMatch) recapTitle = headlineMatch[1].trim();
 
-      const bodyMatch = recapRaw.match(/BODY:\s*([\s\S]+)/);
-      if (bodyMatch) recapBody = bodyMatch[1].trim();
+          const bodyMatch = recapRaw.match(/BODY:\s*([\s\S]+)/);
+          if (bodyMatch) recapBody = bodyMatch[1].trim();
 
-      const saved = await saveDraft('article_recap', recapTitle, recapBody, tournamentId, currentRound);
-      if (saved.skipped) {
-        results.skipped.push('article_recap');
-      } else {
-        results.generated.push('article_recap');
+          const saved = await saveDraft('article_recap', recapTitle, recapBody, tournamentId, currentRound);
+          if (saved.skipped) {
+            results.skipped.push('article_recap');
+          } else {
+            results.generated.push('article_recap');
+          }
+        } catch (e) {
+          results.errors = results.errors || [];
+          results.errors.push('article_recap: ' + e.message);
+        }
       }
-    } catch (e) {
-      results.errors = results.errors || [];
-      results.errors.push('article_recap: ' + e.message);
     }
 
     // --- CONTENT 2: Picks Promo Tweets (4 tweets) ---
@@ -464,8 +485,8 @@ Types of pick tweets (use a mix):
       }
       if (currentTweet) tweets.push(currentTweet.trim());
 
-      // Save up to 4 tweets
-      const tweetsToSave = tweets.slice(0, 4);
+      // Save up to 2 tweets per cycle
+      const tweetsToSave = tweets.slice(0, 2);
       for (let i = 0; i < tweetsToSave.length; i++) {
         const tweet = tweetsToSave[i];
         if (!tweet) continue;
@@ -487,8 +508,10 @@ Types of pick tweets (use a mix):
       results.errors.push('tweet_reactions: ' + e.message);
     }
 
-    // --- CONTENT 3: Betting Insights Article ---
-    // Fetch current best bet from betting_picks (single source of truth)
+    // --- CONTENT 3: Betting Insights Article (only after round complete) ---
+    if (!roundComplete) {
+      results.skipped.push('article_betting: round not complete');
+    } else {
     var bestBetStr = 'our top value pick';
     try {
       var bestBets = await sb('betting_picks?pick_type=eq.outright&edge_label=eq.BEST BET&order=created_at.desc&limit=1');
@@ -539,6 +562,7 @@ Rules:
       results.errors = results.errors || [];
       results.errors.push('article_betting: ' + e.message);
     }
+    } // end roundComplete check for betting
 
     // Send batched notification
     if (results.generated.length > 0) {
