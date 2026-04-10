@@ -988,9 +988,10 @@ function closePopup() {
   popupClosed = true;
   localStorage.setItem('tf-popup-closed', '1');
 }
-async function doSubscribe(email, successCb, errorEl) {
+async function doSubscribe(email, successCb, errorCb) {
   if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    if (errorEl) errorEl.textContent = 'Enter a valid email address';
+    if (errorCb) errorCb('Enter a valid email address');
+    else alert('Enter a valid email address');
     return;
   }
   try {
@@ -1002,7 +1003,9 @@ async function doSubscribe(email, successCb, errorEl) {
     var data = await res.json();
     if (!res.ok || data.error) throw new Error(data.error || 'Subscribe failed');
   } catch(e) {
-    if (errorEl) errorEl.textContent = 'Something went wrong. Try again.';
+    console.log('Subscribe error:', e.message);
+    if (errorCb) errorCb('Something went wrong. Try again.');
+    else alert('Something went wrong. Try again.');
     return;
   }
   localStorage.setItem('tf-subscribed', '1');
@@ -1014,8 +1017,11 @@ function subscribeEmail() {
   var email = input.value;
   var popup = document.getElementById('emailPopup');
   doSubscribe(email, function() {
-    popup.innerHTML = '<div style="text-align:center;padding:12px 0"><div style="font-size:20px;margin-bottom:6px;color:var(--green)">&#10003;</div><div style="font-family:DM Sans,sans-serif;font-size:16px;font-weight:700;color:var(--text)">You\'re in.</div><div style="font-size:12px;color:var(--muted);margin-top:4px">We\'ll send you the good stuff.</div></div>';
-    setTimeout(function() { popup.classList.remove('show'); popup.style.display='none'; }, 2500);
+    popup.innerHTML = '<div style="text-align:center;padding:12px 0"><div style="font-size:20px;margin-bottom:6px;color:var(--green)">&#10003;</div><div style="font-family:DM Sans,sans-serif;font-size:16px;font-weight:700;color:var(--text)">You\'re in! Check your email.</div><div style="font-size:12px;color:var(--muted);margin-top:4px">We\'ll send you the good stuff.</div></div>';
+    setTimeout(function() { popup.classList.remove('show'); popup.style.display='none'; }, 3000);
+  }, function(msg) {
+    popup.innerHTML = '<div style="text-align:center;padding:12px 0"><div style="font-size:14px;color:#c0392b;font-weight:600">' + msg + '</div></div>';
+    setTimeout(function() { popup.classList.remove('show'); popup.style.display='none'; }, 3000);
   });
 }
 function subscribeInline(inputId) {
@@ -1024,7 +1030,10 @@ function subscribeInline(inputId) {
   var email = input.value;
   var parent = input.parentElement;
   doSubscribe(email, function() {
-    parent.innerHTML = '<div style="font-family:DM Sans,sans-serif;font-size:15px;font-weight:700;color:#fff;padding:8px 0">You\'re in. Welcome to TourFeed.</div>';
+    parent.innerHTML = '<div style="font-family:DM Sans,sans-serif;font-size:15px;font-weight:700;color:#fff;padding:8px 0">You\'re in! Check your email.</div>';
+  }, function(msg) {
+    parent.innerHTML = '<div style="font-family:DM Sans,sans-serif;font-size:13px;font-weight:600;color:#c0392b;padding:8px 0">' + msg + '</div>';
+    setTimeout(function() { renderApp(); }, 3000);
   });
 }
 // Popup only opens when SUBSCRIBE button is clicked — no auto-open
