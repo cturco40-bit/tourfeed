@@ -323,8 +323,7 @@ const SB_URL = 'https://yumahmnoltvbiadjefxw.supabase.co';
 const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl1bWFobW5vbHR2YmlhZGplZnh3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUzOTY0NDAsImV4cCI6MjA5MDk3MjQ0MH0.FAXp2t0zaHlm1W7aaut72btMilrYPy33XO3p8MfyYlo';
 
 // Beehiiv Newsletter
-const BEEHIIV_PUB_ID = '006010d0-e5a4-4c06-a561-fe15d30ff577';
-const BEEHIIV_API_KEY = 'FFX0nTO2KQfAwyguOSbJcuqf2ZojJCTqvV6KeSXmOcn8DRhzfkYL0jZTKg6Kn2ci';
+// Beehiiv keys moved to server-side subscribe.js function
 const sb = supabase.createClient(SB_URL, SB_KEY);
 
 const TABS = ['Home','Scores','News','Picks','Standings','Schedule'];
@@ -989,26 +988,25 @@ function closePopup() {
   popupClosed = true;
   localStorage.setItem('tf-popup-closed', '1');
 }
-async function doSubscribe(email, successEl, errorEl) {
+async function doSubscribe(email, successCb, errorEl) {
   if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     if (errorEl) errorEl.textContent = 'Enter a valid email address';
     return;
   }
-  if (BEEHIIV_PUB_ID && BEEHIIV_API_KEY) {
-    try {
-      var res = await fetch('https://api.beehiiv.com/v2/publications/' + BEEHIIV_PUB_ID + '/subscriptions', {
-        method: 'POST',
-        headers: { 'Authorization': 'Bearer ' + BEEHIIV_API_KEY, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: email, reactivate_existing: true, send_welcome_email: true }),
-      });
-      if (!res.ok) throw new Error('Subscribe failed');
-    } catch(e) {
-      if (errorEl) errorEl.textContent = 'Something went wrong. Try again.';
-      return;
-    }
+  try {
+    var res = await fetch('/.netlify/functions/subscribe', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: email }),
+    });
+    var data = await res.json();
+    if (!res.ok || data.error) throw new Error(data.error || 'Subscribe failed');
+  } catch(e) {
+    if (errorEl) errorEl.textContent = 'Something went wrong. Try again.';
+    return;
   }
   localStorage.setItem('tf-subscribed', '1');
-  if (successEl) successEl();
+  if (successCb) successCb();
 }
 
 function subscribeEmail() {
