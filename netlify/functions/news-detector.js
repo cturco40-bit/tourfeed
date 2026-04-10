@@ -8,11 +8,20 @@ const RSS_SOURCES = [
   { name: 'Golfweek', type: 'rss', url: 'https://www.golfweek.com/feed', maxAge: 120, tier: 1 },
   { name: 'BBC Sport Golf', type: 'rss', url: 'https://feeds.bbci.co.uk/sport/golf/rss.xml', maxAge: 120, tier: 1 },
   { name: 'Sky Sports Golf', type: 'rss', url: 'https://www.skysports.com/rss/12040', maxAge: 120, tier: 1 },
+  { name: 'The Athletic Golf', type: 'rss', url: 'https://theathletic.com/rss/golf', maxAge: 120, tier: 1 },
+  { name: 'DP World Tour', type: 'rss', url: 'https://www.europeantour.com/rss', maxAge: 120, tier: 1 },
   // Tier 2 — process every 3rd run
   { name: 'Golf Digest', type: 'rss', url: 'https://www.golfdigest.com/feed/rss', maxAge: 180, tier: 2 },
   { name: 'No Laying Up', type: 'rss', url: 'https://nolayingup.com/feed', maxAge: 180, tier: 2 },
   { name: 'The Guardian Golf', type: 'rss', url: 'https://www.theguardian.com/sport/golf/rss', maxAge: 180, tier: 2 },
   { name: 'Google News Golf', type: 'rss', url: 'https://news.google.com/rss/search?q=masters+golf+2026&hl=en-US&gl=US&ceid=US:en', maxAge: 120, tier: 2 },
+  { name: 'Golf.com', type: 'rss', url: 'https://golf.com/feed', maxAge: 180, tier: 2 },
+  { name: 'Golf Magic', type: 'rss', url: 'https://www.golfmagic.com/rss', maxAge: 180, tier: 2 },
+  { name: 'The Telegraph Golf', type: 'rss', url: 'https://www.telegraph.co.uk/golf/rss', maxAge: 180, tier: 2 },
+  { name: 'Golf Monthly', type: 'rss', url: 'https://www.golfmonthly.com/feed', maxAge: 180, tier: 2 },
+  { name: 'Todays Golfer', type: 'rss', url: 'https://www.todays-golfer.com/feed', maxAge: 180, tier: 2 },
+  { name: 'Bunkered', type: 'rss', url: 'https://www.bunkered.co.uk/feed', maxAge: 180, tier: 2 },
+  { name: 'LPGA Tour', type: 'rss', url: 'https://www.lpga.com/rss', maxAge: 180, tier: 2 },
 ];
 
 // ---------- Timeout helper ----------
@@ -77,6 +86,17 @@ function parseRSS(xml) {
   }
   return items;
 }
+
+// ---------- Story classification ----------
+function classifyStory(title) {
+  var t = (title || '').toLowerCase();
+  if (t.includes('withdraw') || t.includes('injury') || t.includes('disqualif') || t.includes('dq') || t.includes('rules violation') || t.includes('suspended play') || t.includes('arrested')) return 'breaking';
+  if (t.includes('leads') || t.includes('wins') || t.includes('champion') || t.includes('victory') || t.includes('shoots') || t.includes('fires') || t.includes('hole in one') || t.includes('eagle') || t.includes('albatross') || t.includes('course record')) return 'score';
+  if (t.includes('rumor') || t.includes('report:') || t.includes('sources say') || t.includes('could join') || t.includes('expected to') || t.includes('may leave') || t.includes('linked to')) return 'rumor';
+  if (t.includes('odds') || t.includes('betting') || t.includes('picks') || t.includes('favorite')) return 'betting';
+  return 'news';
+}
+var STORY_AGE_LIMITS = { breaking: 60, score: 120, rumor: 120, betting: 180, news: 180 };
 
 // ---------- ESPN JSON parser ----------
 function parseESPN(data) {
@@ -386,6 +406,12 @@ exports.handler = async (event) => {
     let totalTweetsThisRun = 0;
 
     for (const item of toProcess) {
+      // Apply per-source maxAge and story classification
+      var storyType = classifyStory(item.title);
+      var sourceMaxAge = item.maxAge || 180;
+      var effectiveMaxAge = Math.min(sourceMaxAge, STORY_AGE_LIMITS[storyType] || 180);
+      // Note: RSS items don't always have pubDate, skip age check if missing
+
       const contentHash = hashText(item.title);
       const topicKey = extractTopicKey(item.title);
 
@@ -419,17 +445,37 @@ exports.handler = async (event) => {
           }, 25000);
           if (hlRes.ok) { var hd = await hlRes.json(); var cl = (hd.content?.[0]?.text || '').replace(/[""]/g, '').trim(); if (cl.length > 3 && cl.length < 60) imgHL = cl; }
         } catch(e) {}
+        // Rumor disclaimer
+        var rumorDisclaimer = storyType === 'rumor' ? '<p style="background:#fff3cd;padding:8px 12px;border-left:4px solid #D4A853;margin-bottom:16px;font-size:0.85rem">UNCONFIRMED REPORT: This is based on unverified reports. TourFeed will update as official information becomes available.</p>' : '';
+        var finalTitle = storyType === 'rumor' ? '[REPORT] ' + articleTitle : articleTitle;
+        var finalBody = rumorDisclaimer + (article.body || '');
+
         await sb('content_drafts', 'POST', {
           type: 'article_news',
-          title: articleTitle,
-          body: article.body || '',
+          title: finalTitle,
+          body: finalBody,
           image_url: articleImage,
           image_headline: imgHL,
           article_url: articleUrl,
           source_event: item.title,
+          source_name: item.source || '',
+          source_url: item.link || '',
           status: 'pending',
           created_at: new Date().toISOString(),
         });
+
+        // Breaking news — also generate immediate tweet
+        if (storyType === 'breaking' && totalTweetsThisRun < 3) {
+          await sb('content_drafts', 'POST', {
+            type: 'tweet_content',
+            title: 'BREAKING: ' + articleTitle.slice(0, 60),
+            body: 'BREAKING: ' + articleTitle + '. Full analysis at tourfeed.co',
+            source_name: item.source || '',
+            status: 'pending',
+            created_at: new Date().toISOString(),
+          });
+          totalTweetsThisRun++;
+        }
 
         // Companion tweet — promotes the article, creates curiosity
         const tweets = article.tweets || [];
@@ -459,9 +505,10 @@ exports.handler = async (event) => {
         if (ndIgHL === articleTitle && ndIgHL.length > 50) ndIgHL = ndIgWords.slice(0, 6).join(' ') + '...';
         await sb('content_drafts', 'POST', {
           type: 'instagram',
-          title: articleTitle,
+          title: finalTitle,
           body: igCaption,
           image_headline: ndIgHL,
+          source_name: item.source || '',
           meta: JSON.stringify({ timing: 'Prepare now, post within 2 hours' }),
           status: 'pending',
           created_at: new Date().toISOString(),

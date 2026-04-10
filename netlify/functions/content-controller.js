@@ -80,7 +80,7 @@ exports.handler = async (event) => {
     var todayDrafts = await sb('content_drafts?created_at=gte.' + todayStart + '&select=id,type,title,body,created_at&order=created_at.desc');
     var counts = {
       tweets: todayDrafts.filter(function(d) { return d.type === 'tweet_content'; }).length,
-      articles: todayDrafts.filter(function(d) { return d.type !== 'tweet_content' && d.type !== 'instagram'; }).length,
+      articles: todayDrafts.filter(function(d) { return d.type !== 'tweet_content' && d.type !== 'instagram' && d.type !== 'live_update'; }).length,
       recaps: todayDrafts.filter(function(d) { return d.type === 'article_recap'; }).length,
       betting: todayDrafts.filter(function(d) { return d.type === 'article_betting'; }).length,
       live: todayDrafts.filter(function(d) { return d.type === 'live_update' || d.type === 'article_news'; }).length
@@ -120,6 +120,12 @@ exports.handler = async (event) => {
     if (roundComplete && counts.betting === 0) {
       var existingBetting = await sb('content_drafts?type=eq.article_betting&source_event=eq.betting-round-' + currentRound + '&select=id&limit=1');
       if (existingBetting.length === 0) queue.push('article_betting');
+    }
+
+    // Daily analysis — between rounds only, 6am-8am ET, max 1/day
+    if (etHour >= 6 && etHour < 8 && counts.articles === 0) {
+      var existingAnalysis = await sb('content_drafts?type=eq.article_analysis&created_at=gte.' + todayStart + '&select=id&limit=1');
+      if (existingAnalysis.length === 0) queue.push('article_analysis');
     }
 
     console.log('Content queue:', queue);
@@ -198,6 +204,8 @@ exports.handler = async (event) => {
           var bb = picks.find(function(p) { return p.edge_label === 'BEST BET'; });
           var bbStr = bb ? bb.player_name + ' ' + bb.odds : 'our best bet';
           userPrompt = 'Write a Round ' + currentRound + ' betting update (400-500 words). Title must include ' + bbStr + '. Show how each locked pick is tracking. Use <h3> and <p> tags.\n\nHEADLINE: <headline>\n\nBODY:\n<HTML>\n\n' + leaderboardContext;
+        } else if (contentType === 'article_analysis') {
+          userPrompt = 'Write a 400-500 word pre-round analysis for Round ' + (currentRound + 1) + '. What to watch. How our picks are positioned heading into the round. Who has momentum. Who is on the cut bubble. Use <h3> and <p> tags.\n\nHEADLINE: <headline with player name and number>\n\nBODY:\n<HTML>\n\n' + leaderboardContext;
         }
 
         var raw = await askClaude(sharedSystemPrompt, userPrompt, maxTokens);
