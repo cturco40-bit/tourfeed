@@ -345,7 +345,7 @@ exports.handler = async (event) => {
     const TIER1_TOPICS = /masters|withdrawal|withdraws|injury|LIV Golf|rules violation|penalty|disqualified|hole in one|eagle|albatross|course record|weather delay|suspended play|wins|victory|champion/i;
     const LOCAL_FILTER = /\blocal\b|northeast|jacksonville|bluffton|first coast|south georgia|eyes augusta|eyes masters|\bconnection\b|hometown hero|clemson/i;
     const GEAR_FILTER = /\bcollection\b|\bgear\b|\bequipment\b|\bsponsor\b|\bpartnership\b|\bbrand\b|\bapparel\b/i;
-    const QUALITY_REJECT = /viewing guide|where to watch|how to watch|fantasy golf|dfs picks|one and done|daily fantasy|watch party|viewing party/i;
+    const QUALITY_REJECT = /viewing guide|where to watch|how to watch|fantasy golf|dfs picks|one and done|daily fantasy|watch party|viewing party|style game|fashion|sartorial|wardrobe|outfit|dressed|watches|timepiece|apparel choice|what to wear|bracket|pool picks|squares|office pool|history of|all time greatest|legacy of|fan guide|spectator guide|travel guide|\bticket\b|hospitality|corporate|sponsorship deal|girlfriend|wife|family|baby|personal life|net worth|salary|contract|earnings off course/i;
 
     const currentItems = newItems.filter(item => {
       var t = (item.title + ' ' + (item.desc || '')).toLowerCase();

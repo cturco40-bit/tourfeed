@@ -33,6 +33,11 @@ function factCheck(title, body, currentRound, roundComplete) {
   var tier1 = ['scheffler','mcilroy','rahm','schauffele','fleetwood','spieth','morikawa','matsuyama','dechambeau','hovland','aberg','koepka','henley'];
   var mentionsPlayer = tier1.some(function(p) { return bodyLower.includes(p); });
   if (!mentionsPlayer) issues.push('No tier-1 player mentioned');
+  // Lifestyle/fashion content filter
+  var lifestyleTopics = ['fashion', 'style game', 'wardrobe', 'sartorial', 'watches', 'timepiece'];
+  if (lifestyleTopics.some(function(t) { return bodyLower.includes(t) || (title || '').toLowerCase().includes(t); })) {
+    issues.push('Lifestyle/fashion content not appropriate for TourFeed');
+  }
   if (issues.length > 0) {
     console.log('FACT CHECK FAILED for "' + (title || '').slice(0, 50) + '":', issues.join(' | '));
     return false;
@@ -105,6 +110,14 @@ exports.handler = async (event) => {
     var dateString = now.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'America/New_York' });
     var timeString = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', timeZone: 'America/New_York' });
     var etHour = parseInt(now.toLocaleTimeString('en-US', { hour: '2-digit', hour12: false, timeZone: 'America/New_York' }));
+
+    // ══ FIX 3: Global daily article limit ══
+    var gcTodayStart = now.toISOString().split('T')[0] + 'T00:00:00Z';
+    var gcTodayArticles = await sb('content_drafts?created_at=gte.' + gcTodayStart + '&type=not.eq.tweet_content&type=not.eq.instagram&select=id');
+    console.log('Articles generated today:', gcTodayArticles.length);
+    if (gcTodayArticles.length >= 6) {
+      return { statusCode: 200, headers, body: JSON.stringify({ skipped: 'Daily article limit reached — ' + gcTodayArticles.length + '/6 articles today' }) };
+    }
 
     // ══ Get tournament ══
     var tournaments = await sb('tournaments?select=*&status=eq.in_progress&order=start_date.desc&limit=1');

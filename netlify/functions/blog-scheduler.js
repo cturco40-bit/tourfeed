@@ -58,6 +58,24 @@ exports.handler = async (event) => {
     const params = event.queryStringParameters || {};
     const today = new Date();
     const dayOfWeek = today.getDay();
+    const utcHour = today.getUTCHours();
+
+    // ── FIX 1+6: Tournament awareness ──
+    var activeTournament = await sb('tournaments?status=eq.in_progress&select=id,name&limit=1');
+    var tournamentLive = activeTournament.length > 0;
+
+    // FIX 6: During live playing hours, generate-content-v2 handles everything
+    if (tournamentLive && utcHour >= 11 && utcHour <= 22) {
+      return { statusCode: 200, headers, body: JSON.stringify({ skipped: 'Tournament live during playing hours — generate-content-v2 handles all live content' }) };
+    }
+
+    // ── FIX 3: Global daily article limit ──
+    var todayStart = today.toISOString().split('T')[0] + 'T00:00:00Z';
+    var todayArticles = await sb('content_drafts?created_at=gte.' + todayStart + '&type=not.eq.tweet_content&type=not.eq.instagram&select=id');
+    console.log('Articles generated today:', todayArticles.length);
+    if (todayArticles.length >= 6) {
+      return { statusCode: 200, headers, body: JSON.stringify({ skipped: 'Daily article limit reached — ' + todayArticles.length + '/6 articles today' }) };
+    }
 
     // Allow forcing a specific content type via ?force=betting_preview
     let contentKeys = [];
@@ -65,6 +83,14 @@ exports.handler = async (event) => {
       contentKeys = [params.force];
     } else {
       contentKeys = DAILY_SCHEDULE[dayOfWeek] || [];
+    }
+
+    // FIX 1: If tournament live, only betting_preview allowed
+    if (tournamentLive) {
+      contentKeys = contentKeys.filter(function(key) { return key === 'betting_preview'; });
+      if (contentKeys.length === 0) {
+        return { statusCode: 200, headers, body: JSON.stringify({ skipped: 'Tournament live — only betting previews allowed from blog-scheduler during active rounds' }) };
+      }
     }
 
     if (!contentKeys.length) return { statusCode: 200, headers, body: JSON.stringify({ skipped: 'No scheduled content for day ' + dayOfWeek }) };
@@ -96,6 +122,22 @@ exports.handler = async (event) => {
       const lb = await sb(`leaderboard?tournament_id=eq.${tournament.id}&order=position.asc&limit=15&select=position,total_score,player_id,players(name)`);
       if (lb.length > 0) {
         leaderboard = 'Current standings:\n' + lb.map((r, i) => `${i+1}. ${r.players?.name || 'Unknown'} (${r.total_score})`).join('\n');
+      }
+    }
+
+    // FIX 2: If tournament live, inject fresh leaderboard data and check freshness
+    var liveContext = '';
+    if (tournamentLive && tournament) {
+      var liveLb = await sb('leaderboard?tournament_id=eq.' + tournament.id + '&order=position.asc&limit=20&select=position,total_score,today_score,thru,updated_at,player_id,players(name)');
+      if (liveLb.length > 0 && liveLb[0].updated_at) {
+        var lbAge = (Date.now() - new Date(liveLb[0].updated_at).getTime()) / 60000;
+        if (lbAge > 30) {
+          results.push({ skipped: key, reason: 'Leaderboard ' + Math.floor(lbAge) + ' min old — too stale' });
+          continue;
+        }
+        liveContext = '\nCURRENT LIVE LEADERBOARD:\n' + liveLb.slice(0, 10).map(function(p) {
+          return (p.position || '?') + '. ' + (p.players?.name || '?') + ' ' + (p.total_score || '') + ' (today: ' + (p.today_score || '?') + ', thru: ' + (p.thru || '?') + ')';
+        }).join('\n');
       }
     }
 
@@ -173,7 +215,7 @@ HEADLINE FORMAT: Must include a specific player name AND a specific number.
 ${playerFacts}${picksContext}`,
         messages: [{
           role: 'user',
-          content: `${dynamicPrompt}\n\nContext:\n${tournament ? `Recent tournament: ${tournament.name} at ${tournament.course}` : 'No recent tournament data.'}\n${leaderboard}\n${upcoming}\n\nReturn ONLY valid JSON:\n{"title":"headline","body":"full HTML article"}`
+          content: `${dynamicPrompt}\n\nContext:\n${tournament ? `Recent tournament: ${tournament.name} at ${tournament.course}` : 'No recent tournament data.'}\n${leaderboard}\n${liveContext}\n${upcoming}\n\nReturn ONLY valid JSON:\n{"title":"headline","body":"full HTML article"}`
         }],
       }),
     }, 25000);
