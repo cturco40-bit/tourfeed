@@ -14,7 +14,9 @@ exports.handler = async (event) => {
 
   var PUB_ID = process.env.BEEHIIV_PUB_ID;
   var API_KEY = process.env.BEEHIIV_API_KEY;
-  if (!PUB_ID || !API_KEY) return { statusCode: 500, headers, body: JSON.stringify({ error: 'Newsletter not configured' }) };
+  console.log('BEEHIIV_PUB_ID set:', !!PUB_ID, PUB_ID ? PUB_ID.slice(0, 8) + '...' : 'MISSING');
+  console.log('BEEHIIV_API_KEY set:', !!API_KEY, API_KEY ? 'yes' : 'MISSING');
+  if (!PUB_ID || !API_KEY) return { statusCode: 500, headers, body: JSON.stringify({ error: 'Newsletter not configured — env vars missing' }) };
 
   try {
     var body = JSON.parse(event.body || '{}');
@@ -30,12 +32,12 @@ exports.handler = async (event) => {
       body: JSON.stringify({ email: email, reactivate_existing: true, send_welcome_email: true })
     }, 8000);
 
-    if (res.ok) {
+    var respBody = await res.text();
+    console.log('Beehiiv response:', res.status, respBody.slice(0, 300));
+    if (res.ok || res.status === 201) {
       return { statusCode: 200, headers, body: JSON.stringify({ success: true }) };
     } else {
-      var err = await res.text();
-      console.log('Beehiiv error:', res.status, err.slice(0, 200));
-      return { statusCode: 500, headers, body: JSON.stringify({ error: 'Subscription failed' }) };
+      return { statusCode: 500, headers, body: JSON.stringify({ error: 'Subscription failed', detail: respBody.slice(0, 200) }) };
     }
   } catch(e) {
     console.log('subscribe error:', e.message);

@@ -1001,7 +1001,7 @@ async function doSubscribe(email, successCb, errorCb) {
       body: JSON.stringify({ email: email }),
     });
     var data = await res.json();
-    if (!res.ok || data.error) throw new Error(data.error || 'Subscribe failed');
+    if (!res.ok || data.error) throw new Error(data.error + (data.detail ? ' — ' + data.detail : '') || 'Subscribe failed');
   } catch(e) {
     console.log('Subscribe error:', e.message);
     if (errorCb) errorCb('Something went wrong. Try again.');
