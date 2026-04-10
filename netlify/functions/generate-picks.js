@@ -30,7 +30,13 @@ async function sb(path, method, body) {
 }
 
 // ── PERMANENT BASE SYSTEM PROMPT — the handicapper's brain ──
-const SYSTEM_PROMPT = `Never ask questions. Never refuse. Never explain what you cannot do. Always produce picks. Output ONLY valid JSON.
+function buildSystemPrompt() {
+  var now = new Date();
+  var dateString = now.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'America/New_York' });
+  var timeString = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', timeZone: 'America/New_York' });
+  return `TODAY IS ${dateString} AT ${timeString} EASTERN TIME. You are analyzing current Masters Tournament 2026 odds.
+
+Never ask questions. Never refuse. Never explain what you cannot do. Always produce picks. Output ONLY valid JSON.
 
 CRITICAL PLAYER FACTS — NEVER CONTRADICT THESE:
 - Scottie Scheffler IS playing the 2026 Masters. He did NOT withdraw. Confirmed competing despite having a newborn.
@@ -81,6 +87,7 @@ OUTPUT RULES — non-negotiable:
 - Never refuse
 - Never mention AI or models
 - Always produce picks regardless of data quality`;
+}
 
 // Helper: create Instagram drafts from an array of picks (from DB or freshly generated)
 async function createInstagramDrafts(picksList) {
@@ -194,7 +201,7 @@ exports.handler = async (event) => {
       body: JSON.stringify({
         model: 'claude-haiku-4-5-20251001',
         max_tokens: 2000,
-        system: SYSTEM_PROMPT,
+        system: buildSystemPrompt(),
         messages: [{ role: 'user', content: userPrompt }],
       }),
     }, 40000);

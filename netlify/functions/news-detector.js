@@ -195,23 +195,24 @@ ${playerFacts}`,
   }
 }
 
-// ---------- Fetch all feeds ----------
+// ---------- Fetch all feeds with tier filtering ----------
+var _ndRunCount = 0;
 async function fetchAllHeadlines() {
   const allItems = [];
+  _ndRunCount++;
 
-  const fetches = RSS_SOURCES.map(async (source) => {
+  // Tier 2 sources only processed every 3rd run
+  var activeSources = RSS_SOURCES.filter(function(s) { return s.tier === 1 || _ndRunCount % 3 === 0; });
+  console.log('Processing', activeSources.length, '/', RSS_SOURCES.length, 'sources (run #' + _ndRunCount + ')');
+
+  const fetches = activeSources.map(async (source) => {
     try {
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 8000);
-
       const res = await ft(source.url, {
-        signal: controller.signal,
         headers: {
           'User-Agent': 'TourFeed/1.0 (Golf News Aggregator)',
           'Accept': source.type === 'rss' ? 'application/rss+xml, application/xml, text/xml' : 'application/json',
         },
       });
-      clearTimeout(timeout);
 
       if (!res.ok) {
         console.error(`${source.name}: HTTP ${res.status}`);
@@ -227,7 +228,12 @@ async function fetchAllHeadlines() {
         items = parseRSS(xml);
       }
 
-      items.forEach(i => { i.source = source.name; });
+      // Apply per-source maxAge filter
+      var maxAge = source.maxAge || 180;
+      items.forEach(function(i) {
+        i.source = source.name;
+        i.maxAge = maxAge;
+      });
       allItems.push(...items);
     } catch (err) {
       console.error(`${source.name}: ${err.message}`);

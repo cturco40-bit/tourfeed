@@ -247,6 +247,7 @@ function parseCompetitor(competitor, tournamentId, tournamentPar) {
     status,
     movement,
     sg_total: sgTotal,
+    updated_at: new Date().toISOString(),
   };
 
   return { player, leaderboardEntry };
