@@ -170,7 +170,7 @@ exports.handler = async (event) => {
         ['finished the round','completed round','shot a final','carded a','posted a final','finished at'].forEach(function(p) { if (bl.includes(p)) issues.push('Recap language during live round: ' + p); });
       }
       var scores = body.match(/[+-]?\d+\s*(under|over|par|through)/gi) || [];
-      if (scores.length < 1 && contentType !== 'tweet_content') issues.push('No specific scores');
+      if (scores.length < 1 && !['tweet_content', 'live_update'].includes(contentType)) issues.push('No specific scores');
       ['this golfer','the player without','a local champion'].forEach(function(p) { if (bl.includes(p)) issues.push('Unnamed subject: ' + p); });
       ['fashion','sartorial','wardrobe','timepiece','watches','style game'].forEach(function(p) { if ((tl + bl).includes(p)) issues.push('Lifestyle content: ' + p); });
       var tier1 = ['scheffler','mcilroy','rahm','schauffele','fleetwood','spieth','morikawa','matsuyama','dechambeau','hovland','henley','aberg','koepka'];

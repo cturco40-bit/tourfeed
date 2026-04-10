@@ -410,7 +410,13 @@ exports.handler = async (event) => {
       var storyType = classifyStory(item.title);
       var sourceMaxAge = item.maxAge || 180;
       var effectiveMaxAge = Math.min(sourceMaxAge, STORY_AGE_LIMITS[storyType] || 180);
-      // Note: RSS items don't always have pubDate, skip age check if missing
+      if (item.pubDate) {
+        var articleAgeMinutes = (Date.now() - new Date(item.pubDate).getTime()) / 60000;
+        if (articleAgeMinutes > effectiveMaxAge) {
+          console.log('Item filtered by age — ' + Math.floor(articleAgeMinutes) + 'min > ' + effectiveMaxAge + 'min limit (' + item.source + ')');
+          continue;
+        }
+      }
 
       const contentHash = hashText(item.title);
       const topicKey = extractTopicKey(item.title);
