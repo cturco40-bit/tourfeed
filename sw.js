@@ -23,6 +23,26 @@ self.addEventListener('activate', (event) => {
   self.clients.claim();
 });
 
+// Push notifications — drafts alerts
+self.addEventListener('push', function(event) {
+  var data = event.data ? event.data.json() : {};
+  var title = data.title || 'TourFeed — New Draft Ready';
+  var options = {
+    body: data.body || 'New drafts waiting for approval.',
+    icon: '/golf-bag-icon.png',
+    badge: '/golf-bag-icon.png',
+    tag: 'tourfeed-draft',
+    renotify: true,
+    data: { url: 'https://tourfeed.co/tf-admin-drafts' }
+  };
+  event.waitUntil(self.registration.showNotification(title, options));
+});
+
+self.addEventListener('notificationclick', function(event) {
+  event.notification.close();
+  event.waitUntil(clients.openWindow('https://tourfeed.co/tf-admin-drafts'));
+});
+
 // Fetch — network first, fallback to cache
 self.addEventListener('fetch', (event) => {
   // Skip non-GET requests

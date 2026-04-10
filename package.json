@@ -21,6 +21,7 @@
   "dependencies": {
     "@napi-rs/canvas": "^0.1.97",
     "@netlify/blobs": "^10.7.4",
-    "@netlify/functions": "^5.1.5"
+    "@netlify/functions": "^5.1.5",
+    "web-push": "^3.6.7"
   }
 }

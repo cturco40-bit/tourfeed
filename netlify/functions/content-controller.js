@@ -264,6 +264,18 @@ exports.handler = async (event) => {
         await ft('https://ntfy.sh/tourfeed-alerts', { method: 'POST', headers: { 'Title': 'Drafts Ready', 'Priority': '3' }, body: generated.length + ' drafts — ' + generated.map(function(r) { return r.type; }).join(', ') + ' (R' + currentRound + ')' });
       } catch(e) {}
 
+      // Push notification to admin browsers
+      try {
+        await ft('https://tourfeed.co/.netlify/functions/send-push', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            title: 'TourFeed — ' + generated.length + ' new draft' + (generated.length > 1 ? 's' : '') + ' ready',
+            body: generated.map(function(r) { return r.type.toUpperCase() + ': ' + (r.title || '').slice(0, 60); }).slice(0, 3).join('\n')
+          })
+        });
+      } catch(e) { console.log('Push failed:', e.message); }
+
       // Email notification if SendGrid configured
       if (process.env.SENDGRID_API_KEY && process.env.NOTIFY_EMAIL) {
         try {

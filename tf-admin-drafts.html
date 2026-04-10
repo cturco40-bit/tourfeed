@@ -824,6 +824,41 @@ function populateAttachDropdown() {
 
 // Init
 updateFields();
+
+// ── PUSH NOTIFICATIONS ──
+async function initDraftsPush() {
+  if (!('serviceWorker' in navigator) || !('PushManager' in window)) { console.log('Push not supported'); return; }
+  try {
+    var reg = await navigator.serviceWorker.register('/sw.js');
+    var sub = await reg.pushManager.getSubscription();
+    if (!sub) {
+      var permission = await Notification.requestPermission();
+      if (permission !== 'granted') { console.log('Push permission denied'); return; }
+      var vapidKey = 'BGafToqLxLMyv8S3qYvcnxQ2Hof_6N5QJPe_pXrWKX7FNLNoIjt34C4ZeY7Xor4QhDeBn6g1YOVBcO1cxboci8w';
+      sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(vapidKey)
+      });
+      await fetch('/.netlify/functions/save-push-subscription', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ subscription: sub })
+      });
+      console.log('Push subscription saved');
+    } else {
+      console.log('Push already subscribed');
+    }
+  } catch(e) { console.log('Push setup failed:', e.message); }
+}
+function urlBase64ToUint8Array(base64String) {
+  var padding = '='.repeat((4 - base64String.length % 4) % 4);
+  var base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  var rawData = window.atob(base64);
+  var output = new Uint8Array(rawData.length);
+  for (var i = 0; i < rawData.length; i++) output[i] = rawData.charCodeAt(i);
+  return output;
+}
+initDraftsPush();
 </script>
 </body>
 </html>

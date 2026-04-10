@@ -529,6 +529,15 @@ exports.handler = async (event) => {
         await sb('content_topics', 'POST', { topic_key: topicKey, player_name: topicKey.split('-')[0], event_type: topicKey.split('-')[1], created_at: new Date().toISOString() }).catch(function(){});
 
         results.push({ source: item.source, original: item.title, generated: articleTitle, tweets: tweetCount });
+
+        // Push notification
+        try {
+          await ft('https://tourfeed.co/.netlify/functions/send-push', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ title: 'TourFeed — New ' + storyType.toUpperCase() + ' draft', body: (articleTitle || item.title).slice(0, 80) })
+          });
+        } catch(e) {}
       } catch (itemErr) {
         console.error(`Error: "${item.title}":`, itemErr.message);
       }
