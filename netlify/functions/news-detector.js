@@ -1,31 +1,18 @@
 // news-detector.js — Monitors RSS feeds for golf news events, generates original articles via Claude Haiku, stores drafts in Supabase
 
 const RSS_SOURCES = [
-  {
-    name: 'ESPN',
-    type: 'api',
-    url: 'https://site.api.espn.com/apis/site/v2/sports/golf/pga/news?limit=15',
-  },
-  {
-    name: 'Golf Digest',
-    type: 'rss',
-    url: 'https://www.golfdigest.com/feed/rss',
-  },
-  {
-    name: 'PGA Tour',
-    type: 'rss',
-    url: 'https://www.pgatour.com/rss/news',
-  },
-  {
-    name: 'Golf Channel',
-    type: 'rss',
-    url: 'https://www.golfchannel.com/rss/golf-central',
-  },
-  {
-    name: 'Google News',
-    type: 'rss',
-    url: 'https://news.google.com/rss/search?q=golf+PGA+tour&hl=en-US&gl=US&ceid=US:en',
-  },
+  // Tier 1 — process every run
+  { name: 'ESPN Golf', type: 'api', url: 'https://site.api.espn.com/apis/site/v2/sports/golf/pga/news?limit=15', maxAge: 60, tier: 1 },
+  { name: 'PGA Tour', type: 'rss', url: 'https://www.pgatour.com/rss/news', maxAge: 120, tier: 1 },
+  { name: 'Golf Channel', type: 'rss', url: 'https://www.golfchannel.com/rss/golf-central', maxAge: 120, tier: 1 },
+  { name: 'Golfweek', type: 'rss', url: 'https://www.golfweek.com/feed', maxAge: 120, tier: 1 },
+  { name: 'BBC Sport Golf', type: 'rss', url: 'https://feeds.bbci.co.uk/sport/golf/rss.xml', maxAge: 120, tier: 1 },
+  { name: 'Sky Sports Golf', type: 'rss', url: 'https://www.skysports.com/rss/12040', maxAge: 120, tier: 1 },
+  // Tier 2 — process every 3rd run
+  { name: 'Golf Digest', type: 'rss', url: 'https://www.golfdigest.com/feed/rss', maxAge: 180, tier: 2 },
+  { name: 'No Laying Up', type: 'rss', url: 'https://nolayingup.com/feed', maxAge: 180, tier: 2 },
+  { name: 'The Guardian Golf', type: 'rss', url: 'https://www.theguardian.com/sport/golf/rss', maxAge: 180, tier: 2 },
+  { name: 'Google News Golf', type: 'rss', url: 'https://news.google.com/rss/search?q=masters+golf+2026&hl=en-US&gl=US&ceid=US:en', maxAge: 120, tier: 2 },
 ];
 
 // ---------- Timeout helper ----------
@@ -158,15 +145,14 @@ async function generateArticle(facts, apiKey, picksContext) {
     body: JSON.stringify({
       model: 'claude-haiku-4-5-20251001',
       max_tokens: 2000,
-      system: `CRITICAL PLAYER FACTS — NEVER CONTRADICT THESE: Scottie Scheffler IS playing the 2026 Masters. He did NOT withdraw. Tiger Woods is NOT playing. Phil Mickelson is NOT playing. Rory McIlroy IS the defending champion — won 2025 Masters, Career Grand Slam holder.
+      system: `TODAY IS ${new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'America/New_York' })} AT ${new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', timeZone: 'America/New_York' })} EASTERN TIME.
+CRITICAL PLAYER FACTS: Scottie Scheffler IS playing. Tiger Woods is NOT playing. Phil Mickelson is NOT playing. Rory McIlroy IS the defending champion — won 2025 Masters, Career Grand Slam holder.
 
-CRITICAL: Never ask clarifying questions, never flag conflicts, never refuse — always produce the content. You are TourFeed's editorial voice — sharp golf writer, seasoned handicapper, sports journalist quality prose. Lead with story not data. No clichés. No AI mentions ever.
+You are the lead staff writer at TourFeed. Write ORIGINAL analysis based only on the facts provided — never copy source language. 250-350 words. Get to the point. Use HTML <p> tags. Every sentence must earn its place.
 
-You write ORIGINAL news articles based only on extracted key facts — never copy source language.
-Year is 2026. Rory McIlroy is defending Masters champion (won 2025). Career Grand Slam holder.
-150-250 words. Get to the point. Use HTML <p> tags.
-ONLY state facts provided. Do NOT invent stats, records, or tournament results.
-Never mention AI, ESPN, Golf Digest, or any source outlet.
+BANNED: Augusta rewards precision, wide open tournament, anyone can win, make no mistake, at the end of the day, delve, landscape, paradigm.
+HEADLINE FORMAT: Must include a specific player name AND a specific number.
+Never mention AI, ESPN, Golf Digest, or any source outlet by name.
 ${playerFacts}`,
       messages: [
         {
@@ -349,9 +335,11 @@ exports.handler = async (event) => {
 
     // Filter out past tournaments — only Masters or breaking news this week
     const PAST_TOURNAMENTS = /puerto rico|texas open|valero|houston open|valspar|arnold palmer|players championship|genesis|phoenix|pebble beach|farmers|torrey pines|american express/i;
-    const TIER1_PLAYERS = /scheffler|mcilroy|rory|rahm|schauffele|fleetwood|spieth|morikawa|matsuyama|dechambeau|hovland|aberg|koepka|johnson|dustin/i;
-    const LOCAL_FILTER = /\blocal\b|northeast|jacksonville|bluffton|first coast|south georgia|eyes augusta|eyes masters|\bconnection\b/i;
+    const TIER1_PLAYERS = /scheffler|mcilroy|rory|rahm|schauffele|fleetwood|spieth|morikawa|matsuyama|dechambeau|hovland|aberg|koepka|johnson|dustin|henley|lowry|young|fitzpatrick|hatton|cantlay|burns|thomas|day|scott/i;
+    const TIER1_TOPICS = /masters|withdrawal|withdraws|injury|LIV Golf|rules violation|penalty|disqualified|hole in one|eagle|albatross|course record|weather delay|suspended play|wins|victory|champion/i;
+    const LOCAL_FILTER = /\blocal\b|northeast|jacksonville|bluffton|first coast|south georgia|eyes augusta|eyes masters|\bconnection\b|hometown hero|clemson/i;
     const GEAR_FILTER = /\bcollection\b|\bgear\b|\bequipment\b|\bsponsor\b|\bpartnership\b|\bbrand\b|\bapparel\b/i;
+    const QUALITY_REJECT = /viewing guide|where to watch|how to watch|fantasy golf|dfs picks|one and done|daily fantasy|watch party|viewing party/i;
 
     const currentItems = newItems.filter(item => {
       var t = (item.title + ' ' + (item.desc || '')).toLowerCase();
@@ -361,9 +349,9 @@ exports.handler = async (event) => {
         console.log('Skipping past tournament:', item.title.slice(0, 50));
         return false;
       }
-      // Relevance: must mention at least one tier-1 player
-      if (!TIER1_PLAYERS.test(titleAndDesc)) {
-        console.log('Skipping no tier-1 player:', item.title.slice(0, 50));
+      // Relevance: must mention a tier-1 player OR a tier-1 topic
+      if (!TIER1_PLAYERS.test(titleAndDesc) && !TIER1_TOPICS.test(titleAndDesc)) {
+        console.log('Skipping not relevant:', item.title.slice(0, 50));
         return false;
       }
       // Local angle filter
@@ -374,6 +362,11 @@ exports.handler = async (event) => {
       // Gear/sponsor filter
       if (GEAR_FILTER.test(item.title)) {
         console.log('Skipping gear/sponsor:', item.title.slice(0, 50));
+        return false;
+      }
+      // Quality reject
+      if (QUALITY_REJECT.test(item.title)) {
+        console.log('Skipping quality reject:', item.title.slice(0, 50));
         return false;
       }
       return true;

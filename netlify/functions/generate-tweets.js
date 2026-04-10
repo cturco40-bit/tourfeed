@@ -81,6 +81,37 @@ exports.handler = async (event) => {
   if (!apiKey) return { statusCode: 200, headers, body: JSON.stringify({ skipped: 'No API key' }) };
 
   try {
+    // ── PART 1: Date/time injection ──
+    var now = new Date();
+    var dateString = now.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'America/New_York' });
+    var timeString = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', timeZone: 'America/New_York' });
+    var etHour = parseInt(now.toLocaleTimeString('en-US', { hour: '2-digit', hour12: false, timeZone: 'America/New_York' }));
+
+    // ── PART 7: Tweet rate limiting ──
+    if (etHour >= 23 || etHour < 6) {
+      return { statusCode: 200, headers, body: JSON.stringify({ skipped: 'No tweets between 11pm and 6am ET' }) };
+    }
+    var todayStart = new Date().toISOString().split('T')[0] + 'T00:00:00Z';
+    var todayTweets = [];
+    try {
+      var ttRes = await ft(SB_URL + '/rest/v1/content_drafts?type=eq.tweet_content&created_at=gte.' + todayStart + '&select=id,body,created_at&order=created_at.desc', { headers: { 'apikey': SB_KEY } });
+      if (ttRes.ok) todayTweets = await ttRes.json();
+    } catch(e) {}
+    if (todayTweets.length >= 8) {
+      return { statusCode: 200, headers, body: JSON.stringify({ skipped: 'Daily tweet limit reached — ' + todayTweets.length + '/8' }) };
+    }
+    if (todayTweets.length > 0) {
+      var minsSinceLast = (Date.now() - new Date(todayTweets[0].created_at).getTime()) / 60000;
+      if (minsSinceLast < 28) {
+        return { statusCode: 200, headers, body: JSON.stringify({ skipped: 'Too soon — ' + Math.floor(minsSinceLast) + 'min since last tweet, need 28' }) };
+      }
+    }
+    var lastPlayer = '';
+    if (todayTweets.length > 0) {
+      var ltp = ['Scheffler','McIlroy','Rahm','Schauffele','Fleetwood','Spieth','Morikawa','Matsuyama','DeChambeau','Hovland','Henley'];
+      lastPlayer = ltp.find(function(p) { return (todayTweets[0].body || '').includes(p); }) || '';
+    }
+
     // CHECK 1: If 5+ pending tweet drafts exist, skip this run entirely
     let pendingCount = 0;
     try {
@@ -252,11 +283,12 @@ exports.handler = async (event) => {
       body: JSON.stringify({
         model: 'claude-haiku-4-5-20251001',
         max_tokens: 600,
-        system: `CRITICAL PLAYER FACTS — NEVER CONTRADICT THESE: Scottie Scheffler IS playing the 2026 Masters. He did NOT withdraw. Tiger Woods is NOT playing. Phil Mickelson is NOT playing. Rory McIlroy IS the defending champion — won 2025 Masters, Career Grand Slam holder.
+        system: `TODAY IS ${dateString} AT ${timeString} EASTERN TIME.
+CRITICAL PLAYER FACTS: Scottie Scheffler IS playing. Tiger Woods is NOT playing. Phil Mickelson is NOT playing. Rory McIlroy IS the defending champion.
 
-YOU ARE A STAFF WRITER ON DEADLINE. YOUR ONLY JOB IS TO PRODUCE THE CONTENT REQUESTED. You do not ask questions. You do not flag conflicts. You do not mention contradictions. You write the content.
-
-ZERO emojis. ZERO hashtags. You are TourFeed's social account promoting our PUBLISHED articles.
+You are the lead staff writer at TourFeed. ZERO emojis. ZERO hashtags. Be specific — exact scores, exact positions. Every tweet must earn its place.
+BANNED: Augusta rewards precision, wide open tournament, anyone can win, momentum heading into, make no mistake, at the end of the day.
+${lastPlayer ? 'Do NOT write about ' + lastPlayer + ' — write about a different player.' : ''} You are TourFeed's social account promoting our PUBLISHED articles.
 Each tweet MUST promote one of the published articles listed below — link to its specific URL.
 1-2 sentences. Always end with the article's tourfeed.co URL.
 NEVER generate standalone reactions or hot takes without linking to a published article.

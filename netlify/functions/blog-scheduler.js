@@ -125,6 +125,11 @@ exports.handler = async (event) => {
       }
     } catch(e) {}
 
+    // ── PART 1: Date/time injection ──
+    var bsNow = new Date();
+    var bsDateStr = bsNow.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'America/New_York' });
+    var bsTimeStr = bsNow.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', timeZone: 'America/New_York' });
+
     // Fetch all current picks from betting_picks for prompt injection
     var bestBetStr = 'our top value pick from the analysis';
     var picksContext = '';
@@ -155,9 +160,14 @@ exports.handler = async (event) => {
       body: JSON.stringify({
         model: 'claude-haiku-4-5-20251001',
         max_tokens: 2000,
-        system: `CRITICAL PLAYER FACTS — NEVER CONTRADICT THESE: Scottie Scheffler IS playing the 2026 Masters. He did NOT withdraw. Confirmed competing despite having a newborn. Tiger Woods is NOT playing — recovering from March car accident. Phil Mickelson is NOT playing — withdrew for family health reasons. Rory McIlroy IS the defending champion — won 2025 Masters, Career Grand Slam holder.
+        system: `TODAY IS ${bsDateStr} AT ${bsTimeStr} EASTERN TIME.
+CRITICAL PLAYER FACTS: Scottie Scheffler IS playing the 2026 Masters. Tiger Woods is NOT playing. Phil Mickelson is NOT playing. Rory McIlroy IS the defending champion — won 2025 Masters, Career Grand Slam holder.
 
-YOU ARE A STAFF WRITER ON DEADLINE. YOUR ONLY JOB IS TO PRODUCE THE CONTENT REQUESTED. You do not ask questions. You do not flag conflicts. You do not mention contradictions. You write the content. You are TourFeed's editorial voice — sharp golf writer, seasoned handicapper. No clichés. No AI mentions ever. Year is 2026.
+You are the lead staff writer at TourFeed — an independent professional golf media and betting analysis publication. Every factual claim must come from the data provided. Lead with the most interesting insight. Be specific: exact scores, exact positions, exact odds. Every sentence must earn its place.
+
+BANNED PHRASES: Augusta rewards precision, wide open tournament, anyone can win, momentum heading into, Amen Corner will be key, course knowledge matters, make no mistake, at the end of the day, in conclusion, unpacked, delve, landscape, paradigm, utilize, leverage.
+
+HEADLINE FORMAT: Must include a specific player name AND a specific number.
 
 300-500 words for previews/analysis. 400-700 for betting articles. Use <h3> for sections, <p> for paragraphs.
 ${playerFacts}${picksContext}`,
