@@ -173,6 +173,7 @@ You are the lead staff writer at TourFeed. Write ORIGINAL analysis based only on
 BANNED: Augusta rewards precision, wide open tournament, anyone can win, make no mistake, at the end of the day, delve, landscape, paradigm.
 HEADLINE FORMAT: Must include a specific player name AND a specific number.
 Never mention AI, ESPN, Golf Digest, or any source outlet by name.
+If this news story is about fashion, signatures, traditions, culture, collectibles, memorabilia, or anything unrelated to tournament performance or betting — respond with exactly the word SKIP and nothing else.
 ${playerFacts}`,
       messages: [
         {
@@ -191,6 +192,12 @@ ${playerFacts}`,
 
   const data = await res.json();
   const text = data.content?.[0]?.text || '';
+
+  // Haiku self-rejection — if story is irrelevant it responds with SKIP
+  if (text.trim() === 'SKIP' || text.trim().startsWith('SKIP')) {
+    console.log('Haiku rejected story as non-relevant');
+    return null;
+  }
 
   try {
     const cleaned = text.replace(/```json\s?/g, '').replace(/```/g, '').trim();
@@ -359,40 +366,37 @@ exports.handler = async (event) => {
       return true;
     });
 
-    // Filter out past tournaments — only Masters or breaking news this week
+    // WHITELIST APPROACH — only allow items matching approved patterns
     const PAST_TOURNAMENTS = /puerto rico|texas open|valero|houston open|valspar|arnold palmer|players championship|genesis|phoenix|pebble beach|farmers|torrey pines|american express/i;
-    const TIER1_PLAYERS = /scheffler|mcilroy|rory|rahm|schauffele|fleetwood|spieth|morikawa|matsuyama|dechambeau|hovland|aberg|koepka|johnson|dustin|henley|lowry|young|fitzpatrick|hatton|cantlay|burns|thomas|day|scott/i;
-    const TIER1_TOPICS = /masters|withdrawal|withdraws|injury|LIV Golf|rules violation|penalty|disqualified|hole in one|eagle|albatross|course record|weather delay|suspended play|wins|victory|champion/i;
-    const LOCAL_FILTER = /\blocal\b|northeast|jacksonville|bluffton|first coast|south georgia|eyes augusta|eyes masters|\bconnection\b|hometown hero|clemson/i;
-    const GEAR_FILTER = /\bcollection\b|\bgear\b|\bequipment\b|\bsponsor\b|\bpartnership\b|\bbrand\b|\bapparel\b/i;
-    const QUALITY_REJECT = /viewing guide|where to watch|how to watch|fantasy golf|dfs picks|one and done|daily fantasy|watch party|viewing party|style game|fashion|sartorial|wardrobe|outfit|dressed|watches|timepiece|apparel choice|what to wear|bracket|pool picks|squares|office pool|history of|all time greatest|legacy of|fan guide|spectator guide|travel guide|\bticket\b|hospitality|corporate|sponsorship deal|girlfriend|wife|family|baby|personal life|net worth|salary|contract|earnings off course/i;
+    const APPROVED_PATTERNS = [
+      // Player performance
+      'shoots', 'fires', 'cards', 'birdies', 'eagles', 'leads', 'moves to',
+      // Tournament events
+      'wins', 'victory', 'champion', 'withdraws', 'withdrawal', 'injured',
+      'disqualified', 'rules violation', 'suspended play', 'weather delay',
+      // Betting relevant
+      'odds', 'favorite', 'betting', 'picks',
+      // Breaking news
+      'arrested', 'cited', 'charged', 'signs with', 'joins', 'leaves',
+      'fired', 'hired', 'announces', 'confirms', 'denies',
+      // Tier-1 player names
+      'scheffler', 'mcilroy', 'rahm', 'schauffele', 'fleetwood', 'spieth',
+      'morikawa', 'matsuyama', 'dechambeau', 'hovland', 'aberg', 'koepka',
+      'reed', 'henley', 'fitzpatrick', 'lowry', 'young', 'burns', 'smith',
+      'johnson', 'rose', 'scott', 'day', 'thomas', 'cantlay'
+    ];
 
-    const currentItems = newItems.filter(item => {
+    const currentItems = newItems.filter(function(item) {
       var t = (item.title + ' ' + (item.desc || '')).toLowerCase();
-      var titleAndDesc = item.title + ' ' + (item.desc || '');
       // Past tournament filter
       if (PAST_TOURNAMENTS.test(t) && !/masters|augusta/i.test(t)) {
         console.log('Skipping past tournament:', item.title.slice(0, 50));
         return false;
       }
-      // Relevance: must mention a tier-1 player OR a tier-1 topic
-      if (!TIER1_PLAYERS.test(titleAndDesc) && !TIER1_TOPICS.test(titleAndDesc)) {
-        console.log('Skipping not relevant:', item.title.slice(0, 50));
-        return false;
-      }
-      // Local angle filter
-      if (LOCAL_FILTER.test(item.title)) {
-        console.log('Skipping local filler:', item.title.slice(0, 50));
-        return false;
-      }
-      // Gear/sponsor filter
-      if (GEAR_FILTER.test(item.title)) {
-        console.log('Skipping gear/sponsor:', item.title.slice(0, 50));
-        return false;
-      }
-      // Quality reject
-      if (QUALITY_REJECT.test(item.title)) {
-        console.log('Skipping quality reject:', item.title.slice(0, 50));
+      // Whitelist — must match at least one approved pattern
+      var isApproved = APPROVED_PATTERNS.some(function(p) { return t.includes(p.toLowerCase()); });
+      if (!isApproved) {
+        console.log('Not approved — no relevant pattern match:', item.title.slice(0, 50));
         return false;
       }
       return true;
