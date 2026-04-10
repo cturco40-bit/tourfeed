@@ -50,9 +50,8 @@ const DAILY_SCHEDULE = {
 };
 
 exports.handler = async (event) => {
-  const headers = { 'Content-Type': 'application/json' };
-  const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY;
-  if (!ANTHROPIC_KEY) return { statusCode: 200, headers, body: JSON.stringify({ skipped: 'No API key' }) };
+  // DISABLED — replaced by content-controller.js
+  return { statusCode: 200, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ disabled: 'Replaced by content-controller.js' }) };
 
   try {
     const params = event.queryStringParameters || {};

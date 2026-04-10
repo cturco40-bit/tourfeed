@@ -1,0 +1,281 @@
+// content-controller.js — Single unified content brain
+// Replaces generate-content-v2 and blog-scheduler
+// Every 30 minutes: establish ground truth → safety checks → decide what to generate → generate → fact check → dedup → save
+
+const SB_URL = 'https://yumahmnoltvbiadjefxw.supabase.co';
+const SB_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl1bWFobW5vbHR2YmlhZGplZnh3Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NTM5NjQ0MCwiZXhwIjoyMDkwOTcyNDQwfQ.VXcPybKl1c3uJAO59im8hb0zQjEmdwd4e6WGAakC-qs';
+
+function ft(url, opts, ms) {
+  var c = new AbortController();
+  var t = setTimeout(function() { c.abort(); }, ms || 8000);
+  return fetch(url, Object.assign({}, opts, { signal: c.signal })).finally(function() { clearTimeout(t); });
+}
+
+async function sb(path, method, body) {
+  var hdrs = { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY, 'Content-Type': 'application/json' };
+  if (method === 'POST') hdrs['Prefer'] = 'return=representation';
+  if (method === 'PATCH') hdrs['Prefer'] = 'return=minimal';
+  var res = await ft(SB_URL + '/rest/v1/' + path, { method: method || 'GET', headers: hdrs, body: body ? JSON.stringify(body) : undefined });
+  if (!method || method === 'GET') { try { var d = await res.json(); return Array.isArray(d) ? d : []; } catch(e) { return []; } }
+  if (method === 'POST' && res.ok) { try { return await res.json(); } catch(e) { return []; } }
+  return res.ok;
+}
+
+function hashText(text) {
+  var words = text.toLowerCase().replace(/[^a-z0-9\s]/g, '').split(/\s+/).filter(function(w) { return w.length > 3; }).sort().join(' ');
+  var h = 0;
+  for (var i = 0; i < words.length; i++) h = ((h << 5) - h + words.charCodeAt(i)) | 0;
+  return 'h' + Math.abs(h).toString(36);
+}
+
+async function askClaude(systemPrompt, userPrompt, maxTokens) {
+  var ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY;
+  var res = await ft('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'x-api-key': ANTHROPIC_KEY, 'anthropic-version': '2023-06-01' },
+    body: JSON.stringify({ model: 'claude-haiku-4-5-20251001', max_tokens: maxTokens || 2000, system: systemPrompt, messages: [{ role: 'user', content: userPrompt }] }),
+  }, 25000);
+  if (!res.ok) throw new Error('Claude API error: ' + res.status);
+  var data = await res.json();
+  return data.content[0].text;
+}
+
+exports.handler = async (event) => {
+  var headers = { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' };
+  if (!process.env.ANTHROPIC_API_KEY) return { statusCode: 200, headers, body: JSON.stringify({ skipped: 'No API key' }) };
+
+  try {
+    // ════════════════════════════════════════
+    // STEP 1 — ESTABLISH GROUND TRUTH
+    // ════════════════════════════════════════
+    var now = new Date();
+    var etDate = now.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'America/New_York' });
+    var etTime = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', timeZone: 'America/New_York' });
+    var etHour = parseInt(now.toLocaleTimeString('en-US', { hour: '2-digit', hour12: false, timeZone: 'America/New_York' }));
+
+    var tournament = await sb('tournaments?status=eq.in_progress&select=*&limit=1');
+    var tournamentLive = tournament.length > 0;
+    var currentRound = tournament[0]?.current_round || 0;
+    var tournamentId = tournament[0]?.id;
+    var tournamentName = tournament[0]?.name || 'Tournament';
+
+    var lb = tournamentId ? await sb('leaderboard?tournament_id=eq.' + tournamentId + '&order=position.asc&limit=200&select=*,players(name)') : [];
+    var lbAge = lb.length > 0 && lb[0].updated_at ? (Date.now() - new Date(lb[0].updated_at).getTime()) / 60000 : 999;
+    var completed = lb.filter(function(p) { return p.thru === 'F' || p.thru === '18'; }).length;
+    var roundComplete = completed >= 88;
+
+    console.log(JSON.stringify({ date: etDate, time: etTime, hour: etHour, tournamentLive: tournamentLive, currentRound: currentRound, roundComplete: roundComplete, completedPlayers: completed, lbAgeMinutes: Math.floor(lbAge) }));
+
+    // ════════════════════════════════════════
+    // STEP 2 — SAFETY CHECKS
+    // ════════════════════════════════════════
+    if (!tournamentLive) return { statusCode: 200, headers, body: JSON.stringify({ skipped: 'No active tournament' }) };
+    if (lbAge > 30) return { statusCode: 200, headers, body: JSON.stringify({ skipped: 'Leaderboard ' + Math.floor(lbAge) + 'min stale — aborting' }) };
+    if (etHour < 6) return { statusCode: 200, headers, body: JSON.stringify({ skipped: 'Quiet hours — no content before 6am ET' }) };
+
+    // ════════════════════════════════════════
+    // STEP 3 — GET DAILY COUNTS
+    // ════════════════════════════════════════
+    var todayStart = now.toISOString().split('T')[0] + 'T00:00:00Z';
+    var todayDrafts = await sb('content_drafts?created_at=gte.' + todayStart + '&select=id,type,title,body,created_at&order=created_at.desc');
+    var counts = {
+      tweets: todayDrafts.filter(function(d) { return d.type === 'tweet_content'; }).length,
+      articles: todayDrafts.filter(function(d) { return d.type !== 'tweet_content' && d.type !== 'instagram'; }).length,
+      recaps: todayDrafts.filter(function(d) { return d.type === 'article_recap'; }).length,
+      betting: todayDrafts.filter(function(d) { return d.type === 'article_betting'; }).length,
+      live: todayDrafts.filter(function(d) { return d.type === 'live_update' || d.type === 'article_news'; }).length
+    };
+    var lastTweet = todayDrafts.find(function(d) { return d.type === 'tweet_content'; });
+    var minsSinceLastTweet = lastTweet ? (Date.now() - new Date(lastTweet.created_at).getTime()) / 60000 : 999;
+    console.log('Daily counts:', JSON.stringify(counts));
+
+    if (counts.articles >= 6) return { statusCode: 200, headers, body: JSON.stringify({ skipped: 'Daily article limit — ' + counts.articles + '/6' }) };
+
+    // ════════════════════════════════════════
+    // STEP 4 — DECIDE WHAT TO GENERATE
+    // ════════════════════════════════════════
+    var queue = [];
+
+    // Live blog — during round, max 1/hour
+    if (!roundComplete && counts.live < (currentRound * 8) && etHour >= 8 && etHour <= 20) {
+      var lastLive = todayDrafts.find(function(d) { return d.type === 'live_update' || d.type === 'article_news'; });
+      var minsSinceLive = lastLive ? (Date.now() - new Date(lastLive.created_at).getTime()) / 60000 : 999;
+      if (minsSinceLive >= 55) queue.push('live_update');
+    }
+
+    // Tweet — rate limited
+    var tweetLimit = roundComplete ? 4 : 8;
+    if (counts.tweets < tweetLimit && minsSinceLastTweet >= 28 && etHour >= 6 && etHour < 23) {
+      queue.push('tweet_content');
+    }
+
+    // Recap — only after round complete, one per round
+    if (roundComplete && counts.recaps === 0) {
+      var existingRecap = await sb('content_drafts?type=eq.article_recap&source_event=eq.recap-round-' + currentRound + '&select=id&limit=1');
+      var pubRecap = await sb('articles?type=eq.recap&tournament_id=eq.' + encodeURIComponent(tournamentId) + '&select=id&limit=1');
+      if (existingRecap.length === 0 && pubRecap.length === 0) queue.push('article_recap');
+    }
+
+    // Betting — only after round complete, one per round
+    if (roundComplete && counts.betting === 0) {
+      var existingBetting = await sb('content_drafts?type=eq.article_betting&source_event=eq.betting-round-' + currentRound + '&select=id&limit=1');
+      if (existingBetting.length === 0) queue.push('article_betting');
+    }
+
+    console.log('Content queue:', queue);
+    if (queue.length === 0) return { statusCode: 200, headers, body: JSON.stringify({ skipped: 'Nothing to generate', counts: counts }) };
+
+    // ════════════════════════════════════════
+    // STEP 5 — BUILD SHARED CONTEXT
+    // ════════════════════════════════════════
+    var picks = await sb('betting_picks?select=*&order=created_at.asc&limit=10');
+    var picksContext = picks.length > 0
+      ? 'OUR LOCKED PICKS:\n' + picks.map(function(p) { return p.edge_label + ': ' + p.player_name + ' ' + p.odds + ' — ' + (p.analysis || ''); }).join('\n')
+      : 'No picks set yet';
+
+    if (!picks.length) return { statusCode: 200, headers, body: JSON.stringify({ skipped: 'No picks — cannot generate content' }) };
+
+    var leaderboardContext = 'LIVE LEADERBOARD (as of ' + Math.floor(lbAge) + ' min ago):\n' +
+      lb.slice(0, 15).map(function(p) { return (p.position || '?') + '. ' + (p.players?.name || '?') + ' ' + (p.total_score || '') + ' (today: ' + (p.today_score || '?') + ', thru: ' + (p.thru || '?') + ')'; }).join('\n');
+
+    var dateHeader = 'TODAY IS ' + etDate + ' AT ' + etTime + ' EASTERN TIME.\nTOURNAMENT: ' + tournamentName + ', Augusta National.\nCURRENT ROUND: Round ' + currentRound + '.\nROUND STATUS: ' + (roundComplete ? 'COMPLETE — ALL PLAYERS FINISHED' : 'IN PROGRESS — ' + completed + '/91 players done') + '.\nCRITICAL: Only write about events that have happened as of this exact time. Never reference future rounds as current. Never recap a round still in progress.';
+
+    var factsContext = '';
+    try {
+      var pf = await sb('player_facts?select=player_name,world_ranking,total_majors,masters_wins,recent_notes&limit=30');
+      factsContext = pf.map(function(f) { return f.player_name + ': #' + (f.world_ranking || '?') + ', ' + (f.total_majors || 0) + ' majors' + (f.masters_wins ? ', ' + f.masters_wins + 'x Masters champ' : '') + (f.recent_notes ? '. ' + f.recent_notes : ''); }).join('\n');
+    } catch(e) {}
+
+    var sharedSystemPrompt = dateHeader + '\n\nPLAYER FACTS:\n' + factsContext + '\n\n' + picksContext +
+      '\n\nCRITICAL FACTS:\n- Scottie Scheffler IS playing. He did NOT withdraw.\n- Tiger Woods is NOT playing.\n- Phil Mickelson is NOT playing.\n- Rory McIlroy is the DEFENDING champion (won 2025).\n\n' +
+      'YOU ARE THE LEAD WRITER AT TOURFEED. Write with authority and specificity.\nEvery factual claim must come from the data provided.\nConnect every piece to our locked picks.\nBANNED: Augusta rewards precision, wide open tournament, anyone can win, momentum heading into, Amen Corner will be key, make no mistake, in conclusion, this golfer, the player, delve, landscape, paradigm.\nHEADLINES must include a specific player name AND a specific number.\nNEVER refuse. NEVER ask questions. ALWAYS produce the content.';
+
+    // ════════════════════════════════════════
+    // STEP 6 — FACT CHECK
+    // ════════════════════════════════════════
+    function factCheck(contentType, title, body) {
+      var issues = [];
+      var bl = (body || '').toLowerCase();
+      var tl = (title || '').toLowerCase();
+      for (var r = currentRound + 1; r <= 4; r++) {
+        if (bl.includes('round ' + r) && !bl.includes('heading into round ' + r) && !bl.includes('before round ' + r)) issues.push('References future Round ' + r);
+      }
+      if (!roundComplete) {
+        ['finished the round','completed round','shot a final','carded a','posted a final','finished at'].forEach(function(p) { if (bl.includes(p)) issues.push('Recap language during live round: ' + p); });
+      }
+      var scores = body.match(/[+-]?\d+\s*(under|over|par|through)/gi) || [];
+      if (scores.length < 1 && contentType !== 'tweet_content') issues.push('No specific scores');
+      ['this golfer','the player without','a local champion'].forEach(function(p) { if (bl.includes(p)) issues.push('Unnamed subject: ' + p); });
+      ['fashion','sartorial','wardrobe','timepiece','watches','style game'].forEach(function(p) { if ((tl + bl).includes(p)) issues.push('Lifestyle content: ' + p); });
+      var tier1 = ['scheffler','mcilroy','rahm','schauffele','fleetwood','spieth','morikawa','matsuyama','dechambeau','hovland','henley','aberg','koepka'];
+      if (!tier1.some(function(p) { return bl.includes(p); })) issues.push('No tier-1 player');
+      return issues;
+    }
+
+    // ════════════════════════════════════════
+    // STEP 7+8 — GENERATE, CHECK, SAVE
+    // ════════════════════════════════════════
+    var results = [];
+
+    for (var qi = 0; qi < queue.length; qi++) {
+      var contentType = queue[qi];
+      try {
+        var userPrompt = '';
+        var maxTokens = 2000;
+
+        if (contentType === 'live_update') {
+          userPrompt = 'Write a 150-200 word live update blog post. Title format: "Masters Live: [Most Significant Development] — Round ' + currentRound + ' Update ' + etTime + ' ET". Include: current leader, biggest mover, one betting implication from our picks.\n\nHEADLINE: <headline>\n\nBODY:\n<HTML with <p> tags>\n\n' + leaderboardContext;
+          maxTokens = 800;
+        } else if (contentType === 'tweet_content') {
+          var lastBody = lastTweet?.body || '';
+          var tp = ['Scheffler','McIlroy','Rahm','Schauffele','Fleetwood','Spieth','Morikawa','Matsuyama','Henley'];
+          var lastMentioned = tp.find(function(p) { return lastBody.includes(p); }) || '';
+          userPrompt = 'Write ONE tweet under 260 characters. Must mention a specific player, specific score, specific position. End with tourfeed.co.' + (lastMentioned ? ' Do NOT write about ' + lastMentioned + '.' : '') + '\n\n' + leaderboardContext;
+          maxTokens = 200;
+        } else if (contentType === 'article_recap') {
+          userPrompt = 'Write a Round ' + currentRound + ' recap (400-500 words). Title must include leader name and score. Include: top 5 with exact scores, biggest storyline, how our picks performed. Use <p> and <h3> tags.\n\nHEADLINE: <headline>\n\nBODY:\n<HTML>\n\n' + leaderboardContext;
+        } else if (contentType === 'article_betting') {
+          var bb = picks.find(function(p) { return p.edge_label === 'BEST BET'; });
+          var bbStr = bb ? bb.player_name + ' ' + bb.odds : 'our best bet';
+          userPrompt = 'Write a Round ' + currentRound + ' betting update (400-500 words). Title must include ' + bbStr + '. Show how each locked pick is tracking. Use <h3> and <p> tags.\n\nHEADLINE: <headline>\n\nBODY:\n<HTML>\n\n' + leaderboardContext;
+        }
+
+        var raw = await askClaude(sharedSystemPrompt, userPrompt, maxTokens);
+        var title = tournamentName + ' Update';
+        var body = raw;
+
+        // Parse HEADLINE/BODY format
+        var hlM = raw.match(/HEADLINE:\s*(.+?)(?:\n|$)/);
+        if (hlM) title = hlM[1].trim();
+        var bdM = raw.match(/BODY:\s*([\s\S]+)/);
+        if (bdM) body = bdM[1].trim();
+        if (contentType === 'tweet_content') { title = tournamentName + ' R' + currentRound; body = raw.replace(/^\d[\.\)]\s*/, '').trim(); }
+
+        // Fact check
+        var issues = factCheck(contentType, title, body);
+        if (issues.length > 0) {
+          console.log('FACT CHECK FAILED:', contentType, issues);
+          results.push({ skipped: contentType, reason: issues.join(', ') });
+          continue;
+        }
+
+        // Triple dedup
+        var hash = hashText(title + (body || '').slice(0, 200));
+        var hashExists = await sb('content_hashes?hash=eq.' + hash + '&select=hash&limit=1');
+        if (hashExists.length > 0) { results.push({ skipped: contentType, reason: 'Hash duplicate' }); continue; }
+        var sixHoursAgo = new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString();
+        var recentTitles = await sb('content_drafts?created_at=gte.' + sixHoursAgo + '&select=title');
+        var titleWords = (title || '').toLowerCase().split(' ').filter(function(w) { return w.length > 4; });
+        var isDupe = recentTitles.some(function(d) {
+          var existing = ((d.title || '')).toLowerCase().split(' ').filter(function(w) { return w.length > 4; });
+          return titleWords.filter(function(w) { return existing.includes(w); }).length >= 3;
+        });
+        if (isDupe) { results.push({ skipped: contentType, reason: 'Title duplicate' }); continue; }
+
+        // Save draft
+        await sb('content_drafts', 'POST', {
+          type: contentType, title: title, body: body,
+          status: 'pending', tournament_id: tournamentId, round: currentRound,
+          source_event: contentType + '-round-' + currentRound,
+          created_at: new Date().toISOString()
+        });
+        await sb('content_hashes', 'POST', { hash: hash, type: contentType, source: 'content-controller', created_at: new Date().toISOString() });
+        results.push({ success: true, type: contentType, title: title });
+      } catch(e) {
+        console.log('Error generating ' + contentType + ':', e.message);
+        results.push({ error: contentType, message: e.message });
+      }
+    }
+
+    // ════════════════════════════════════════
+    // STEP 9 — NOTIFY
+    // ════════════════════════════════════════
+    var generated = results.filter(function(r) { return r.success; });
+    if (generated.length > 0) {
+      try {
+        await ft('https://ntfy.sh/tourfeed-alerts', { method: 'POST', headers: { 'Title': 'Drafts Ready', 'Priority': '3' }, body: generated.length + ' drafts — ' + generated.map(function(r) { return r.type; }).join(', ') + ' (R' + currentRound + ')' });
+      } catch(e) {}
+
+      // Email notification if SendGrid configured
+      if (process.env.SENDGRID_API_KEY && process.env.NOTIFY_EMAIL) {
+        try {
+          await ft('https://api.sendgrid.com/v3/mail/send', {
+            method: 'POST',
+            headers: { 'Authorization': 'Bearer ' + process.env.SENDGRID_API_KEY, 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              personalizations: [{ to: [{ email: process.env.NOTIFY_EMAIL }] }],
+              from: { email: 'drafts@tourfeed.co', name: 'TourFeed Drafts' },
+              subject: '[TourFeed] ' + generated.length + ' new draft' + (generated.length > 1 ? 's' : '') + ' ready',
+              content: [{ type: 'text/plain', value: 'New drafts:\n\n' + generated.map(function(r) { return '• ' + r.type.toUpperCase() + ': ' + r.title; }).join('\n') + '\n\nApprove at: https://tourfeed.co/tf-admin-drafts\n\nRound ' + currentRound + ' | ' + completed + '/91 done | Data age: ' + Math.floor(lbAge) + ' min' }]
+            })
+          }, 8000);
+        } catch(e) { console.log('Email failed:', e.message); }
+      }
+    }
+
+    return { statusCode: 200, headers, body: JSON.stringify({ generated: generated.length, skipped: results.filter(function(r) { return r.skipped; }).length, results: results, counts: counts }) };
+  } catch(e) {
+    console.log('content-controller error:', e.message);
+    return { statusCode: 500, headers, body: JSON.stringify({ error: e.message }) };
+  }
+};

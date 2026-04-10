@@ -4,9 +4,12 @@
 [functions]
   directory = "netlify/functions"
 
-[functions."generate-content-v2"]
+[functions."content-controller"]
   timeout = 60
   schedule = "*/30 * * * *"
+
+[functions."generate-content-v2"]
+  timeout = 60
 
 [functions."generate-image"]
   timeout = 30
@@ -21,7 +24,6 @@
 
 [functions."blog-scheduler"]
   timeout = 60
-  schedule = "0 6 * * *"
 
 [functions."publish-approved"]
   timeout = 30
