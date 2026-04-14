@@ -1282,15 +1282,25 @@ function renderHome() {
     }
     html += '<button onclick="switchTab(1)" style="background:#D4A853;border:none;color:var(--green);font-size:12px;font-weight:700;padding:8px 16px;border-radius:4px;margin-top:10px;cursor:pointer;font-family:inherit">Full Leaderboard &rarr;</button>';
     html += '</div>';
-  } else {
-    // Masters Countdown Hero
+  } else if (TOURNAMENT) {
+    // Upcoming / recent tournament hero — driven by live ESPN data
+    var isPost = state === 'post';
+    var kicker = isPost ? 'FINAL' : 'NEXT UP';
     html += '<div style="background:var(--green);border-radius:4px;padding:24px;margin:16px 0;border-bottom:3px solid #D4A853">';
-    html += '<div style="font-family:DM Sans,sans-serif;font-size:2rem;font-weight:800;color:#fff;margin-bottom:6px;letter-spacing:-0.5px">The Masters</div>';
-    html += '<div style="font-size:12px;color:rgba(255,255,255,0.7);margin-bottom:12px">Augusta National Golf Club &mdash; Augusta, Georgia</div>';
-    html += '<div style="font-size:13px;color:#D4A853;font-weight:700;margin-bottom:4px">Round 1 begins Thursday, April 9 at 8:00 AM ET</div>';
-    html += '<div style="font-size:11px;color:rgba(255,255,255,0.6);margin-bottom:4px">Par 3 Contest: Wednesday, April 8 at 12:00 PM ET</div>';
-    html += '<div style="font-size:11px;color:rgba(255,255,255,0.6);margin-bottom:12px">91 players &middot; $22M purse &middot; The green jacket awaits</div>';
-    html += '<div style="font-size:10px;color:rgba(255,255,255,0.5)">Watch: ESPN (Thu-Fri) &middot; CBS (Sat-Sun)</div>';
+    html += '<div style="font-size:10px;font-weight:700;letter-spacing:2px;color:rgba(255,255,255,0.6);margin-bottom:6px">' + kicker + '</div>';
+    html += '<div style="font-family:DM Sans,sans-serif;font-size:2rem;font-weight:800;color:#fff;margin-bottom:6px;letter-spacing:-0.5px">' + esc(TOURNAMENT.name) + '</div>';
+    if (TOURNAMENT.course) html += '<div style="font-size:12px;color:rgba(255,255,255,0.7);margin-bottom:12px">' + esc(TOURNAMENT.course) + '</div>';
+    if (TOURNAMENT.dates) html += '<div style="font-size:13px;color:#D4A853;font-weight:700;margin-bottom:4px">' + esc(TOURNAMENT.dates) + '</div>';
+    var metaBits = [];
+    if (TOURNAMENT.tour) metaBits.push(TOURNAMENT.tour);
+    if (TOURNAMENT.purse) metaBits.push(TOURNAMENT.purse + ' purse');
+    if (metaBits.length) html += '<div style="font-size:11px;color:rgba(255,255,255,0.6);margin-bottom:8px">' + esc(metaBits.join(' \u00b7 ')) + '</div>';
+    if (TOURNAMENT.broadcast) html += '<div style="font-size:10px;color:rgba(255,255,255,0.5)">Watch: ' + esc(TOURNAMENT.broadcast) + '</div>';
+    html += '</div>';
+  } else {
+    html += '<div style="background:var(--green);border-radius:4px;padding:24px;margin:16px 0;border-bottom:3px solid #D4A853">';
+    html += '<div style="font-family:DM Sans,sans-serif;font-size:1.4rem;font-weight:800;color:#fff;margin-bottom:6px">TourFeed</div>';
+    html += '<div style="font-size:12px;color:rgba(255,255,255,0.7)">Loading the next tournament&hellip;</div>';
     html += '</div>';
   }
 
@@ -1298,11 +1308,13 @@ function renderHome() {
   var allArticles = newsArticles.concat(blogArticles).concat(bettingArticles);
   allArticles.sort(function(a,b) { return new Date(b.published_at || 0) - new Date(a.published_at || 0); });
 
-  // MASTERS WEEK section header
+  // Tournament section header — dynamic from TOURNAMENT
+  var bannerLeft = TOURNAMENT && TOURNAMENT.name ? TOURNAMENT.name : 'This Week';
+  var bannerRight = TOURNAMENT && TOURNAMENT.course ? TOURNAMENT.course : (TOURNAMENT && TOURNAMENT.tour ? TOURNAMENT.tour : 'PGA Tour');
   html += '<div style="background:var(--green);border-radius:4px;padding:10px 16px;margin:16px 0 12px;display:flex;align-items:center;gap:10px">';
-  html += '<div style="font-family:DM Sans,sans-serif;font-size:0.7rem;font-weight:600;color:#D4A853;letter-spacing:3px;text-transform:uppercase;opacity:0.8">MASTERS WEEK</div>';
+  html += '<div style="font-family:DM Sans,sans-serif;font-size:0.7rem;font-weight:600;color:#D4A853;letter-spacing:3px;text-transform:uppercase;opacity:0.8">' + esc(bannerLeft) + '</div>';
   html += '<div style="flex:1;height:1px;background:rgba(212,168,83,0.3)"></div>';
-  html += '<div style="font-family:DM Sans,sans-serif;font-size:0.7rem;font-weight:600;color:rgba(255,255,255,0.6);letter-spacing:3px;opacity:0.6">AUGUSTA NATIONAL</div>';
+  html += '<div style="font-family:DM Sans,sans-serif;font-size:0.7rem;font-weight:600;color:rgba(255,255,255,0.6);letter-spacing:3px;opacity:0.6">' + esc(bannerRight) + '</div>';
   html += '</div>';
 
   // Featured article — red bottom border card
@@ -1332,7 +1344,7 @@ function renderHome() {
   if (allArticles.length > 1) {
     allArticles.slice(1, 6).forEach(function(a) { html += renderArticleRow(a); });
   } else {
-    html += '<div style="font-size:13px;color:var(--muted);padding:16px 0;font-style:italic">Masters coverage begins Thursday.</div>';
+    html += '<div style="font-size:13px;color:var(--muted);padding:16px 0;font-style:italic">New coverage drops throughout tournament week.</div>';
   }
   html += '</div>';
 
