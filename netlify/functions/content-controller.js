@@ -147,6 +147,46 @@ exports.handler = async (event) => {
     var leaderboardContext = 'LIVE LEADERBOARD (as of ' + Math.floor(lbAge) + ' min ago):\n' +
       lb.slice(0, 15).map(function(p) { return (p.position || '?') + '. ' + (p.players?.name || '?') + ' ' + (p.total_score || '') + ' (today: ' + (p.today_score || '?') + ', thru: ' + (p.thru || '?') + ')'; }).join('\n');
 
+    // ── PGA GraphQL enrichment — live context + SG leaders + course difficulty ──
+    // Populated by fetch-pga-graphql.js cron. Null-safe: if anything is stale or missing,
+    // the prompt just drops the enrichment sections instead of injecting placeholders.
+    var pgaContext = '';
+    try {
+      var tlc = tournament[0]?.pga_tournament_id
+        ? await sb('tournament_live_context?pga_tournament_id=eq.' + encodeURIComponent(tournament[0].pga_tournament_id) + '&select=*&limit=1')
+        : [];
+      if (tlc.length > 0) {
+        var ctx = tlc[0];
+        if (ctx.projected_cut_line) pgaContext += 'PROJECTED CUT LINE: ' + ctx.projected_cut_line + (ctx.probable_cut_line ? ' (probable: ' + ctx.probable_cut_line + ')' : '') + '\n';
+        var leaders = Array.isArray(ctx.leaders_json) ? ctx.leaders_json : [];
+        var withOdds = leaders.filter(function(x) { return x.odds; });
+        if (withOdds.length > 0) {
+          pgaContext += 'LIVE WIN ODDS (top 5):\n' + withOdds.slice(0, 5).map(function(x) { return '  ' + x.player + ' ' + x.total + ' — ' + x.odds; }).join('\n') + '\n';
+        }
+      }
+    } catch(e) { console.log('tlc fetch:', e.message); }
+
+    try {
+      var season = new Date().getUTCFullYear();
+      var sgl = await sb('sg_leaders?tour_code=eq.R&season=eq.' + season + '&select=stat_title,player_name,stat_value,rank&order=stat_id.asc');
+      if (sgl.length > 0) {
+        pgaContext += '\nSEASON STROKES GAINED LEADERS (' + season + '):\n' +
+          sgl.map(function(s) { return '  ' + s.stat_title + ' — ' + s.player_name + ' (' + s.stat_value + ')'; }).join('\n') + '\n';
+      }
+    } catch(e) {}
+
+    try {
+      if (tournament[0]?.pga_tournament_id) {
+        var holes = await sb('course_holes?pga_tournament_id=eq.' + encodeURIComponent(tournament[0].pga_tournament_id) + '&select=hole,par,yards,avg_score,rank&order=rank.asc&limit=5');
+        if (holes.length > 0) {
+          pgaContext += '\nCOURSE — 5 HARDEST HOLES:\n' +
+            holes.map(function(h) { return '  #' + h.hole + ' par ' + h.par + ' (' + (h.yards || '?') + 'y) avg: ' + (h.avg_score || '?'); }).join('\n') + '\n';
+        }
+      }
+    } catch(e) {}
+
+    if (pgaContext) pgaContext = '\n\n═══ PGA TOUR LIVE DATA ═══\n' + pgaContext + '═══════════════════════\n';
+
     var fieldSize = isLIV ? 54 : (lb.length || 156);
     var dateHeader = 'TODAY IS ' + etDate + ' AT ' + etTime + ' EASTERN TIME.\nTOURNAMENT: ' + tournamentName + (tournamentCourse ? ', ' + tournamentCourse : '') + '.\nTOUR: ' + tournamentTour.toUpperCase() + '.\nCURRENT ROUND: Round ' + currentRound + ' of ' + (isLIV ? 3 : 4) + '.\nROUND STATUS: ' + (roundComplete ? 'COMPLETE — ALL PLAYERS FINISHED' : 'IN PROGRESS — ' + completed + '/' + fieldSize + ' players done') + '.\nCRITICAL: Only write about events that have happened as of this exact time. Never reference future rounds as current. Never recap a round still in progress.';
 
@@ -165,7 +205,7 @@ exports.handler = async (event) => {
       '- Player names must match real current tour players exactly. Never invent players, coaches, caddies, or equipment deals.\n' +
       '- Only write about events that have actually happened as of the timestamp above.';
 
-    var sharedSystemPrompt = dateHeader + '\n\n' + golfGuardrails + '\n\nPLAYER FACTS:\n' + factsContext + '\n\n' + picksContext +
+    var sharedSystemPrompt = dateHeader + pgaContext + '\n\n' + golfGuardrails + '\n\nPLAYER FACTS:\n' + factsContext + '\n\n' + picksContext +
       '\n\nYOU ARE THE LEAD WRITER AT TOURFEED. Write with authority and specificity.\nEvery factual claim must come from the data provided above.\nConnect every piece to our locked picks.\nBANNED: wide open tournament, anyone can win, momentum heading into, make no mistake, in conclusion, this golfer, the player, delve, landscape, paradigm.\nHEADLINES must include a specific player name AND a specific number.\nNEVER refuse. NEVER ask questions. ALWAYS produce the content.';
 
     // ════════════════════════════════════════

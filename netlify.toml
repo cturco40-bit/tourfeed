@@ -34,6 +34,10 @@
   timeout = 60
   schedule = "*/5 * * * *"
 
+[functions."fetch-pga-graphql"]
+  timeout = 60
+  schedule = "*/5 * * * *"
+
 [functions."fetch-odds"]
   timeout = 30
   schedule = "0 */6 * * *"
