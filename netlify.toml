@@ -5,10 +5,10 @@
   directory = "netlify/functions"
   node_bundler = "esbuild"
 
-# Schedulers live in .github/workflows/cron-pinger.yml (GitHub Actions).
-# Netlify's built-in scheduled functions are too flaky — we ping the function
-# URLs from GitHub Actions instead. Functions below only need `timeout` set;
-# no `schedule =` lines.
+# Scheduling lives in Supabase pg_cron (migrations/009-pg-cron-schedules.sql).
+# pg_net fires async HTTP calls from inside Postgres to the function URLs below.
+# Netlify's built-in scheduled functions are flaky, so we register functions
+# here with `timeout` only — no `schedule =` lines.
 
 [functions."content-controller"]
   timeout = 60

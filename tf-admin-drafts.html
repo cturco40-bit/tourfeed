@@ -138,17 +138,14 @@
         The PGA GraphQL enrichment tables (<code style="display:inline;padding:2px 6px;background:#F0EAE0;color:#5C4200">tournament_live_context</code>, <code style="display:inline;padding:2px 6px;background:#F0EAE0;color:#5C4200">sg_leaders</code>, <code style="display:inline;padding:2px 6px;background:#F0EAE0;color:#5C4200">course_holes</code>) don't exist yet, and <code style="display:inline;padding:2px 6px;background:#F0EAE0;color:#5C4200">tournaments.pga_tournament_id</code> is missing.
         Open <a href="https://supabase.com/dashboard/project/yumahmnoltvbiadjefxw/sql/new" target="_blank">Supabase SQL Editor</a> and run <strong>migrations/008-pga-graphql-enrichment.sql</strong>. Until then, live odds, cut line, and SG leaders won't appear in generated content.
       </div>
-      <!-- Pipeline status strip — admin tab is the reliable trigger for drafts -->
+      <!-- Pipeline status strip — runs auto via Supabase pg_cron, this is just a monitor -->
       <div class="pipeline-strip">
         <div class="pipeline-row">
           <div>
             <div class="pipeline-title">Draft pipeline</div>
-            <div style="font-size:10px;color:#8C8478;margin-top:2px" id="pipelineSummary">auto-pulse every 5 min while this tab is open</div>
+            <div style="font-size:10px;color:#8C8478;margin-top:2px" id="pipelineSummary">scheduled by Supabase pg_cron — live view from sync_log</div>
           </div>
-          <div style="display:flex;gap:6px">
-            <button class="pipeline-run" id="pipelinePauseBtn" onclick="togglePipelinePause()" style="background:#fff;color:#5C5244;border-color:#D8D0C4">Pause</button>
-            <button class="pipeline-run" id="pipelineRunBtn" onclick="pipelineRunNow()">Run now</button>
-          </div>
+          <button class="pipeline-run" id="pipelineRunBtn" onclick="pipelineRunNow()">Run now</button>
         </div>
         <div class="pipeline-dots" id="pipelineDots"></div>
       </div>
@@ -271,7 +268,6 @@ let loadedDrafts = {};
 let selectedIds = new Set();
 let activeFilter = 'all';
 let autoRefreshTimer = null;
-let pipelineTimer = null;
 let currentTemplate = 'breaking';
 let uploadedPhoto = null;
 let canvasW = 1080, canvasH = 1080;
@@ -293,7 +289,6 @@ const PIPELINE_FUNCS = [
 ];
 const PIPELINE_INTERVAL_MS = 5 * 60 * 1000;
 const PIPELINE_STATE_KEY = 'tf_pipeline_state';
-const PIPELINE_PAUSED_KEY = 'tf_pipeline_paused';
 
 function loadPipelineState() {
   try { return JSON.parse(localStorage.getItem(PIPELINE_STATE_KEY) || '{}'); } catch { return {}; }
@@ -357,36 +352,6 @@ async function checkMigration008() {
   } catch(e) {}
 }
 
-// Pause/resume toggle — persisted to localStorage
-function isPipelinePaused() {
-  try { return localStorage.getItem(PIPELINE_PAUSED_KEY) === '1'; } catch { return false; }
-}
-function togglePipelinePause() {
-  var next = !isPipelinePaused();
-  try { localStorage.setItem(PIPELINE_PAUSED_KEY, next ? '1' : '0'); } catch {}
-  updatePauseBtn();
-  if (!next) {
-    showToast('Pipeline resumed', 'ok');
-    pipelinePulse(false);
-  } else {
-    showToast('Pipeline paused', 'ok');
-  }
-}
-function updatePauseBtn() {
-  var btn = document.getElementById('pipelinePauseBtn');
-  if (!btn) return;
-  if (isPipelinePaused()) {
-    btn.textContent = 'Paused — resume';
-    btn.style.background = '#D4A853';
-    btn.style.color = '#fff';
-    btn.style.borderColor = '#D4A853';
-  } else {
-    btn.textContent = 'Pause';
-    btn.style.background = '#fff';
-    btn.style.color = '#5C5244';
-    btn.style.borderColor = '#D8D0C4';
-  }
-}
 
 async function pipelinePingOne(f) {
   const state = loadPipelineState();
@@ -400,53 +365,26 @@ async function pipelinePingOne(f) {
   renderPipelineDots();
 }
 
-// Single-tab lock so multiple open admin tabs don't stampede the functions.
-// Winner updates a heartbeat timestamp every 30s. Others see the heartbeat
-// is fresh and skip their own run.
-const PIPELINE_LOCK_KEY = 'tf_pipeline_lock';
-function acquirePipelineLock() {
-  try {
-    const last = parseInt(localStorage.getItem(PIPELINE_LOCK_KEY) || '0', 10);
-    if (Date.now() - last < 60000) return false;
-    localStorage.setItem(PIPELINE_LOCK_KEY, String(Date.now()));
-    return true;
-  } catch { return true; }
-}
-
-async function pipelinePulse(manual) {
-  // Paused state blocks auto-pulses but not manual ones
-  if (!manual && isPipelinePaused()) { renderPipelineDots(); return; }
-  if (!manual && !acquirePipelineLock()) {
-    // Another tab is the leader — just refresh from sync_log instead
-    hydratePipelineFromSyncLog();
-    return;
-  }
+async function pipelineRunNow() {
   const btn = document.getElementById('pipelineRunBtn');
   if (btn) { btn.disabled = true; btn.textContent = 'Running…'; }
-  // Fire in parallel — functions are independent
   await Promise.all(PIPELINE_FUNCS.map(pipelinePingOne));
   if (btn) { btn.disabled = false; btn.textContent = 'Run now'; }
-  if (manual) showToast('Pipeline fired', 'ok');
-  // After pipeline runs, refresh the drafts list so new drafts show
+  showToast('Pipeline fired', 'ok');
   setTimeout(() => { try { loadDrafts(); } catch {} }, 2000);
-  // And re-hydrate from sync_log so we see the canonical run timestamps
   setTimeout(hydratePipelineFromSyncLog, 3000);
 }
 
-function pipelineRunNow() { pipelinePulse(true); }
-
 function startPipelineHeartbeat() {
-  updatePauseBtn();
+  // Scheduling now lives in Supabase pg_cron (migration 009) — the admin tab
+  // no longer auto-fires the pipeline, which would create duplicate runs on
+  // top of pg_cron. The "Run now" button stays as a manual kicker.
   checkMigration008();
   hydratePipelineFromSyncLog();
   renderPipelineDots();
-  if (pipelineTimer) clearInterval(pipelineTimer);
-  // First pulse after 10s (let the page settle), then every 5 min
-  setTimeout(() => pipelinePulse(false), 10000);
-  pipelineTimer = setInterval(() => pipelinePulse(false), PIPELINE_INTERVAL_MS);
-  // Re-render clock every 30s so "stale" badges update without re-pinging
+  // Re-render clock every 30s so "stale" badges update
   setInterval(renderPipelineDots, 30000);
-  // Re-hydrate from sync_log every minute so cross-tab/cron runs show up
+  // Re-hydrate from sync_log every minute so pg_cron runs show up live
   setInterval(hydratePipelineFromSyncLog, 60000);
 }
 
