@@ -24,37 +24,63 @@ async function sb(path, method, body) {
 exports.handler = async (event) => {
   const headers = { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' };
 
+  if (!ODDS_API_KEY) return { statusCode: 200, headers, body: JSON.stringify({ skipped: 'ODDS_API_KEY not set' }) };
+
   try {
-    // Fetch odds for Masters (or current golf event)
-    const sports = ['golf_masters_tournament_winner', 'golf_pga_championship_winner', 'golf_us_open_winner', 'golf_the_open_championship_winner'];
+    // ── STEP 1 — discover currently active golf sport keys ──
+    // The Odds API /v4/sports endpoint returns a catalog filtered to in-season events.
+    // This replaces the previous hardcoded 4-majors list which failed every non-major week.
+    const sportsRes = await fetchWithTimeout(`https://api.the-odds-api.com/v4/sports?apiKey=${ODDS_API_KEY}`, {}, 8000);
+    if (!sportsRes.ok) {
+      return { statusCode: 200, headers, body: JSON.stringify({ error: 'Odds API /sports HTTP ' + sportsRes.status }) };
+    }
+    const allSports = await sportsRes.json();
+    const golfSports = (allSports || []).filter(function(s) {
+      return s.group === 'Golf' && s.active && /winner/i.test(s.key);
+    });
+    if (golfSports.length === 0) {
+      return { statusCode: 200, headers, body: JSON.stringify({ skipped: 'No active golf outright markets on Odds API' }) };
+    }
+    console.log('Active golf sports:', golfSports.map(function(s) { return s.key; }).join(', '));
+
+    // ── STEP 2 — pick the key that matches our next tournament ──
+    const nextRows = await sb('tournaments?status=in.(scheduled,in_progress)&order=start_date.asc&limit=5');
+    const nextTournament = nextRows[0] || null;
+    const nextNameLower = (nextTournament?.name || '').toLowerCase();
+    function keyScore(sport) {
+      const t = (sport.title || '').toLowerCase();
+      if (!nextNameLower) return 0;
+      // Reward strong name overlap
+      const words = nextNameLower.split(/\s+/).filter(function(w) { return w.length > 3; });
+      return words.reduce(function(acc, w) { return acc + (t.includes(w) ? 1 : 0); }, 0);
+    }
+    const ranked = golfSports.slice().sort(function(a, b) { return keyScore(b) - keyScore(a); });
+    console.log('Tournament:', nextTournament?.name, '→ ranked sport matches:', ranked.map(function(s) { return s.key + '(' + keyScore(s) + ')'; }).join(', '));
+
+    // ── STEP 3 — try each candidate until one has odds ──
     let oddsData = null;
     let sportKey = '';
-
-    for (const sport of sports) {
-      const url = `https://api.the-odds-api.com/v4/sports/${sport}/odds/?apiKey=${ODDS_API_KEY}&regions=us&markets=outrights&oddsFormat=american`;
-      console.log('Fetching odds:', url.replace(ODDS_API_KEY, 'REDACTED'));
+    let matchedName = '';
+    for (const sport of ranked) {
+      const url = `https://api.the-odds-api.com/v4/sports/${sport.key}/odds/?apiKey=${ODDS_API_KEY}&regions=us&markets=outrights&oddsFormat=american`;
       try {
         const res = await fetchWithTimeout(url, {}, 8000);
-        if (res.ok) {
-          const data = await res.json();
-          console.log('Odds API response for', sport, ':', data.length, 'events');
-          if (data && data.length > 0) {
-            oddsData = data[0];
-            sportKey = sport;
-            break;
-          }
-        } else {
-          console.log('Odds API returned', res.status, 'for', sport);
+        if (!res.ok) { console.log('Odds API', res.status, 'for', sport.key); continue; }
+        const data = await res.json();
+        console.log('Odds API', sport.key, ':', data.length, 'events');
+        if (data && data.length > 0) {
+          oddsData = data[0];
+          sportKey = sport.key;
+          matchedName = sport.title;
+          break;
         }
-      } catch(e) {
-        console.log('Odds API fetch failed for', sport, ':', e.message);
-        continue;
-      }
+      } catch(e) { console.log('Odds API err', sport.key, ':', e.message); continue; }
     }
 
     if (!oddsData || !oddsData.bookmakers) {
-      return { statusCode: 200, headers, body: JSON.stringify({ message: 'No odds data available', sports_checked: sports }) };
+      return { statusCode: 200, headers, body: JSON.stringify({ message: 'No odds data available from any active golf market', candidates: ranked.map(function(s) { return s.key; }) }) };
     }
+    console.log('Matched', sportKey, '(' + matchedName + ') for', nextTournament?.name || 'unknown tournament');
 
     // Parse odds from all bookmakers
     const playerOdds = {};
@@ -88,6 +114,14 @@ exports.handler = async (event) => {
     // Calculate implied probability and upsert
     const tournamentId = sportKey.replace('golf_', '').replace('_winner', '');
     let upserted = 0;
+
+    // Purge any previously-stored rows for a DIFFERENT tournament AND any rows
+    // older than 7 days. Prevents completed-event odds from lingering on the frontend.
+    try {
+      await sb('player_odds?tournament_id=neq.' + encodeURIComponent(tournamentId), 'DELETE');
+      const staleCutoff = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+      await sb('player_odds?updated_at=lt.' + staleCutoff, 'DELETE');
+    } catch(e) { console.log('purge stale odds:', e.message); }
 
     for (const [name, data] of Object.entries(playerOdds)) {
       const odds = data.best_odds;

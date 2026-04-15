@@ -1818,11 +1818,14 @@ function renderInsights() {
     } // end hasPicks
 
     // ── PRE-TOURNAMENT ODDS TABLE ──
+    // Filter to rows refreshed in the last 6 days so odds from a completed
+    // tournament don't linger on the page.
     if (!window._realOdds) {
       window._realOdds = 'loading';
-      sb.from('player_odds').select('*').order('best_odds', {ascending:true}).limit(15).then(function(res) {
+      var _oddsCutoff = new Date(Date.now() - 6 * 24 * 60 * 60 * 1000).toISOString();
+      sb.from('player_odds').select('*').gte('updated_at', _oddsCutoff).order('best_odds', {ascending:true}).limit(15).then(function(res) {
         if (res.data && res.data.length > 0) { window._realOdds = res.data; renderApp(); }
-        else { window._realOdds = null; }
+        else { window._realOdds = null; renderApp(); }
       }).catch(function() { window._realOdds = null; });
     }
     if (window._realOdds && window._realOdds !== 'loading' && window._realOdds.length > 0) {

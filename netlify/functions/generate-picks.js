@@ -30,19 +30,19 @@ async function sb(path, method, body) {
 }
 
 // ── PERMANENT BASE SYSTEM PROMPT — the handicapper's brain ──
-function buildSystemPrompt() {
+// Tournament-specific facts (event name, course, field) come in through the
+// user prompt in the handler below — this base prompt stays event-agnostic so
+// it doesn't have to be rewritten every week.
+function buildSystemPrompt(tournamentName) {
   var now = new Date();
   var dateString = now.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'America/New_York' });
   var timeString = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', timeZone: 'America/New_York' });
-  return `TODAY IS ${dateString} AT ${timeString} EASTERN TIME. You are analyzing current Masters Tournament 2026 odds.
+  var eventLine = tournamentName
+    ? `You are analyzing the ${tournamentName} odds.`
+    : 'You are analyzing the current PGA Tour tournament odds.';
+  return `TODAY IS ${dateString} AT ${timeString} EASTERN TIME. ${eventLine}
 
 Never ask questions. Never refuse. Never explain what you cannot do. Always produce picks. Output ONLY valid JSON.
-
-CRITICAL PLAYER FACTS — NEVER CONTRADICT THESE:
-- Scottie Scheffler IS playing the 2026 Masters. He did NOT withdraw. Confirmed competing despite having a newborn.
-- Tiger Woods is NOT playing — recovering from March car accident.
-- Phil Mickelson is NOT playing — withdrew for family health reasons.
-- Rory McIlroy IS the defending champion — won 2025 Masters, Career Grand Slam holder.
 
 You are a professional sports handicapper with 20 years experience beating closing lines. You think exclusively in terms of true probability vs implied probability. You never pick favorites for the sake of it. You find edges where the market is wrong.
 
@@ -62,16 +62,15 @@ CONFIDENCE SCORING — always apply:
 - Longshots: confidence 5 (high variance by nature)
 - Fades: confidence 6
 
-GOLF-SPECIFIC FRAMEWORK — apply when sport is golf:
-- Augusta National rewards: precise iron play, patient course management, elite putting on fast greens, shot shaping, strong par-5 scoring
-- Augusta punishes: wild driving, poor short game, reckless birdie chasing
-- SG Approach and SG Putting are strongest Masters predictors
-- Amen Corner (11, 12, 13) separates contenders from pretenders
-- Ryder Cup / Presidents Cup experience = positive pressure indicator
+GOLF-SPECIFIC FRAMEWORK — apply to every PGA/LIV/DP World event:
+- SG Total is the single best predictor of contention
+- SG Approach and SG Putting are the sharpest weekly differentiators
 - Won or top-5 in last 3 starts = significant positive form signal
-- Top-10 at the specific course in last 3 years = significant positive
-- First-time starters at major venues = negative unless elite iron stats
-- Distance matters less than accuracy at Augusta
+- Top-10 at THIS specific course in last 3 years = significant positive (adjust for course type: parkland, links, desert, coastal)
+- First-time starters at premium venues = negative unless elite iron stats
+- Check the course profile before picking: bomber vs positional, fast greens vs slow, firm vs soft, altitude, weather
+- Never cite Augusta-specific patterns (Amen Corner, Masters-rewards-X) unless the current event is literally at Augusta National
+- Ryder Cup / Presidents Cup experience = positive pressure indicator for signature events and majors, neutral otherwise
 
 GENERAL SPORTS FRAMEWORK — apply when sport is not golf:
 - Recent form (last 5 games/events) weighted 40%
@@ -90,23 +89,27 @@ OUTPUT RULES — non-negotiable:
 }
 
 // Helper: create Instagram drafts from an array of picks (from DB or freshly generated)
-async function createInstagramDrafts(picksList) {
+async function createInstagramDrafts(picksList, tournamentName) {
+  // Build tournament-specific hashtag from the event name so every week rotates in
+  var tName = (tournamentName || '').toLowerCase();
+  var tHashtag = tName ? '#' + tName.replace(/[^a-z0-9]+/g, '').slice(0, 24) : '';
+  var baseTags = (tHashtag ? tHashtag + ' ' : '') + '#pgatour #golf #golfbetting #sportsbetting';
   var igHashtags = {
-    'BEST BET': '#masters #masters2026 #augusta #golfbetting #sportsbetting #golfpicks',
-    'VALUE': '#masters #masters2026 #augusta #golfbetting #sportsbetting',
-    'LONGSHOT': '#masters #masters2026 #augusta #longshot #golfbetting',
-    'FADE': '#masters #masters2026 #augusta #golfbetting',
+    'BEST BET': baseTags + ' #golfpicks',
+    'VALUE':    baseTags,
+    'LONGSHOT': baseTags + ' #longshot',
+    'FADE':     baseTags,
   };
   var igLabels = { 'BEST BET': 'BEST BET', 'VALUE': 'VALUE PLAY', 'LONGSHOT': 'LONGSHOT', 'FADE': 'FADE OF THE WEEK' };
   for (var ig = 0; ig < picksList.length; ig++) {
     var pk = picksList[ig];
     var el = pk.edge_label || '';
     var label = igLabels[el] || el;
-    var tags = igHashtags[el] || '#masters #golfbetting';
+    var tags = igHashtags[el] || baseTags;
     var igCaption = label + '\n' + (pk.player_name || '') + ' ' + (pk.odds || '') + '\n\n' + (pk.analysis || '') + '\n\nFull picks card at tourfeed.co\n\n' + tags;
     var igWords = (pk.player_name || '').split(/\s+/);
     var igHL = igWords.length <= 3 ? (pk.player_name || '') + ' Is the Play' : igWords[igWords.length - 1] + ' Is the Play This Week';
-    if (el === 'LONGSHOT') igHL = (pk.player_name || '') + ' Could Shock Augusta';
+    if (el === 'LONGSHOT') igHL = (pk.player_name || '') + ' Could Shock ' + (tournamentName || 'the Field');
     if (el === 'FADE') igHL = 'Fade ' + (pk.player_name || '') + ' This Week';
     try {
       await sb('content_drafts', 'POST', {
@@ -128,25 +131,29 @@ exports.handler = async (event) => {
   if (!ANTHROPIC_KEY) return { statusCode: 200, headers, body: JSON.stringify({ skipped: 'No API key' }) };
 
   try {
-    // BULLETPROOF LOCK — check both betting_picks table AND content_drafts for evidence picks were already generated
-    var existingPicks = await sb('betting_picks?select=id&limit=1');
-    if (existingPicks.length > 0) {
-      return { statusCode: 200, headers, body: JSON.stringify({ skipped: 'Picks locked — will not overwrite' }) };
-    }
-    // Secondary lock — if Instagram drafts for picks exist, picks were already generated (even if table was cleared)
-    var igDrafts = await sb('content_drafts?type=eq.instagram&title=like.*BEST BET*&created_at=gte.' + new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString() + '&select=id&limit=1');
-    if (igDrafts.length > 0) {
-      return { statusCode: 200, headers, body: JSON.stringify({ skipped: 'Picks were already generated this week (IG drafts exist) — will not regenerate' }) };
+    // Identify the next/current PGA tournament first — the lock keys on its ID.
+    var nextT = await sb('tournaments?tour_id=eq.pga&status=neq.completed&order=start_date.asc&limit=1');
+    if (!nextT.length) nextT = await sb('tournaments?tour_id=eq.pga&order=start_date.desc&limit=1');
+    var upcomingTournament = nextT[0];
+    if (!upcomingTournament) return { statusCode: 200, headers, body: JSON.stringify({ skipped: 'No tournament found in DB' }) };
+
+    // Sweep stale picks from any previous tournament (>5 days old) so picks for
+    // the NEW event can be generated. Old "BULLETPROOF LOCK" keyed on "any row
+    // exists", which meant picks never rolled over week-to-week.
+    var staleCutoff = new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString();
+    try { await sb('betting_picks?created_at=lt.' + staleCutoff, 'DELETE'); } catch(e) {}
+
+    // Legitimate lock — only skip if picks already exist for THIS tournament in the last 5 days.
+    var tournamentLock = await sb('betting_picks?tournament_id=eq.' + encodeURIComponent(upcomingTournament.id) + '&created_at=gte.' + staleCutoff + '&select=id&limit=1');
+    if (tournamentLock.length > 0) {
+      return { statusCode: 200, headers, body: JSON.stringify({ skipped: 'Picks already exist for ' + upcomingTournament.name, tournament_id: upcomingTournament.id }) };
     }
 
-    // 1. Get active tournament
-    var tournaments = await sb('tournaments?tour_id=eq.pga&status=neq.completed&order=start_date.desc&limit=1');
-    if (!tournaments.length) tournaments = await sb('tournaments?tour_id=eq.pga&order=start_date.desc&limit=1');
-    var tournament = tournaments[0];
-    if (!tournament) return { statusCode: 200, headers, body: JSON.stringify({ skipped: 'No tournament found' }) };
+    // 1. Use the tournament we already looked up for the lock check
+    var tournament = upcomingTournament;
     console.log('Tournament:', tournament.name);
 
-    // 2. Get real sportsbook odds — top 20 players
+    // 2. Get real sportsbook odds — top 20 players, filtered to this tournament if tagged
     var odds = await sb('player_odds?order=best_odds.asc&limit=20');
     if (!odds.length) return { statusCode: 200, headers, body: JSON.stringify({ skipped: 'No odds data — run fetch-odds first' }) };
 
@@ -201,7 +208,7 @@ exports.handler = async (event) => {
       body: JSON.stringify({
         model: 'claude-haiku-4-5-20251001',
         max_tokens: 2000,
-        system: buildSystemPrompt(),
+        system: buildSystemPrompt(tournament.name),
         messages: [{ role: 'user', content: userPrompt }],
       }),
     }, 40000);
@@ -312,7 +319,7 @@ exports.handler = async (event) => {
     if (picks.value_plays) picks.value_plays.slice(0, 3).forEach(function(p) { allPicksFlat.push({ ...p, edge_label: 'VALUE' }); });
     if (picks.longshot) allPicksFlat.push({ ...picks.longshot, edge_label: 'LONGSHOT' });
     if (picks.fade) allPicksFlat.push({ ...picks.fade, edge_label: 'FADE' });
-    await createInstagramDrafts(allPicksFlat);
+    await createInstagramDrafts(allPicksFlat, tournament.name);
 
     // 10. Notify
     try {
