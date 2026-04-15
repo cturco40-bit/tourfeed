@@ -90,6 +90,20 @@
     .copy-body-btn:hover { background:#FAF6F0; color:#2C2416; border-color:#1A472A; }
     .copy-body-btn.copied { background:#1A472A; color:#fff; border-color:#1A472A; }
 
+    /* PIPELINE STATUS STRIP */
+    .pipeline-strip { background:#fff; border:1px solid #D8D0C4; border-radius:4px; padding:10px 12px; margin-bottom:12px; font-size:11px; }
+    .pipeline-row { display:flex; align-items:center; justify-content:space-between; gap:8px; }
+    .pipeline-title { font-weight:700; color:#2C2416; letter-spacing:1px; text-transform:uppercase; font-size:10px; }
+    .pipeline-run { padding:8px 14px; border:1px solid #1A472A; background:#1A472A; color:#fff; border-radius:3px; font-weight:700; font-size:11px; cursor:pointer; font-family:inherit; letter-spacing:0.5px; }
+    .pipeline-run:hover { background:#2D5A3B; }
+    .pipeline-run:disabled { background:#8C8478; border-color:#8C8478; cursor:not-allowed; }
+    .pipeline-dots { display:flex; gap:10px; margin-top:8px; flex-wrap:wrap; }
+    .pipeline-dot { display:flex; align-items:center; gap:5px; font-size:10px; color:#5C5244; }
+    .pipeline-dot span.d { width:8px; height:8px; border-radius:50%; background:#D8D0C4; }
+    .pipeline-dot.fresh span.d { background:#1A472A; }
+    .pipeline-dot.stale span.d { background:#D4A853; }
+    .pipeline-dot.err   span.d { background:#8B2020; }
+
     #toast { position:fixed; left:50%; bottom:24px; transform:translateX(-50%) translateY(20px); opacity:0; pointer-events:none; background:#2C2416; color:#FAF6F0; padding:12px 20px; border-radius:4px; font-size:13px; font-weight:600; box-shadow:0 6px 20px rgba(0,0,0,0.25); z-index:9999; transition:opacity .2s, transform .2s; max-width:90%; text-align:center; }
     #toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
     #toast.err { background:#8B2020; }
@@ -112,6 +126,17 @@
 
     <!-- TAB 1: DRAFTS -->
     <div class="tab-content active" id="draftsTab">
+      <!-- Pipeline status strip — admin tab is the reliable trigger for drafts -->
+      <div class="pipeline-strip">
+        <div class="pipeline-row">
+          <div>
+            <div class="pipeline-title">Draft pipeline</div>
+            <div style="font-size:10px;color:#8C8478;margin-top:2px" id="pipelineSummary">auto-pulse every 5 min while this tab is open</div>
+          </div>
+          <button class="pipeline-run" id="pipelineRunBtn" onclick="pipelineRunNow()">Run now</button>
+        </div>
+        <div class="pipeline-dots" id="pipelineDots"></div>
+      </div>
       <div class="filters" id="filters"></div>
       <div class="batch-bar" id="batchBar">
         <div style="font-size:13px;font-weight:700"><span id="batchCount">0</span> selected</div>
@@ -231,10 +256,105 @@ let loadedDrafts = {};
 let selectedIds = new Set();
 let activeFilter = 'all';
 let autoRefreshTimer = null;
+let pipelineTimer = null;
 let currentTemplate = 'breaking';
 let uploadedPhoto = null;
 let canvasW = 1080, canvasH = 1080;
 let attachDraftId = null;
+
+// ━━━━━━━━━━━━━━━━━━━━━━
+// PIPELINE AUTO-RUN
+// ━━━━━━━━━━━━━━━━━━━━━━
+// While this admin tab is open, we ping the draft-generation functions on a
+// 5-minute heartbeat. This is the only trigger the user actually trusts — GitHub
+// Actions + cron-job.org are backup, not primary. When the tab is closed, nothing
+// runs, which is fine because the user isn't reviewing drafts anyway.
+const PIPELINE_FUNCS = [
+  { key: 'pga',      label: 'Live data',     fn: 'fetch-pga-graphql' },
+  { key: 'news',     label: 'News monitor',  fn: 'news-detector' },
+  { key: 'content',  label: 'Content brain', fn: 'content-controller' },
+  { key: 'publish',  label: 'Publisher',     fn: 'publish-approved' },
+];
+const PIPELINE_INTERVAL_MS = 5 * 60 * 1000;
+const PIPELINE_STATE_KEY = 'tf_pipeline_state';
+
+function loadPipelineState() {
+  try { return JSON.parse(localStorage.getItem(PIPELINE_STATE_KEY) || '{}'); } catch { return {}; }
+}
+function savePipelineState(s) {
+  try { localStorage.setItem(PIPELINE_STATE_KEY, JSON.stringify(s)); } catch {}
+}
+
+function renderPipelineDots() {
+  const state = loadPipelineState();
+  const dots = document.getElementById('pipelineDots');
+  if (!dots) return;
+  const now = Date.now();
+  dots.innerHTML = PIPELINE_FUNCS.map(f => {
+    const last = state[f.key];
+    let cls = '', label = f.label + ' — never';
+    if (last) {
+      const age = now - last.t;
+      const mins = Math.floor(age / 60000);
+      if (last.ok === false) { cls = 'err'; label = f.label + ' — error ' + mins + 'm ago'; }
+      else if (age < PIPELINE_INTERVAL_MS * 2) { cls = 'fresh'; label = f.label + ' — ' + (mins === 0 ? 'just now' : mins + 'm ago'); }
+      else { cls = 'stale'; label = f.label + ' — stale (' + mins + 'm)'; }
+    }
+    return '<div class="pipeline-dot ' + cls + '"><span class="d"></span><span>' + label + '</span></div>';
+  }).join('');
+}
+
+async function pipelinePingOne(f) {
+  const state = loadPipelineState();
+  try {
+    const res = await fetch('/.netlify/functions/' + f.fn, { method: 'GET', cache: 'no-store' });
+    state[f.key] = { t: Date.now(), ok: res.ok };
+  } catch(e) {
+    state[f.key] = { t: Date.now(), ok: false, err: e.message };
+  }
+  savePipelineState(state);
+  renderPipelineDots();
+}
+
+// Single-tab lock so multiple open admin tabs don't stampede the functions.
+// Winner updates a heartbeat timestamp every 30s. Others see the heartbeat
+// is fresh and skip their own run.
+const PIPELINE_LOCK_KEY = 'tf_pipeline_lock';
+function acquirePipelineLock() {
+  try {
+    const last = parseInt(localStorage.getItem(PIPELINE_LOCK_KEY) || '0', 10);
+    if (Date.now() - last < 60000) return false;
+    localStorage.setItem(PIPELINE_LOCK_KEY, String(Date.now()));
+    return true;
+  } catch { return true; }
+}
+
+async function pipelinePulse(manual) {
+  if (!manual && !acquirePipelineLock()) {
+    renderPipelineDots();
+    return;
+  }
+  const btn = document.getElementById('pipelineRunBtn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Running…'; }
+  // Fire in parallel — functions are independent
+  await Promise.all(PIPELINE_FUNCS.map(pipelinePingOne));
+  if (btn) { btn.disabled = false; btn.textContent = 'Run now'; }
+  if (manual) showToast('Pipeline fired', 'ok');
+  // After pipeline runs, refresh the drafts list so new drafts show
+  setTimeout(() => { try { loadDrafts(); } catch {} }, 2000);
+}
+
+function pipelineRunNow() { pipelinePulse(true); }
+
+function startPipelineHeartbeat() {
+  renderPipelineDots();
+  if (pipelineTimer) clearInterval(pipelineTimer);
+  // First pulse after 10s (let the page settle), then every 5 min
+  setTimeout(() => pipelinePulse(false), 10000);
+  pipelineTimer = setInterval(() => pipelinePulse(false), PIPELINE_INTERVAL_MS);
+  // Re-render clock every 30s so "stale" badges update without re-pinging
+  setInterval(renderPipelineDots, 30000);
+}
 
 // ━━━━━━━━━━━━━━━━━━━━━━
 // AUTH + TABS
@@ -243,12 +363,29 @@ function doLogin() {
   if (document.getElementById('passInput').value === ACCESS_CODE) {
     document.getElementById('loginScreen').style.display = 'none';
     document.getElementById('main').style.display = 'block';
+    try { sessionStorage.setItem('tf_admin_auth', '1'); } catch {}
     loadDrafts();
     autoRefreshTimer = setInterval(loadDrafts, 30000);
+    startPipelineHeartbeat();
   } else {
     document.getElementById('passInput').style.borderColor = '#FF6B6B';
   }
 }
+
+// Reattach heartbeat on page reload if user is still in the session
+(function resumeIfAuthed() {
+  try {
+    if (sessionStorage.getItem('tf_admin_auth') === '1') {
+      document.addEventListener('DOMContentLoaded', () => {
+        document.getElementById('loginScreen').style.display = 'none';
+        document.getElementById('main').style.display = 'block';
+        loadDrafts();
+        autoRefreshTimer = setInterval(loadDrafts, 30000);
+        startPipelineHeartbeat();
+      });
+    }
+  } catch {}
+})();
 
 function showTab(tab) {
   document.getElementById('draftsTab').classList.toggle('active', tab === 'drafts');
