@@ -390,7 +390,19 @@ exports.handler = async (event) => {
     });
 
     // WHITELIST APPROACH — only allow items matching approved patterns
-    const PAST_TOURNAMENTS = /puerto rico|texas open|valero|houston open|valspar|arnold palmer|players championship|genesis|phoenix|pebble beach|farmers|torrey pines|american express/i;
+    // Static floor list of events we know have ended for the season
+    let staticPast = 'puerto rico|texas open|valero|houston open|valspar|arnold palmer|players championship|genesis|phoenix|pebble beach|farmers|torrey pines|american express';
+    // DYNAMIC: pull any tournament that completed in the last 14 days so news-detector
+    // automatically stops generating "live" coverage of the event the week after it ends.
+    try {
+      const cutoff = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+      const recentCompleted = await sb('tournaments?status=eq.completed&end_date=gte.' + cutoff + '&select=name,course');
+      for (const t of recentCompleted) {
+        if (t.name)   staticPast += '|' + t.name.toLowerCase().replace(/[^\w\s]/g, '').replace(/\s+/g, '\\s*');
+        if (t.course) staticPast += '|' + t.course.toLowerCase().replace(/[^\w\s]/g, '').replace(/\s+/g, '\\s*');
+      }
+    } catch(e) { console.log('PAST_TOURNAMENTS dynamic fetch failed:', e.message); }
+    const PAST_TOURNAMENTS = new RegExp(staticPast, 'i');
     const APPROVED_PATTERNS = [
       // Player performance
       'shoots', 'fires', 'cards', 'birdies', 'eagles', 'leads', 'moves to',
@@ -411,8 +423,8 @@ exports.handler = async (event) => {
 
     const currentItems = newItems.filter(function(item) {
       var t = (item.title + ' ' + (item.desc || '')).toLowerCase();
-      // Past tournament filter
-      if (PAST_TOURNAMENTS.test(t) && !/masters|augusta/i.test(t)) {
+      // Past tournament filter — dynamic list above catches events that ended in the last 14 days
+      if (PAST_TOURNAMENTS.test(t)) {
         console.log('Skipping past tournament:', item.title.slice(0, 50));
         return false;
       }

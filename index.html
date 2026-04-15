@@ -1958,11 +1958,15 @@ fetchESPNSchedule();
 startAutoRefresh();
 
 // Load betting picks early for Home Quick Picks + Picks tab
+// Only show picks from the last 6 days — picks are locked Tuesday for Thu-Sun events,
+// so by the following Monday they're stale. Without this filter, picks from a completed
+// tournament linger forever.
 if (!_bettingPicks) {
   _bettingPicks = 'loading';
-  sb.from('betting_picks').select('*').order('created_at', {ascending:true}).limit(30).then(function(res) {
+  var _picksCutoff = new Date(Date.now() - 6 * 24 * 60 * 60 * 1000).toISOString();
+  sb.from('betting_picks').select('*').gte('created_at', _picksCutoff).order('created_at', {ascending:true}).limit(30).then(function(res) {
     if (res.data && res.data.length > 0) { _bettingPicks = res.data; renderApp(); }
-    else { _bettingPicks = null; }
+    else { _bettingPicks = null; renderApp(); }
   }).catch(function() { _bettingPicks = null; });
 }
 
