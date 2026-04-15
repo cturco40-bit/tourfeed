@@ -84,6 +84,16 @@ exports.handler = async (event) => {
             'article_analysis': 'ANALYSIS',
             'article_betting': 'BETTING',
           };
+          const tag = tagMap[draft.type] || 'NEWS';
+
+          // Fallback header image — scheduled drafts sometimes reach publish without one.
+          // generate-image serves a PNG directly from the function URL, so we can point at it.
+          const headerImage = draft.image_url || (
+            'https://tourfeed.co/.netlify/functions/generate-image'
+            + '?type=article_header'
+            + '&headline=' + encodeURIComponent((draft.title || 'TourFeed').slice(0, 120))
+            + '&tag=' + encodeURIComponent(tag)
+          );
 
           await sb('articles', 'POST', {
             type: draft.type?.replace('article_', '') || 'news',
@@ -91,9 +101,9 @@ exports.handler = async (event) => {
             body: draft.body,
             summary: draft.body.replace(/<[^>]+>/g, '').slice(0, 200),
             slug,
-            header_image: draft.image_url,
+            header_image: headerImage,
             read_time: readTime,
-            tag: tagMap[draft.type] || 'NEWS',
+            tag,
             published_at: new Date().toISOString(),
             tour_id: draft.tour_id || 'pga',
             tournament_id: draft.tournament_id,
@@ -128,6 +138,14 @@ exports.handler = async (event) => {
           method: 'POST',
           headers: { 'Title': 'TourFeed Published', 'Priority': '3' },
           body: msg,
+        });
+      } catch(e) {}
+      // Browser push so scheduled publishes surface without the admin page open
+      try {
+        await ft('https://tourfeed.co/.netlify/functions/send-push', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ title: 'TourFeed — ' + msg, body: published.map(r => (r.slug || r.tweet_id || r.type)).slice(0, 3).join('\n') }),
         });
       } catch(e) {}
     }

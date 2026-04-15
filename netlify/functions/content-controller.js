@@ -58,6 +58,9 @@ exports.handler = async (event) => {
     var currentRound = tournament[0]?.current_round || 0;
     var tournamentId = tournament[0]?.id;
     var tournamentName = tournament[0]?.name || 'Tournament';
+    var tournamentCourse = tournament[0]?.course || '';
+    var tournamentTour = tournament[0]?.tour_id || 'pga';
+    var isLIV = tournamentTour === 'liv';
 
     var lb = tournamentId ? await sb('leaderboard?tournament_id=eq.' + tournamentId + '&order=position.asc&limit=200&select=*,players(name)') : [];
     var lbAge = lb.length > 0 && lb[0].updated_at ? (Date.now() - new Date(lb[0].updated_at).getTime()) / 60000 : 999;
@@ -80,7 +83,7 @@ exports.handler = async (event) => {
     var todayDrafts = await sb('content_drafts?created_at=gte.' + todayStart + '&select=id,type,title,body,created_at&order=created_at.desc');
     var counts = {
       tweets: todayDrafts.filter(function(d) { return d.type === 'tweet_content'; }).length,
-      articles: todayDrafts.filter(function(d) { return d.type !== 'tweet_content' && d.type !== 'instagram' && d.type !== 'live_update'; }).length,
+      articles: todayDrafts.filter(function(d) { return d.type === 'article_recap' || d.type === 'article_betting' || d.type === 'article_analysis'; }).length,
       recaps: todayDrafts.filter(function(d) { return d.type === 'article_recap'; }).length,
       betting: todayDrafts.filter(function(d) { return d.type === 'article_betting'; }).length,
       live: todayDrafts.filter(function(d) { return d.type === 'live_update' || d.type === 'article_news'; }).length
@@ -144,7 +147,8 @@ exports.handler = async (event) => {
     var leaderboardContext = 'LIVE LEADERBOARD (as of ' + Math.floor(lbAge) + ' min ago):\n' +
       lb.slice(0, 15).map(function(p) { return (p.position || '?') + '. ' + (p.players?.name || '?') + ' ' + (p.total_score || '') + ' (today: ' + (p.today_score || '?') + ', thru: ' + (p.thru || '?') + ')'; }).join('\n');
 
-    var dateHeader = 'TODAY IS ' + etDate + ' AT ' + etTime + ' EASTERN TIME.\nTOURNAMENT: ' + tournamentName + ', Augusta National.\nCURRENT ROUND: Round ' + currentRound + '.\nROUND STATUS: ' + (roundComplete ? 'COMPLETE — ALL PLAYERS FINISHED' : 'IN PROGRESS — ' + completed + '/91 players done') + '.\nCRITICAL: Only write about events that have happened as of this exact time. Never reference future rounds as current. Never recap a round still in progress.';
+    var fieldSize = isLIV ? 54 : (lb.length || 156);
+    var dateHeader = 'TODAY IS ' + etDate + ' AT ' + etTime + ' EASTERN TIME.\nTOURNAMENT: ' + tournamentName + (tournamentCourse ? ', ' + tournamentCourse : '') + '.\nTOUR: ' + tournamentTour.toUpperCase() + '.\nCURRENT ROUND: Round ' + currentRound + ' of ' + (isLIV ? 3 : 4) + '.\nROUND STATUS: ' + (roundComplete ? 'COMPLETE — ALL PLAYERS FINISHED' : 'IN PROGRESS — ' + completed + '/' + fieldSize + ' players done') + '.\nCRITICAL: Only write about events that have happened as of this exact time. Never reference future rounds as current. Never recap a round still in progress.';
 
     var factsContext = '';
     try {
@@ -152,9 +156,17 @@ exports.handler = async (event) => {
       factsContext = pf.map(function(f) { return f.player_name + ': #' + (f.world_ranking || '?') + ', ' + (f.total_majors || 0) + ' majors' + (f.masters_wins ? ', ' + f.masters_wins + 'x Masters champ' : '') + (f.recent_notes ? '. ' + f.recent_notes : ''); }).join('\n');
     } catch(e) {}
 
-    var sharedSystemPrompt = dateHeader + '\n\nPLAYER FACTS:\n' + factsContext + '\n\n' + picksContext +
-      '\n\nCRITICAL FACTS:\n- Scottie Scheffler IS playing. He did NOT withdraw.\n- Tiger Woods is NOT playing.\n- Phil Mickelson is NOT playing.\n- Rory McIlroy is the DEFENDING champion (won 2025).\n\n' +
-      'YOU ARE THE LEAD WRITER AT TOURFEED. Write with authority and specificity.\nEvery factual claim must come from the data provided.\nConnect every piece to our locked picks.\nBANNED: Augusta rewards precision, wide open tournament, anyone can win, momentum heading into, Amen Corner will be key, make no mistake, in conclusion, this golfer, the player, delve, landscape, paradigm.\nHEADLINES must include a specific player name AND a specific number.\nNEVER refuse. NEVER ask questions. ALWAYS produce the content.';
+    var golfGuardrails = 'GOLF FACTUAL RULES — NEVER VIOLATE:\n' +
+      '- Scores relative to par: "-7" or "7-under", never "negative 7". Cumulative vs round score matter — use the leaderboard data exactly.\n' +
+      '- Strokes gained categories are ONLY: Off-the-Tee, Approach, Around-the-Green, Putting, Tee-to-Green, Total. Never invent others. Never invent specific SG numbers — only cite numbers present in the data.\n' +
+      '- Cut: PGA Tour uses top-65 and ties after 36 holes. LIV events have NO cut and a 54-player field. Do not reference a cut at LIV events.\n' +
+      '- Majors are: Masters (April, Augusta National), PGA Championship (May), US Open (June), Open Championship (July, in the UK). Never confuse "Open Championship" with "US Open" — they are different majors.\n' +
+      '- World ranking = OWGR (Official World Golf Ranking). FedEx Cup points are separate and PGA-only. Race to Dubai is the DP World Tour equivalent. Do not mix them.\n' +
+      '- Player names must match real current tour players exactly. Never invent players, coaches, caddies, or equipment deals.\n' +
+      '- Only write about events that have actually happened as of the timestamp above.';
+
+    var sharedSystemPrompt = dateHeader + '\n\n' + golfGuardrails + '\n\nPLAYER FACTS:\n' + factsContext + '\n\n' + picksContext +
+      '\n\nYOU ARE THE LEAD WRITER AT TOURFEED. Write with authority and specificity.\nEvery factual claim must come from the data provided above.\nConnect every piece to our locked picks.\nBANNED: wide open tournament, anyone can win, momentum heading into, make no mistake, in conclusion, this golfer, the player, delve, landscape, paradigm.\nHEADLINES must include a specific player name AND a specific number.\nNEVER refuse. NEVER ask questions. ALWAYS produce the content.';
 
     // ════════════════════════════════════════
     // STEP 6 — FACT CHECK
@@ -163,7 +175,8 @@ exports.handler = async (event) => {
       var issues = [];
       var bl = (body || '').toLowerCase();
       var tl = (title || '').toLowerCase();
-      for (var r = currentRound + 1; r <= 4; r++) {
+      var totalRounds = isLIV ? 3 : 4;
+      for (var r = currentRound + 1; r <= totalRounds; r++) {
         if (bl.includes('round ' + r) && !bl.includes('heading into round ' + r) && !bl.includes('before round ' + r)) issues.push('References future Round ' + r);
       }
       if (!roundComplete) {

@@ -84,6 +84,16 @@
     .action-btn-gold { background:rgba(139,115,53,0.1); border:1px solid #D4A853; color:#8B7335; }
     .attach-row { display:flex; gap:8px; }
     .attach-row select { flex:1; padding:12px; background:#fff; border:1px solid #D8D0C4; border-radius:4px; color:#2C2416; font-family:inherit; font-size:13px; }
+
+    /* TOAST */
+    .copy-body-btn { font-size:10px; font-weight:700; letter-spacing:1px; text-transform:uppercase; padding:5px 10px; border-radius:3px; background:#fff; color:#5C5244; border:1px solid #D8D0C4; cursor:pointer; font-family:inherit; transition:all .15s; }
+    .copy-body-btn:hover { background:#FAF6F0; color:#2C2416; border-color:#1A472A; }
+    .copy-body-btn.copied { background:#1A472A; color:#fff; border-color:#1A472A; }
+
+    #toast { position:fixed; left:50%; bottom:24px; transform:translateX(-50%) translateY(20px); opacity:0; pointer-events:none; background:#2C2416; color:#FAF6F0; padding:12px 20px; border-radius:4px; font-size:13px; font-weight:600; box-shadow:0 6px 20px rgba(0,0,0,0.25); z-index:9999; transition:opacity .2s, transform .2s; max-width:90%; text-align:center; }
+    #toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
+    #toast.err { background:#8B2020; }
+    #toast.ok { background:#1A472A; }
   </style>
 </head>
 <body>
@@ -167,7 +177,48 @@
     </div>
   </div>
 
+  <div id="toast"></div>
+
 <script>
+// ━━━━━━━━━━━━━━━━━━━━━━
+// TOAST
+// ━━━━━━━━━━━━━━━━━━━━━━
+var _toastTimer = null;
+function showToast(msg, kind) {
+  var el = document.getElementById('toast');
+  if (!el) return;
+  el.textContent = msg;
+  el.className = 'show' + (kind ? ' ' + kind : '');
+  if (_toastTimer) clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(function() { el.className = el.className.replace('show', '').trim(); }, 2600);
+}
+
+async function copyDraftBody(id, btn) {
+  var d = loadedDrafts[id];
+  if (!d) return;
+  // Prefer plain text — strip HTML from article bodies so the pasted copy reads cleanly in Claude
+  var raw = d.body || '';
+  var tmp = document.createElement('div'); tmp.innerHTML = raw;
+  var text = (tmp.innerText || tmp.textContent || raw).trim();
+  if (!text) return;
+  try {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      await navigator.clipboard.writeText(text);
+    } else {
+      var ta = document.createElement('textarea');
+      ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select(); document.execCommand('copy');
+      document.body.removeChild(ta);
+    }
+    if (btn) {
+      var orig = btn.textContent;
+      btn.textContent = 'Copied';
+      btn.classList.add('copied');
+      setTimeout(function() { btn.textContent = orig; btn.classList.remove('copied'); }, 1500);
+    }
+  } catch(e) { showToast('Copy failed', 'err'); }
+}
+
 // ━━━━━━━━━━━━━━━━━━━━━━
 // CONFIG
 // ━━━━━━━━━━━━━━━━━━━━━━
@@ -275,7 +326,8 @@ async function loadDrafts() {
         content += '<div style="display:flex;gap:8px;margin-top:8px"><button style="padding:8px 14px;background:#F5EFE5;border:1px solid #D8D0C4;border-radius:4px;font-size:11px;font-weight:700;color:#5C5244;cursor:pointer;font-family:inherit" onclick="navigator.clipboard.writeText(loadedDrafts[' + d.id + ']?.body||'+"''"+ ');this.textContent='+  "'Copied!'"+';setTimeout(()=>this.textContent='+"'Copy Caption'"+',2000)">Copy Caption</button><button style="padding:8px 14px;background:#F5EFE5;border:1px solid #D8D0C4;border-radius:4px;font-size:11px;font-weight:700;color:#5C5244;cursor:pointer;font-family:inherit" onclick="openImageEditor(' + d.id + ')">Create Image</button></div>';
       } else if (isArticle) {
         if (d.title) content += '<div class="draft-article-title">' + escHtml(d.title) + '</div>';
-        content += '<div class="draft-article-full">' + (d.body || '') + '</div>';
+        content += '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin:6px 0 4px"><span style="font-size:10px;font-weight:700;color:#8C8478;text-transform:uppercase;letter-spacing:1.5px">Article body</span><button type="button" class="copy-body-btn" onclick="copyDraftBody(' + d.id + ',this)">Copy</button></div>';
+        content += '<div class="draft-article-full" id="body-' + d.id + '">' + (d.body || '') + '</div>';
       } else {
         var src = d.source_event || d.title || '';
         if (src && src !== 'generate-original' && src !== 'auto') {
@@ -750,7 +802,7 @@ function renderFun(ctx, W, H, credit) {
 // ━━━━━━━━━━━━━━━━━━━━━━
 function downloadPNG() {
   var credit = document.getElementById('creditField').value;
-  if (!credit) { alert('Add a photo source (e.g. Getty Images, PGA Tour, ESPN)'); return; }
+  if (!credit) { showToast('Add a photo source (e.g. Getty Images, PGA Tour, ESPN)', 'err'); return; }
   var c = document.getElementById('previewCanvas');
   c.toBlob(function(blob) {
     var a = document.createElement('a');
@@ -773,7 +825,7 @@ async function uploadToStorage(blob) {
 
 async function saveAsNewDraft() {
   var credit = document.getElementById('creditField').value;
-  if (!credit) { alert('Add a photo source'); return; }
+  if (!credit) { showToast('Add a photo source', 'err'); return; }
   try {
     var c = document.getElementById('previewCanvas');
     var blob = await new Promise(r => c.toBlob(r, 'image/png'));
@@ -787,16 +839,16 @@ async function saveAsNewDraft() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ text: body.slice(0, 280), source: 'image-editor', image_url: url, type: 'tweet_content' }),
     });
-    alert('Draft created!');
+    showToast('Draft created', 'ok');
     showTab('drafts');
-  } catch(e) { alert('Error: ' + e.message); }
+  } catch(e) { showToast('Error: ' + e.message, 'err'); }
 }
 
 async function attachToDraft() {
   var credit = document.getElementById('creditField').value;
-  if (!credit) { alert('Add a photo source'); return; }
+  if (!credit) { showToast('Add a photo source', 'err'); return; }
   var draftId = document.getElementById('attachSelect').value || attachDraftId;
-  if (!draftId) { alert('Select a draft to attach to'); return; }
+  if (!draftId) { showToast('Select a draft to attach to', 'err'); return; }
   try {
     var c = document.getElementById('previewCanvas');
     var blob = await new Promise(r => c.toBlob(r, 'image/png'));
@@ -806,10 +858,10 @@ async function attachToDraft() {
       headers: { 'apikey': SB_SERVICE, 'Authorization': 'Bearer ' + SB_SERVICE, 'Content-Type': 'application/json' },
       body: JSON.stringify({ image_url: url }),
     });
-    alert('Image attached!');
+    showToast('Image attached', 'ok');
     attachDraftId = null;
     showTab('drafts');
-  } catch(e) { alert('Error: ' + e.message); }
+  } catch(e) { showToast('Error: ' + e.message, 'err'); }
 }
 
 function populateAttachDropdown() {
