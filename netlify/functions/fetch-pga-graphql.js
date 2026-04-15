@@ -29,13 +29,29 @@ async function sb(path, method, body) {
   if (method === 'POST')  hdrs['Prefer'] = 'return=minimal';
   if (method === 'PATCH') hdrs['Prefer'] = 'return=minimal';
   const res = await ft(SB_URL + '/rest/v1/' + path, { method: method || 'GET', headers: hdrs, body: body ? JSON.stringify(body) : undefined });
-  if (!method || method === 'GET') { try { const d = await res.json(); return Array.isArray(d) ? d : []; } catch { return []; } }
+  if (!method || method === 'GET') {
+    // GETs previously swallowed errors silently which masked missing tables / columns.
+    // Now: successful reads return the array; 4xx/5xx throw so callers can see the real cause.
+    if (!res.ok) {
+      let msg = '';
+      try { msg = await res.text(); } catch {}
+      throw new Error('SB GET ' + path.split('?')[0] + ' → ' + res.status + ' ' + msg.slice(0, 200));
+    }
+    try { const d = await res.json(); return Array.isArray(d) ? d : []; } catch { return []; }
+  }
   if (!res.ok) {
     let msg = '';
     try { msg = await res.text(); } catch {}
     throw new Error('SB ' + method + ' ' + path.split('?')[0] + ' → ' + res.status + ' ' + msg.slice(0, 200));
   }
   return true;
+}
+
+// Distinguish "table missing" errors (PGRST205) and "column missing" (42703) from real failures.
+// Lets the handler report accurate skipped-vs-error status.
+function isMigrationMissing(err) {
+  const m = (err && err.message) || '';
+  return m.includes('PGRST205') || m.includes('42703') || m.includes('does not exist');
 }
 
 async function pgaQuery(query) {
@@ -74,7 +90,16 @@ function parseNum(s) {
 // ═══════════════════════════════════════════════════════════════
 async function findActiveTournament() {
   // Trust local Postgres: content-controller already tracks the active row.
-  const rows = await sb('tournaments?status=eq.in_progress&select=id,name,pga_tournament_id,tour_id&limit=1');
+  // If migration 008 hasn't added pga_tournament_id yet, fall back to a SELECT
+  // without that column so the rest of the fetcher can still work on a best-effort basis.
+  let rows;
+  try {
+    rows = await sb('tournaments?status=eq.in_progress&select=id,name,pga_tournament_id,tour_id&limit=1');
+  } catch (e) {
+    if (isMigrationMissing(e)) {
+      rows = await sb('tournaments?status=eq.in_progress&select=id,name,tour_id&limit=1');
+    } else { throw e; }
+  }
   if (rows.length === 0) return null;
   const t = rows[0];
   if (t.pga_tournament_id) return t;
@@ -100,6 +125,16 @@ async function findActiveTournament() {
     console.log('Schedule lookup failed:', e.message);
   }
   return t.pga_tournament_id ? t : null;
+}
+
+// Quick check — does migration 008 exist? Tested once per invocation.
+async function migration008Applied() {
+  try {
+    await sb('tournament_live_context?select=pga_tournament_id&limit=1');
+    return true;
+  } catch (e) {
+    return !isMigrationMissing(e);
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -292,9 +327,19 @@ async function refreshSGLeadersIfStale() {
 // ═══════════════════════════════════════════════════════════════
 exports.handler = async () => {
   const started = Date.now();
-  const resp = { lb_rows: 0, hole_rows: 0, sg: null, tournament: null, skipped: null };
+  const resp = { lb_rows: 0, hole_rows: 0, sg: null, tournament: null, skipped: null, migration_008: null };
   try {
     if (!SB_KEY) throw new Error('SUPABASE_SERVICE_ROLE_KEY not set');
+
+    // Migration 008 gate — if the tables don't exist, there's nothing to persist.
+    // Report accurately instead of faking success.
+    const migOk = await migration008Applied();
+    resp.migration_008 = migOk;
+    if (!migOk) {
+      resp.skipped = 'migration 008 not applied — run migrations/008-pga-graphql-enrichment.sql in Supabase';
+      await logSync('skipped', 0, 'migration 008 not applied', Date.now() - started);
+      return { statusCode: 200, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(resp) };
+    }
 
     // SG leaders first — cheap, independent of tournament state
     try { resp.sg = await refreshSGLeadersIfStale(); }

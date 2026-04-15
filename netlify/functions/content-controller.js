@@ -40,9 +40,25 @@ async function askClaude(systemPrompt, userPrompt, maxTokens) {
   return data.content[0].text;
 }
 
+async function logRun(status, records, message, durationMs) {
+  try {
+    await sb('sync_log', 'POST', {
+      sync_type: 'content-controller',
+      status: status,
+      records_processed: records || 0,
+      error_message: (message || '').slice(0, 500),
+      duration_ms: durationMs || 0,
+    });
+  } catch(e) { /* swallow — observability must not block the handler */ }
+}
+
 exports.handler = async (event) => {
   var headers = { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' };
-  if (!process.env.ANTHROPIC_API_KEY) return { statusCode: 200, headers, body: JSON.stringify({ skipped: 'No API key' }) };
+  var started = Date.now();
+  if (!process.env.ANTHROPIC_API_KEY) {
+    await logRun('skipped', 0, 'No API key', Date.now() - started);
+    return { statusCode: 200, headers, body: JSON.stringify({ skipped: 'No API key' }) };
+  }
 
   try {
     // ════════════════════════════════════════
@@ -72,9 +88,9 @@ exports.handler = async (event) => {
     // ════════════════════════════════════════
     // STEP 2 — SAFETY CHECKS
     // ════════════════════════════════════════
-    if (!tournamentLive) return { statusCode: 200, headers, body: JSON.stringify({ skipped: 'No active tournament' }) };
-    if (lbAge > 30) return { statusCode: 200, headers, body: JSON.stringify({ skipped: 'Leaderboard ' + Math.floor(lbAge) + 'min stale — aborting' }) };
-    if (etHour < 6) return { statusCode: 200, headers, body: JSON.stringify({ skipped: 'Quiet hours — no content before 6am ET' }) };
+    if (!tournamentLive) { await logRun('skipped', 0, 'No active tournament', Date.now() - started); return { statusCode: 200, headers, body: JSON.stringify({ skipped: 'No active tournament' }) }; }
+    if (lbAge > 30)      { await logRun('skipped', 0, 'Leaderboard ' + Math.floor(lbAge) + 'min stale', Date.now() - started); return { statusCode: 200, headers, body: JSON.stringify({ skipped: 'Leaderboard ' + Math.floor(lbAge) + 'min stale — aborting' }) }; }
+    if (etHour < 6)      { await logRun('skipped', 0, 'Quiet hours (before 6am ET)', Date.now() - started); return { statusCode: 200, headers, body: JSON.stringify({ skipped: 'Quiet hours — no content before 6am ET' }) }; }
 
     // ════════════════════════════════════════
     // STEP 3 — GET DAILY COUNTS
@@ -92,7 +108,7 @@ exports.handler = async (event) => {
     var minsSinceLastTweet = lastTweet ? (Date.now() - new Date(lastTweet.created_at).getTime()) / 60000 : 999;
     console.log('Daily counts:', JSON.stringify(counts));
 
-    if (counts.articles >= 6) return { statusCode: 200, headers, body: JSON.stringify({ skipped: 'Daily article limit — ' + counts.articles + '/6' }) };
+    if (counts.articles >= 6) { await logRun('skipped', 0, 'Daily article cap reached (' + counts.articles + '/6)', Date.now() - started); return { statusCode: 200, headers, body: JSON.stringify({ skipped: 'Daily article limit — ' + counts.articles + '/6' }) }; }
 
     // ════════════════════════════════════════
     // STEP 4 — DECIDE WHAT TO GENERATE
@@ -132,7 +148,7 @@ exports.handler = async (event) => {
     }
 
     console.log('Content queue:', queue);
-    if (queue.length === 0) return { statusCode: 200, headers, body: JSON.stringify({ skipped: 'Nothing to generate', counts: counts }) };
+    if (queue.length === 0) { await logRun('skipped', 0, 'Nothing to generate (rate limited)', Date.now() - started); return { statusCode: 200, headers, body: JSON.stringify({ skipped: 'Nothing to generate', counts: counts }) }; }
 
     // ════════════════════════════════════════
     // STEP 5 — BUILD SHARED CONTEXT
@@ -142,7 +158,7 @@ exports.handler = async (event) => {
       ? 'OUR LOCKED PICKS:\n' + picks.map(function(p) { return p.edge_label + ': ' + p.player_name + ' ' + p.odds + ' — ' + (p.analysis || ''); }).join('\n')
       : 'No picks set yet';
 
-    if (!picks.length) return { statusCode: 200, headers, body: JSON.stringify({ skipped: 'No picks — cannot generate content' }) };
+    if (!picks.length) { await logRun('skipped', 0, 'No picks in betting_picks', Date.now() - started); return { statusCode: 200, headers, body: JSON.stringify({ skipped: 'No picks — cannot generate content' }) }; }
 
     var leaderboardContext = 'LIVE LEADERBOARD (as of ' + Math.floor(lbAge) + ' min ago):\n' +
       lb.slice(0, 15).map(function(p) { return (p.position || '?') + '. ' + (p.players?.name || '?') + ' ' + (p.total_score || '') + ' (today: ' + (p.today_score || '?') + ', thru: ' + (p.thru || '?') + ')'; }).join('\n');
@@ -390,9 +406,11 @@ exports.handler = async (event) => {
       }
     }
 
+    await logRun('success', generated.length, generated.length + ' generated, ' + results.filter(function(r) { return r.skipped; }).length + ' skipped', Date.now() - started);
     return { statusCode: 200, headers, body: JSON.stringify({ generated: generated.length, skipped: results.filter(function(r) { return r.skipped; }).length, results: results, counts: counts }) };
   } catch(e) {
     console.log('content-controller error:', e.message);
+    await logRun('error', 0, e.message, Date.now() - started);
     return { statusCode: 500, headers, body: JSON.stringify({ error: e.message }) };
   }
 };

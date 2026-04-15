@@ -289,6 +289,18 @@ function deduplicateItems(items) {
 }
 
 // ---------- Main handler ----------
+async function logRun(status, records, message, durationMs) {
+  try {
+    await sb('sync_log', 'POST', {
+      sync_type: 'news-detector',
+      status: status,
+      records_processed: records || 0,
+      error_message: (message || '').slice(0, 500),
+      duration_ms: durationMs || 0,
+    });
+  } catch(e) { /* swallow */ }
+}
+
 exports.handler = async (event) => {
   const headers = {
     'Access-Control-Allow-Origin': '*',
@@ -296,14 +308,25 @@ exports.handler = async (event) => {
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
     'Content-Type': 'application/json',
   };
+  const started = Date.now();
 
   if (event.httpMethod === 'OPTIONS') {
     return { statusCode: 200, headers, body: '' };
   }
 
-  // Allow scheduled function invocations (no httpMethod set)
+  // Daily limit — max 8 news articles per day
+  try {
+    var ndTodayStart = new Date().toISOString().split('T')[0] + 'T00:00:00Z';
+    var ndTodayNews = await sb('content_drafts?type=eq.article_news&created_at=gte.' + ndTodayStart + '&select=id');
+    if (ndTodayNews.length >= 8) {
+      await logRun('skipped', 0, 'Daily news cap reached (' + ndTodayNews.length + '/8)', Date.now() - started);
+      return { statusCode: 200, headers, body: JSON.stringify({ skipped: 'Daily news article limit — ' + ndTodayNews.length + '/8' }) };
+    }
+  } catch(e) {}
+
   const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
   if (!ANTHROPIC_API_KEY) {
+    await logRun('error', 0, 'ANTHROPIC_API_KEY not configured', Date.now() - started);
     return { statusCode: 500, headers, body: JSON.stringify({ error: 'ANTHROPIC_API_KEY not configured' }) };
   }
 
@@ -543,6 +566,7 @@ exports.handler = async (event) => {
       }
     }
 
+    await logRun('success', results.length, results.length + ' drafted, ' + newItems.length + ' new items', Date.now() - started);
     return {
       statusCode: 200,
       headers,
@@ -556,6 +580,7 @@ exports.handler = async (event) => {
     };
   } catch (err) {
     console.error('news-detector error:', err);
+    await logRun('error', 0, err.message, Date.now() - started);
     return {
       statusCode: 500,
       headers,

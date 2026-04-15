@@ -90,6 +90,12 @@
     .copy-body-btn:hover { background:#FAF6F0; color:#2C2416; border-color:#1A472A; }
     .copy-body-btn.copied { background:#1A472A; color:#fff; border-color:#1A472A; }
 
+    /* MIGRATION WARNING BANNER */
+    .mig-banner { background:#FFF8E5; border:1px solid #D4A853; border-left:4px solid #8B7335; border-radius:4px; padding:12px 14px; margin-bottom:12px; font-size:12px; color:#5C4200; }
+    .mig-banner h4 { font-size:11px; font-weight:900; letter-spacing:1.5px; text-transform:uppercase; margin-bottom:6px; color:#8B7335; }
+    .mig-banner code { display:block; margin-top:8px; padding:8px 10px; background:#2C2416; color:#D4A853; border-radius:3px; font-family:'SF Mono',Consolas,monospace; font-size:11px; user-select:all; cursor:text; }
+    .mig-banner a { color:#8B7335; font-weight:700; text-decoration:underline; }
+
     /* PIPELINE STATUS STRIP */
     .pipeline-strip { background:#fff; border:1px solid #D8D0C4; border-radius:4px; padding:10px 12px; margin-bottom:12px; font-size:11px; }
     .pipeline-row { display:flex; align-items:center; justify-content:space-between; gap:8px; }
@@ -126,6 +132,12 @@
 
     <!-- TAB 1: DRAFTS -->
     <div class="tab-content active" id="draftsTab">
+      <!-- Migration 008 warning — auto-hides when applied -->
+      <div class="mig-banner" id="migBanner" style="display:none">
+        <h4>⚠ Action required — migration 008 not applied</h4>
+        The PGA GraphQL enrichment tables (<code style="display:inline;padding:2px 6px;background:#F0EAE0;color:#5C4200">tournament_live_context</code>, <code style="display:inline;padding:2px 6px;background:#F0EAE0;color:#5C4200">sg_leaders</code>, <code style="display:inline;padding:2px 6px;background:#F0EAE0;color:#5C4200">course_holes</code>) don't exist yet, and <code style="display:inline;padding:2px 6px;background:#F0EAE0;color:#5C4200">tournaments.pga_tournament_id</code> is missing.
+        Open <a href="https://supabase.com/dashboard/project/yumahmnoltvbiadjefxw/sql/new" target="_blank">Supabase SQL Editor</a> and run <strong>migrations/008-pga-graphql-enrichment.sql</strong>. Until then, live odds, cut line, and SG leaders won't appear in generated content.
+      </div>
       <!-- Pipeline status strip — admin tab is the reliable trigger for drafts -->
       <div class="pipeline-strip">
         <div class="pipeline-row">
@@ -133,7 +145,10 @@
             <div class="pipeline-title">Draft pipeline</div>
             <div style="font-size:10px;color:#8C8478;margin-top:2px" id="pipelineSummary">auto-pulse every 5 min while this tab is open</div>
           </div>
-          <button class="pipeline-run" id="pipelineRunBtn" onclick="pipelineRunNow()">Run now</button>
+          <div style="display:flex;gap:6px">
+            <button class="pipeline-run" id="pipelinePauseBtn" onclick="togglePipelinePause()" style="background:#fff;color:#5C5244;border-color:#D8D0C4">Pause</button>
+            <button class="pipeline-run" id="pipelineRunBtn" onclick="pipelineRunNow()">Run now</button>
+          </div>
         </div>
         <div class="pipeline-dots" id="pipelineDots"></div>
       </div>
@@ -270,13 +285,15 @@ let attachDraftId = null;
 // Actions + cron-job.org are backup, not primary. When the tab is closed, nothing
 // runs, which is fine because the user isn't reviewing drafts anyway.
 const PIPELINE_FUNCS = [
-  { key: 'pga',      label: 'Live data',     fn: 'fetch-pga-graphql' },
-  { key: 'news',     label: 'News monitor',  fn: 'news-detector' },
-  { key: 'content',  label: 'Content brain', fn: 'content-controller' },
-  { key: 'publish',  label: 'Publisher',     fn: 'publish-approved' },
+  // syncType must match the sync_log.sync_type string each function writes
+  { key: 'pga',      label: 'Live data',     fn: 'fetch-pga-graphql',   syncType: 'pga_graphql' },
+  { key: 'news',     label: 'News monitor',  fn: 'news-detector',       syncType: 'news-detector' },
+  { key: 'content',  label: 'Content brain', fn: 'content-controller',  syncType: 'content-controller' },
+  { key: 'publish',  label: 'Publisher',     fn: 'publish-approved',    syncType: 'publish-approved' },
 ];
 const PIPELINE_INTERVAL_MS = 5 * 60 * 1000;
 const PIPELINE_STATE_KEY = 'tf_pipeline_state';
+const PIPELINE_PAUSED_KEY = 'tf_pipeline_paused';
 
 function loadPipelineState() {
   try { return JSON.parse(localStorage.getItem(PIPELINE_STATE_KEY) || '{}'); } catch { return {}; }
@@ -302,6 +319,73 @@ function renderPipelineDots() {
     }
     return '<div class="pipeline-dot ' + cls + '"><span class="d"></span><span>' + label + '</span></div>';
   }).join('');
+}
+
+// Read sync_log so the dots reflect ANY trigger that ran (cron, GitHub Actions,
+// other admin tabs, manual curls) — not just this tab's own pulses.
+async function hydratePipelineFromSyncLog() {
+  try {
+    var url = SB_URL + '/rest/v1/sync_log?select=sync_type,status,created_at&order=created_at.desc&limit=50';
+    var res = await fetch(url, { headers: { 'apikey': SB_ANON, 'Authorization': 'Bearer ' + SB_ANON } });
+    if (!res.ok) return;
+    var rows = await res.json();
+    var state = loadPipelineState();
+    PIPELINE_FUNCS.forEach(function(f) {
+      var hit = rows.find(function(r) { return r.sync_type === f.syncType; });
+      if (!hit) return;
+      var t = new Date(hit.created_at).getTime();
+      var existing = state[f.key];
+      // Only overwrite if sync_log is newer than our local record
+      if (!existing || t > existing.t) {
+        state[f.key] = { t: t, ok: hit.status === 'success' || hit.status === 'skipped' || hit.status === 'partial' };
+      }
+    });
+    savePipelineState(state);
+    renderPipelineDots();
+  } catch(e) { /* silent */ }
+}
+
+// Migration 008 preflight — auto-show warning banner if tables don't exist
+async function checkMigration008() {
+  try {
+    var res = await fetch(SB_URL + '/rest/v1/tournament_live_context?select=pga_tournament_id&limit=1', {
+      headers: { 'apikey': SB_ANON, 'Authorization': 'Bearer ' + SB_ANON }
+    });
+    var banner = document.getElementById('migBanner');
+    if (!banner) return;
+    banner.style.display = (res.status === 404 || res.status === 406) ? 'block' : 'none';
+  } catch(e) {}
+}
+
+// Pause/resume toggle — persisted to localStorage
+function isPipelinePaused() {
+  try { return localStorage.getItem(PIPELINE_PAUSED_KEY) === '1'; } catch { return false; }
+}
+function togglePipelinePause() {
+  var next = !isPipelinePaused();
+  try { localStorage.setItem(PIPELINE_PAUSED_KEY, next ? '1' : '0'); } catch {}
+  updatePauseBtn();
+  if (!next) {
+    showToast('Pipeline resumed', 'ok');
+    pipelinePulse(false);
+  } else {
+    showToast('Pipeline paused', 'ok');
+  }
+}
+function updatePauseBtn() {
+  var btn = document.getElementById('pipelinePauseBtn');
+  if (!btn) return;
+  if (isPipelinePaused()) {
+    btn.textContent = 'Paused — resume';
+    btn.style.background = '#D4A853';
+    btn.style.color = '#fff';
+    btn.style.borderColor = '#D4A853';
+  } else {
+    btn.textContent = 'Pause';
+    btn.style.background = '#fff';
+    btn.style.color = '#5C5244';
+    btn.style.borderColor = '#D8D0C4';
+  }
 }
 
 async function pipelinePingOne(f) {
@@ -330,8 +414,11 @@ function acquirePipelineLock() {
 }
 
 async function pipelinePulse(manual) {
+  // Paused state blocks auto-pulses but not manual ones
+  if (!manual && isPipelinePaused()) { renderPipelineDots(); return; }
   if (!manual && !acquirePipelineLock()) {
-    renderPipelineDots();
+    // Another tab is the leader — just refresh from sync_log instead
+    hydratePipelineFromSyncLog();
     return;
   }
   const btn = document.getElementById('pipelineRunBtn');
@@ -342,11 +429,16 @@ async function pipelinePulse(manual) {
   if (manual) showToast('Pipeline fired', 'ok');
   // After pipeline runs, refresh the drafts list so new drafts show
   setTimeout(() => { try { loadDrafts(); } catch {} }, 2000);
+  // And re-hydrate from sync_log so we see the canonical run timestamps
+  setTimeout(hydratePipelineFromSyncLog, 3000);
 }
 
 function pipelineRunNow() { pipelinePulse(true); }
 
 function startPipelineHeartbeat() {
+  updatePauseBtn();
+  checkMigration008();
+  hydratePipelineFromSyncLog();
   renderPipelineDots();
   if (pipelineTimer) clearInterval(pipelineTimer);
   // First pulse after 10s (let the page settle), then every 5 min
@@ -354,6 +446,8 @@ function startPipelineHeartbeat() {
   pipelineTimer = setInterval(() => pipelinePulse(false), PIPELINE_INTERVAL_MS);
   // Re-render clock every 30s so "stale" badges update without re-pinging
   setInterval(renderPipelineDots, 30000);
+  // Re-hydrate from sync_log every minute so cross-tab/cron runs show up
+  setInterval(hydratePipelineFromSyncLog, 60000);
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━

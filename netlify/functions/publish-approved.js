@@ -21,8 +21,21 @@ async function sb(path, method, body) {
   return res.ok;
 }
 
+async function logRun(status, records, message, durationMs) {
+  try {
+    await sb('sync_log', 'POST', {
+      sync_type: 'publish-approved',
+      status: status,
+      records_processed: records || 0,
+      error_message: (message || '').slice(0, 500),
+      duration_ms: durationMs || 0,
+    });
+  } catch(e) {}
+}
+
 exports.handler = async (event) => {
   const headers = { 'Content-Type': 'application/json' };
+  const started = Date.now();
 
   try {
     // Auto-expire stale drafts (6h for tweets, 48h for articles/blogs)
@@ -37,6 +50,7 @@ exports.handler = async (event) => {
     const approved = await sb('content_drafts?status=eq.approved&order=created_at.asc&limit=10');
 
     if (approved.length === 0) {
+      await logRun('skipped', 0, 'No approved drafts ready', Date.now() - started);
       return { statusCode: 200, headers, body: JSON.stringify({ published: 0, message: 'No approved drafts' }) };
     }
 
@@ -162,6 +176,7 @@ exports.handler = async (event) => {
       } catch(e) {}
     }
 
+    await logRun(errors.length > 0 ? 'partial' : 'success', published.length, published.length + ' published, ' + errors.length + ' errors', Date.now() - started);
     return {
       statusCode: 200,
       headers,
@@ -169,6 +184,7 @@ exports.handler = async (event) => {
     };
 
   } catch (err) {
+    await logRun('error', 0, err.message, Date.now() - started);
     return { statusCode: 500, headers, body: JSON.stringify({ error: err.message }) };
   }
 };
