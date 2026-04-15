@@ -5,9 +5,13 @@
   directory = "netlify/functions"
   node_bundler = "esbuild"
 
+# Schedulers live in .github/workflows/cron-pinger.yml (GitHub Actions).
+# Netlify's built-in scheduled functions are too flaky — we ping the function
+# URLs from GitHub Actions instead. Functions below only need `timeout` set;
+# no `schedule =` lines.
+
 [functions."content-controller"]
   timeout = 60
-  schedule = "*/30 * * * *"
 
 [functions."generate-content-v2"]
   timeout = 60
@@ -17,35 +21,27 @@
 
 [functions."news-detector"]
   timeout = 60
-  schedule = "*/10 * * * *"
 
 [functions."generate-tweets"]
   timeout = 60
-  schedule = "0 10 * * *"
 
 [functions."blog-scheduler"]
   timeout = 60
 
 [functions."publish-approved"]
   timeout = 30
-  schedule = "*/5 * * * *"
 
 [functions."fetch-scores-v2"]
   timeout = 60
-  schedule = "*/5 * * * *"
 
 [functions."fetch-pga-graphql"]
   timeout = 60
-  schedule = "*/5 * * * *"
 
 [functions."fetch-odds"]
   timeout = 30
-  schedule = "0 */6 * * *"
 
 [functions."generate-picks"]
   timeout = 60
-  schedule = "0 5 * * *"
 
 [functions."post-reddit"]
   timeout = 30
-  schedule = "0 8 * * *"

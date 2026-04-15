@@ -147,43 +147,87 @@ exports.handler = async (event) => {
     var leaderboardContext = 'LIVE LEADERBOARD (as of ' + Math.floor(lbAge) + ' min ago):\n' +
       lb.slice(0, 15).map(function(p) { return (p.position || '?') + '. ' + (p.players?.name || '?') + ' ' + (p.total_score || '') + ' (today: ' + (p.today_score || '?') + ', thru: ' + (p.thru || '?') + ')'; }).join('\n');
 
-    // ── PGA GraphQL enrichment — live context + SG leaders + course difficulty ──
-    // Populated by fetch-pga-graphql.js cron. Null-safe: if anything is stale or missing,
-    // the prompt just drops the enrichment sections instead of injecting placeholders.
+    // ── PGA GraphQL enrichment — direct inline calls, no DB dependency ──
+    // Each call is wrapped in its own try — any failure just drops that section,
+    // the rest of the prompt still goes through. Data is guaranteed fresh at
+    // generation time because we're calling the live endpoint, not reading cache.
     var pgaContext = '';
-    try {
-      var tlc = tournament[0]?.pga_tournament_id
-        ? await sb('tournament_live_context?pga_tournament_id=eq.' + encodeURIComponent(tournament[0].pga_tournament_id) + '&select=*&limit=1')
-        : [];
-      if (tlc.length > 0) {
-        var ctx = tlc[0];
-        if (ctx.projected_cut_line) pgaContext += 'PROJECTED CUT LINE: ' + ctx.projected_cut_line + (ctx.probable_cut_line ? ' (probable: ' + ctx.probable_cut_line + ')' : '') + '\n';
-        var leaders = Array.isArray(ctx.leaders_json) ? ctx.leaders_json : [];
-        var withOdds = leaders.filter(function(x) { return x.odds; });
+    var pgaKey = 'da2-gsrx5bibzbb4njvhl7t37wqyl4';
+    var pgaId = tournament[0]?.pga_tournament_id;
+
+    async function pgaGql(q) {
+      var r = await ft('https://orchestrator.pgatour.com/graphql', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-api-key': pgaKey },
+        body: JSON.stringify({ query: q }),
+      }, 10000);
+      if (!r.ok) throw new Error('pga http ' + r.status);
+      var j = await r.json();
+      if (j.errors) throw new Error('pga: ' + (j.errors[0]?.message || 'unknown'));
+      return j.data;
+    }
+
+    // Backfill pga_tournament_id once via schedule lookup if missing
+    if (!pgaId && tournamentId) {
+      try {
+        var year = new Date().getUTCFullYear();
+        var sd = await pgaGql('{ schedule(tourCode:"R", year:"' + year + '") { upcoming { tournaments { id tournamentName } } completed { tournaments { id tournamentName } } } }');
+        var all = []
+          .concat(...((sd.schedule?.upcoming || []).map(function(m) { return m.tournaments || []; })))
+          .concat(...((sd.schedule?.completed || []).map(function(m) { return m.tournaments || []; })));
+        var nLower = (tournamentName || '').toLowerCase();
+        var match = all.find(function(x) { var n = (x.tournamentName || '').toLowerCase(); return n && (n.includes(nLower) || nLower.includes(n)); });
+        if (match) {
+          pgaId = match.id;
+          await sb('tournaments?id=eq.' + encodeURIComponent(tournamentId), 'PATCH', { pga_tournament_id: pgaId });
+        }
+      } catch(e) { console.log('pga schedule lookup:', e.message); }
+    }
+
+    // Leaderboard → projected cut line + live win odds top 5
+    if (pgaId) {
+      try {
+        var lbData = await pgaGql('{ leaderboardV3(id:"' + pgaId + '") { cutLineProbabilities { projectedCutLine probableCutLine } players { ... on PlayerRowV3 { player { shortName country } scoringData { position total score thru oddsToWin playerState } } } } }');
+        var lbv3 = lbData.leaderboardV3;
+        if (lbv3?.cutLineProbabilities?.projectedCutLine) {
+          pgaContext += 'PROJECTED CUT LINE: ' + lbv3.cutLineProbabilities.projectedCutLine +
+            (lbv3.cutLineProbabilities.probableCutLine ? ' (probable: ' + lbv3.cutLineProbabilities.probableCutLine + ')' : '') + '\n';
+        }
+        var rows = (lbv3?.players || []).filter(function(p) { return p?.player && p?.scoringData; });
+        var withOdds = rows.filter(function(p) { return p.scoringData.oddsToWin; }).slice(0, 5);
         if (withOdds.length > 0) {
-          pgaContext += 'LIVE WIN ODDS (top 5):\n' + withOdds.slice(0, 5).map(function(x) { return '  ' + x.player + ' ' + x.total + ' — ' + x.odds; }).join('\n') + '\n';
+          pgaContext += 'LIVE WIN ODDS (top 5):\n' + withOdds.map(function(p) {
+            return '  ' + p.scoringData.position + '. ' + p.player.shortName + ' ' + (p.scoringData.total || '') + ' — ' + p.scoringData.oddsToWin;
+          }).join('\n') + '\n';
         }
-      }
-    } catch(e) { console.log('tlc fetch:', e.message); }
+      } catch(e) { console.log('pga leaderboard:', e.message); }
+    }
 
+    // Season SG leaders (6 categories, one leader each)
     try {
-      var season = new Date().getUTCFullYear();
-      var sgl = await sb('sg_leaders?tour_code=eq.R&season=eq.' + season + '&select=stat_title,player_name,stat_value,rank&order=stat_id.asc');
-      if (sgl.length > 0) {
-        pgaContext += '\nSEASON STROKES GAINED LEADERS (' + season + '):\n' +
-          sgl.map(function(s) { return '  ' + s.stat_title + ' — ' + s.player_name + ' (' + s.stat_value + ')'; }).join('\n') + '\n';
+      var seasonYr = new Date().getUTCFullYear();
+      var slData = await pgaGql('{ statLeaders(tourCode:R, category:STROKES_GAINED, year:' + seasonYr + ') { subCategories { stats { statTitle statValue playerName } } } }');
+      var stats = (slData.statLeaders?.subCategories || []).flatMap(function(sc) { return sc.stats || []; }).filter(function(s) { return s.playerName; });
+      if (stats.length > 0) {
+        pgaContext += '\nSEASON STROKES GAINED LEADERS (' + seasonYr + '):\n' +
+          stats.map(function(s) { return '  ' + s.statTitle + ' — ' + s.playerName + ' (' + s.statValue + ')'; }).join('\n') + '\n';
       }
-    } catch(e) {}
+    } catch(e) { console.log('pga sg:', e.message); }
 
-    try {
-      if (tournament[0]?.pga_tournament_id) {
-        var holes = await sb('course_holes?pga_tournament_id=eq.' + encodeURIComponent(tournament[0].pga_tournament_id) + '&select=hole,par,yards,avg_score,rank&order=rank.asc&limit=5');
-        if (holes.length > 0) {
-          pgaContext += '\nCOURSE — 5 HARDEST HOLES:\n' +
-            holes.map(function(h) { return '  #' + h.hole + ' par ' + h.par + ' (' + (h.yards || '?') + 'y) avg: ' + (h.avg_score || '?'); }).join('\n') + '\n';
+    // Course — 5 hardest holes at the active tournament's course
+    if (pgaId) {
+      try {
+        var csData = await pgaGql('{ courseStats(tournamentId:"' + pgaId + '") { courses { courseName par roundHoleStats { roundHeader holeStats { ... on CourseHoleStats { courseHoleNum parValue yards scoringAverage rank } } } } } }');
+        var course = csData.courseStats?.courses?.[0];
+        var allRounds = course?.roundHoleStats?.find(function(r) { return r.roundHeader === 'All Rounds'; }) || course?.roundHoleStats?.[0];
+        var hs = (allRounds?.holeStats || []).filter(function(h) { return typeof h.courseHoleNum === 'number'; });
+        var hardest = hs.slice().sort(function(a, b) { return (a.rank || 99) - (b.rank || 99); }).slice(0, 5);
+        if (hardest.length > 0) {
+          pgaContext += '\nCOURSE — 5 HARDEST HOLES AT ' + (course.courseName || 'course').toUpperCase() + ':\n' +
+            hardest.map(function(h) { return '  #' + h.courseHoleNum + ' par ' + h.parValue + ' (' + (h.yards || '?') + 'y) avg: ' + h.scoringAverage + ' (rank ' + h.rank + ')'; }).join('\n') + '\n';
         }
-      }
-    } catch(e) {}
+      } catch(e) { console.log('pga course:', e.message); }
+    }
 
     if (pgaContext) pgaContext = '\n\n═══ PGA TOUR LIVE DATA ═══\n' + pgaContext + '═══════════════════════\n';
 

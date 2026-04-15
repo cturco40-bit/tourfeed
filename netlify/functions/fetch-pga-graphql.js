@@ -26,12 +26,16 @@ function ft(url, opts, ms) {
 
 async function sb(path, method, body) {
   const hdrs = { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY, 'Content-Type': 'application/json' };
-  if (method === 'POST')  hdrs['Prefer'] = 'return=representation';
+  if (method === 'POST')  hdrs['Prefer'] = 'return=minimal';
   if (method === 'PATCH') hdrs['Prefer'] = 'return=minimal';
   const res = await ft(SB_URL + '/rest/v1/' + path, { method: method || 'GET', headers: hdrs, body: body ? JSON.stringify(body) : undefined });
   if (!method || method === 'GET') { try { const d = await res.json(); return Array.isArray(d) ? d : []; } catch { return []; } }
-  if (method === 'POST' && res.ok) { try { return await res.json(); } catch { return []; } }
-  return res.ok;
+  if (!res.ok) {
+    let msg = '';
+    try { msg = await res.text(); } catch {}
+    throw new Error('SB ' + method + ' ' + path.split('?')[0] + ' → ' + res.status + ' ' + msg.slice(0, 200));
+  }
+  return true;
 }
 
 async function pgaQuery(query) {

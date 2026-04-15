@@ -326,6 +326,53 @@ const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJ
 // Beehiiv keys moved to server-side subscribe.js function
 const sb = supabase.createClient(SB_URL, SB_KEY);
 
+// ─────────────────────────────────────────────────────────────
+// Traffic-triggered refresh — replaces flaky cron for "is the data fresh?"
+//   - On page load, if leaderboard/enrichment is stale, fire a background
+//     fetch to the Netlify function. Don't await — page shows current data,
+//     next poll picks up the new row.
+//   - Throttled by a 60s sessionStorage window so multi-tab users don't stampede.
+// ─────────────────────────────────────────────────────────────
+(async function trafficTriggeredRefresh() {
+  const STALE_MS = 2 * 60 * 1000;   // 2 min
+  const THROTTLE_MS = 60 * 1000;    // one ping per minute per tab
+  const now = Date.now();
+
+  function recentlyPinged(key) {
+    try {
+      const last = parseInt(sessionStorage.getItem('ping:' + key) || '0', 10);
+      if (now - last < THROTTLE_MS) return true;
+      sessionStorage.setItem('ping:' + key, String(now));
+      return false;
+    } catch { return false; }
+  }
+
+  async function pingIfStale(table, timeField, fnPath, extraFilter) {
+    try {
+      let q = sb.from(table).select(timeField).order(timeField, { ascending: false }).limit(1);
+      if (extraFilter) q = extraFilter(q);
+      const { data } = await q;
+      const last = data?.[0]?.[timeField];
+      const age = last ? (now - new Date(last).getTime()) : Infinity;
+      if (age > STALE_MS && !recentlyPinged(fnPath)) {
+        // Fire and forget — don't block page render
+        fetch('/.netlify/functions/' + fnPath, { method: 'GET', keepalive: true }).catch(() => {});
+        console.log('[refresh]', fnPath, 'triggered (age:', Math.round(age / 1000) + 's)');
+      }
+    } catch (e) { /* silent — refresh is best-effort */ }
+  }
+
+  // Only refresh live data when there's an active tournament — no point
+  // pinging fetch-pga-graphql when no event is live.
+  try {
+    const { data: live } = await sb.from('tournaments').select('id').eq('status', 'in_progress').limit(1);
+    if (live && live.length > 0) {
+      pingIfStale('leaderboard',              'updated_at', 'fetch-scores-v2');
+      pingIfStale('tournament_live_context',  'fetched_at', 'fetch-pga-graphql');
+    }
+  } catch {}
+})();
+
 const TABS = ['Home','Scores','News','Picks','Standings','Schedule'];
 let currentTab = 0;
 let expandedCard = null;
@@ -345,6 +392,7 @@ const TOURS = [
 
 let PAR = [];
 let TOURNAMENT = null;
+let UPCOMING_TOURNAMENT = null;
 let PLAYERS = [];
 let currentScoresTour = 'pga';
 let scoresLoading = true;
@@ -705,6 +753,43 @@ async function fetchScorecard(playerIdx) {
         renderApp();
       }
     }
+  } catch(e) {}
+}
+
+// Look ahead to next week's PGA event so the home hero can skip past a completed tournament
+async function fetchUpcomingTournament() {
+  try {
+    var d = new Date();
+    d.setDate(d.getDate() + 7);
+    var yyyymmdd = d.getFullYear() + String(d.getMonth()+1).padStart(2,'0') + String(d.getDate()).padStart(2,'0');
+    var url = 'https://site.api.espn.com/apis/site/v2/sports/golf/pga/scoreboard?dates=' + yyyymmdd;
+    var res = await fetch(url);
+    if (!res.ok) return;
+    var data = await res.json();
+    var ev = (data.events || []).find(function(e) {
+      var s = e.competitions && e.competitions[0] && e.competitions[0].status;
+      return s && s.type && s.type.state !== 'post';
+    }) || (data.events || [])[0];
+    if (!ev) return;
+    var comp = ev.competitions && ev.competitions[0];
+    if (!comp) return;
+    var dates = '';
+    try {
+      var dt = new Date(ev.date);
+      var mo = dt.toLocaleString('en-US',{month:'short'});
+      var day = dt.getDate();
+      var end = new Date(dt); end.setDate(day + 3);
+      dates = mo + ' ' + day + '-' + end.getDate() + ', ' + dt.getFullYear();
+    } catch(e) {}
+    UPCOMING_TOURNAMENT = {
+      name: ev.shortName || ev.name || 'Tournament',
+      course: (comp.venue && (comp.venue.fullName || comp.venue.shortName)) || '',
+      dates: dates,
+      purse: formatPurse(comp.purse),
+      broadcast: (comp.broadcast && comp.broadcast.names && comp.broadcast.names.join(' / ')) || '',
+      tour: 'PGA Tour',
+    };
+    renderApp();
   } catch(e) {}
 }
 
@@ -1282,20 +1367,19 @@ function renderHome() {
     }
     html += '<button onclick="switchTab(1)" style="background:#D4A853;border:none;color:var(--green);font-size:12px;font-weight:700;padding:8px 16px;border-radius:4px;margin-top:10px;cursor:pointer;font-family:inherit">Full Leaderboard &rarr;</button>';
     html += '</div>';
-  } else if (TOURNAMENT) {
-    // Upcoming / recent tournament hero — driven by live ESPN data
-    var isPost = state === 'post';
-    var kicker = isPost ? 'FINAL' : 'NEXT UP';
+  } else if ((state === 'post' && UPCOMING_TOURNAMENT) || (state === 'pre' && TOURNAMENT) || (state === 'between' && UPCOMING_TOURNAMENT)) {
+    // Upcoming tournament hero — prefer UPCOMING_TOURNAMENT so completed events don't linger
+    var upcoming = (state === 'pre' && TOURNAMENT) ? TOURNAMENT : UPCOMING_TOURNAMENT;
     html += '<div style="background:var(--green);border-radius:4px;padding:24px;margin:16px 0;border-bottom:3px solid #D4A853">';
-    html += '<div style="font-size:10px;font-weight:700;letter-spacing:2px;color:rgba(255,255,255,0.6);margin-bottom:6px">' + kicker + '</div>';
-    html += '<div style="font-family:DM Sans,sans-serif;font-size:2rem;font-weight:800;color:#fff;margin-bottom:6px;letter-spacing:-0.5px">' + esc(TOURNAMENT.name) + '</div>';
-    if (TOURNAMENT.course) html += '<div style="font-size:12px;color:rgba(255,255,255,0.7);margin-bottom:12px">' + esc(TOURNAMENT.course) + '</div>';
-    if (TOURNAMENT.dates) html += '<div style="font-size:13px;color:#D4A853;font-weight:700;margin-bottom:4px">' + esc(TOURNAMENT.dates) + '</div>';
+    html += '<div style="font-size:10px;font-weight:700;letter-spacing:2px;color:rgba(255,255,255,0.6);margin-bottom:6px">NEXT UP</div>';
+    html += '<div style="font-family:DM Sans,sans-serif;font-size:2rem;font-weight:800;color:#fff;margin-bottom:6px;letter-spacing:-0.5px">' + esc(upcoming.name) + '</div>';
+    if (upcoming.course) html += '<div style="font-size:12px;color:rgba(255,255,255,0.7);margin-bottom:12px">' + esc(upcoming.course) + '</div>';
+    if (upcoming.dates) html += '<div style="font-size:13px;color:#D4A853;font-weight:700;margin-bottom:4px">' + esc(upcoming.dates) + '</div>';
     var metaBits = [];
-    if (TOURNAMENT.tour) metaBits.push(TOURNAMENT.tour);
-    if (TOURNAMENT.purse) metaBits.push(TOURNAMENT.purse + ' purse');
+    if (upcoming.tour) metaBits.push(upcoming.tour);
+    if (upcoming.purse) metaBits.push(upcoming.purse + ' purse');
     if (metaBits.length) html += '<div style="font-size:11px;color:rgba(255,255,255,0.6);margin-bottom:8px">' + esc(metaBits.join(' \u00b7 ')) + '</div>';
-    if (TOURNAMENT.broadcast) html += '<div style="font-size:10px;color:rgba(255,255,255,0.5)">Watch: ' + esc(TOURNAMENT.broadcast) + '</div>';
+    if (upcoming.broadcast) html += '<div style="font-size:10px;color:rgba(255,255,255,0.5)">Watch: ' + esc(upcoming.broadcast) + '</div>';
     html += '</div>';
   } else {
     html += '<div style="background:var(--green);border-radius:4px;padding:24px;margin:16px 0;border-bottom:3px solid #D4A853">';
@@ -1308,9 +1392,10 @@ function renderHome() {
   var allArticles = newsArticles.concat(blogArticles).concat(bettingArticles);
   allArticles.sort(function(a,b) { return new Date(b.published_at || 0) - new Date(a.published_at || 0); });
 
-  // Tournament section header — dynamic from TOURNAMENT
-  var bannerLeft = TOURNAMENT && TOURNAMENT.name ? TOURNAMENT.name : 'This Week';
-  var bannerRight = TOURNAMENT && TOURNAMENT.course ? TOURNAMENT.course : (TOURNAMENT && TOURNAMENT.tour ? TOURNAMENT.tour : 'PGA Tour');
+  // Tournament section header — dynamic, prefers upcoming event once current one is done
+  var bannerSrc = (state === 'live' || state === 'pre') ? TOURNAMENT : (UPCOMING_TOURNAMENT || TOURNAMENT);
+  var bannerLeft = bannerSrc && bannerSrc.name ? bannerSrc.name : 'This Week';
+  var bannerRight = bannerSrc && bannerSrc.course ? bannerSrc.course : (bannerSrc && bannerSrc.tour ? bannerSrc.tour : 'PGA Tour');
   html += '<div style="background:var(--green);border-radius:4px;padding:10px 16px;margin:16px 0 12px;display:flex;align-items:center;gap:10px">';
   html += '<div style="font-family:DM Sans,sans-serif;font-size:0.7rem;font-weight:600;color:#D4A853;letter-spacing:3px;text-transform:uppercase;opacity:0.8">' + esc(bannerLeft) + '</div>';
   html += '<div style="flex:1;height:1px;background:rgba(212,168,83,0.3)"></div>';
@@ -1867,6 +1952,7 @@ function _doRender() {
 // INIT
 // ============================================
 fetchESPNScores(currentScoresTour);
+fetchUpcomingTournament();
 fetchAllArticles();
 fetchESPNSchedule();
 startAutoRefresh();
